@@ -3,3 +3,9 @@ dist
 .env.local
 .env
 *.log
+
+# 临时文件
+ocr-batch-*.md
+progress.md
+*.bak
+banks/*.bak
