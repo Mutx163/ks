@@ -11,9 +11,9 @@ const App = {
     state: {
         banks: [],
         stats: null,
-        filterType: 'all',
         lightningMode: false,
-        activeTab: 'overview'
+        activeTab: 'overview',
+        selectedTypes: {}
     },
 
     async init() {
@@ -481,13 +481,14 @@ const App = {
                         </div>
                     </div>
 
-                    <!-- 题型筛选行 -->
+                    <!-- 题型筛选行（选择题型后，刷题按钮自动使用所选题型） -->
                     <div class="bank-card-types">
-                        ${bankTypes.map(type => `
-                            <button class="bank-type-btn ${type === 'all' ? 'active' : ''}" onclick="App.startQuiz('${bank.id}', 'all', '${type}')">
+                        ${bankTypes.map(type => {
+                            const isActive = (this.state.selectedTypes[bank.id] || 'all') === type;
+                            return `<button class="bank-type-btn ${isActive ? 'active' : ''}" onclick="App.selectType('${bank.id}', '${type}')">
                                 ${type === 'all' ? '📚 全部' : this.getTypeLabel(type)}
-                            </button>
-                        `).join('')}
+                            </button>`;
+                        }).join('')}
                     </div>
 
                     <!-- 刷题模式按钮网格 -->
@@ -585,11 +586,20 @@ const App = {
     /**
      * 开始刷题
      * @param {string} bankId - 题库 ID
-     * @param {string} mode - 模式
-     * @param {string} type - 题型筛选，可选
      */
-    startQuiz(bankId, mode, type) {
-        const typeParam = type && type !== 'all' ? `&type=${type}` : '';
+    selectType(bankId, type) {
+        this.state.selectedTypes[bankId] = type;
+        this.renderBankGrid();
+    },
+
+    /**
+     * 开始刷题（自动使用当前选中的题型）
+     * @param {string} bankId - 题库 ID
+     * @param {string} mode - 模式
+     */
+    startQuiz(bankId, mode) {
+        const selectedType = this.state.selectedTypes[bankId] || 'all';
+        const typeParam = selectedType !== 'all' ? `&type=${selectedType}` : '';
         const lightningParam = this.state.lightningMode ? '&lightning=1' : '';
         window.location.href = `quiz.html?bank=${bankId}&mode=${mode}${typeParam}${lightningParam}`;
     },
