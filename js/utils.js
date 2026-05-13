@@ -384,7 +384,8 @@ const Utils = {
             multiple: '多选题',
             judge: '判断题',
             fill: '填空题',
-            code: '编程题'
+            code: '编程题',
+            essay: '简答题'
         };
         return typeNames[type] || type;
     },

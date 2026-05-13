@@ -454,6 +454,8 @@ const Quiz = {
                         ${Utils.parseMarkdown(question.question)}
                     </div>
 
+                    ${question.img || question.image ? `<img class="question-image" src="${Utils.escapeHtml(question.img || question.image)}" alt="题目图片" loading="lazy">` : ''}
+
                     ${this.renderOptions(question, isSubmitted, userAnswer)}
 
                     ${isSubmitted && showExplanation ? this.renderExplanation(question, isCorrect) : ''}
@@ -474,6 +476,8 @@ const Quiz = {
             case 'judge': return this.renderJudgeOptions(question, isSubmitted, userAnswer);
             case 'fill': return this.renderFillInput(question, isSubmitted, userAnswer);
             case 'code': return this.renderCodeInput(question, isSubmitted, userAnswer);
+            case 'essay':
+            case '简答题': return this.renderEssayInput(question, isSubmitted, userAnswer);
             default: return '';
         }
     },
@@ -622,9 +626,48 @@ const Quiz = {
                 <textarea class="code-editor" id="code-editor" rows="10" 
                           ${isSubmitted ? 'readonly' : ''}
                           placeholder="请输入代码..."
-                          aria-label="代码编辑器">${Utils.escapeHtml(userAnswer || '')}</textarea>
+                          aria-label="代码编辑器">${Utils.escapeHtml(userAnswer?.text || userAnswer || '')}</textarea>
             </div>
             ${!isSubmitted ? '<div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">💡 编程题，请编写代码</div>' : ''}
+        `;
+    },
+
+    renderEssayInput(question, isSubmitted, userAnswer) {
+        const answerText = userAnswer?.text || userAnswer || '';
+        const selfCorrect = userAnswer?.selfCorrect;
+
+        if (isSubmitted && selfCorrect !== undefined) {
+            return `
+                <div style="margin-top:var(--space-4)">
+                    <div class="result-banner ${selfCorrect ? 'correct' : 'wrong'}">
+                        <span class="result-banner-icon">${selfCorrect ? '🎉' : '😔'}</span>
+                        <span class="result-banner-text">${selfCorrect ? '回答正确！' : '回答错误'}</span>
+                    </div>
+                    ${answerText ? `<div style="margin:12px 0;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm)"><strong>你的回答：</strong><br>${Utils.escapeHtml(answerText)}</div>` : ''}
+                </div>
+            `;
+        }
+
+        if (isSubmitted) {
+            return `
+                <div style="margin-top:var(--space-4)">
+                    <div style="margin-bottom:12px">
+                        <button class="btn btn-success btn-sm" onclick="Quiz.selfMarkEssay(${question.id}, true)">✅ 我答对了</button>
+                        <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="Quiz.selfMarkEssay(${question.id}, false)">❌ 我答错了</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div style="margin-top:var(--space-4)">
+                <textarea class="essay-input" id="essay-input" rows="5" 
+                          placeholder="输入你的回答（可选）..."
+                          aria-label="简答题回答">${Utils.escapeHtml(answerText)}</textarea>
+                <div style="margin-top:8px;display:flex;gap:8px">
+                    <button class="btn btn-secondary btn-sm" onclick="Quiz.submitEssay(${question.id})">📖 查看参考答案</button>
+                </div>
+            </div>
         `;
     },
 
@@ -815,7 +858,10 @@ const Quiz = {
             case 'fill':
                 return Array.isArray(answer) && answer.some(a => a.trim() !== '');
             case 'code':
-                return answer && answer.trim() !== '';
+                return answer && (typeof answer === 'string' ? answer.trim() !== '' : true);
+            case 'essay':
+            case '简答题':
+                return answer && answer.selfCorrect !== undefined;
             default:
                 return false;
         }
@@ -838,6 +884,10 @@ const Quiz = {
                 );
             case 'code':
                 return true;
+            case 'essay':
+            case '简答题':
+                const eAns = this.state.answers[question.id];
+                return eAns && eAns.selfCorrect === true;
             default:
                 return false;
         }

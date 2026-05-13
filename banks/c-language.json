@@ -1952,7 +1952,7 @@
         "19"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h> int main(){ char c; int n=100; float f=10; double x; x = f *= n /= (c=50); printf(\"%d %f\\n\", n, x); return 0; }\n```",
+      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    char c;\n    int n=100;\n    float f=10;\n    double x;\n    x = f *= n /= (c=50);\n    printf(\"%d %f\\n\", n, x);\n    return 0;\n}\n```",
       "options": [
         "A. 2 20",
         "B. 2 20.000000",
@@ -1972,7 +1972,7 @@
         "20"
       ],
       "difficulty": 2,
-      "question": "已知字母 A 的 ASCII 码为 65，则以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h> int main(){ char a,b; a='A'+'5'-'3'; b=a+'6'-'2'; printf(\"%d%c\\n\", a, b); return 0; }\n```",
+      "question": "已知字母 A 的 ASCII 码为 65，则以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    char a,b;\n    a='A'+'5'-'3';\n    b=a+'6'-'2';\n    printf(\"%d%c\\n\", a, b);\n    return 0;\n}\n```",
       "options": [
         "A. 6771",
         "B. 67G",
@@ -2032,7 +2032,7 @@
         "23"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h> int main(){ int x,y,z; x=y=1; z=x++, y++, ++y; printf(\"%d,%d,%d\\n\", x, y, z); return 0; }\n```",
+      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int x,y,z;\n    x=y=1;\n    z=x++, y++, ++y;\n    printf(\"%d,%d,%d\\n\", x, y, z);\n    return 0;\n}\n```",
       "options": [
         "A. 2,3,3",
         "B. 2,3,2",
@@ -2372,7 +2372,7 @@
         "40"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h> int main(){ int a=0,b=0,c=0; c=(a-=a-5); (a=b,b+=4); printf(\"%d,%d,%d\", a,b,c); return 0; }\n```",
+      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a=0,b=0,c=0;\n    c=(a-=a-5);\n    (a=b,b+=4);\n    printf(\"%d,%d,%d\", a,b,c);\n    return 0;\n}\n```",
       "options": [
         "A. 0,4,5",
         "B. 4,4,5",
@@ -2452,7 +2452,7 @@
         "44"
       ],
       "difficulty": 2,
-      "question": "有以下程序：\n```c\n#include <stdio.h> int main(){ int m,n,p; scanf(\"m=%dn=%dp=%d\", &m,&n,&p); printf(\"%d%d%d\\n\", m,n,p); return 0; } 若想使变量 m 中的值为 123，n 中的值为 456，p 中的值为 789，则正确的输入是（ ）。\n```",
+      "question": "有以下程序：\n```c\n#include <stdio.h>\nint main(){\n    int m,n,p;\n    scanf(\"m=%dn=%dp=%d\", &m,&n,&p);\n    printf(\"%d%d%d\\n\", m,n,p);\n    return 0;\n}\n```\n若想使变量 m 中的值为 123，n 中的值为 456，p 中的值为 789，则正确的输入是（ ）。",
       "options": [
         "A. m=123n=456p=789",
         "B. 123,456,789",
@@ -2532,7 +2532,7 @@
         "48"
       ],
       "difficulty": 2,
-      "question": "以下程序运行时若输入：a<回车>，则叙述正确的是（ ）。\n```c\n#include <stdio.h> int main(){ char c1='1', c2='2'; c1=getchar(); c2=getchar(); putchar(c1); putchar(c2); return 0; }\n```",
+      "question": "以下程序运行时若输入：a<回车>，则叙述正确的是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    char c1='1', c2='2';\n    c1=getchar();\n    c2=getchar();\n    putchar(c1);\n    putchar(c2);\n    return 0;\n}\n```",
       "options": [
         "A. 变量 c1 被赋予字符 a，c2 被赋予回车符",
         "B. 程序将等待用户输入第 2 个字符",
@@ -2712,7 +2712,7 @@
         "7"
       ],
       "difficulty": 2,
-      "question": "执行以下程序后，输出的结果是（ ）。\n```c\n#include <stdio.h> int main(){ int a=2,b=-1,c=2; if(a<b) if(b<0) c=0; else c+=1; printf(\"%d\\n\", c); return 0; }\n```",
+      "question": "执行以下程序后，输出的结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a=2,b=-1,c=2;\n    if(a<b)\n        if(b<0)\n            c=0;\n        else\n            c+=1;\n    printf(\"%d\\n\", c);\n    return 0;\n}\n```",
       "options": [
         "A. 0",
         "B. 1",
@@ -2732,7 +2732,7 @@
         "8"
       ],
       "difficulty": 2,
-      "question": "执行以下程序后，输出的结果是（ ）。\n```c\n#include <stdio.h> int main(){ int w=4,x=3,y=2,z=1; printf(\"%d\\n\", (w<x ? w : z<y ? z:x)); return 0; }\n```",
+      "question": "执行以下程序后，输出的结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int w=4,x=3,y=2,z=1;\n    printf(\"%d\\n\", (w<x ? w : z<y ? z:x));\n    return 0;\n}\n```",
       "options": [
         "A. 4",
         "B. 2",
@@ -2892,7 +2892,7 @@
         "20"
       ],
       "difficulty": 2,
-      "question": "以下程序运行时，输入的值在（ ）范围时才会有输出结果。\n```c\n#include <stdio.h> int main(){ int x; scanf(\"%d\", &x); if(x<=3); else if(x!=10) printf(\"%d\\n\", x); return 0; }\n```",
+      "question": "以下程序运行时，输入的值在（ ）范围时才会有输出结果。\n```c\n#include <stdio.h>\nint main(){\n    int x;\n    scanf(\"%d\", &x);\n    if(x<=3);\n    else if(x!=10)\n        printf(\"%d\\n\", x);\n    return 0;\n}\n```",
       "options": [
         "A. 不等于 10 的整数",
         "B. 大于 3 且不等于 10 的整数",
@@ -2983,7 +2983,7 @@
         "18"
       ],
       "difficulty": 2,
-      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h> int main(){ int x=1,y=0,a=0,b=0; switch(x){ case 1: switch(y){ case 0:a++;break; case 1:b++;break; } case 2:a++;b++;break; case 3:a++;b++; } printf(\"\\na=%d,b=%d\", a,b); return 0; }\n```",
+      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int x=1,y=0,a=0,b=0;\n    switch(x){\n        case 1:\n            switch(y){\n                case 0: a++; break;\n                case 1: b++; break;\n            }\n        case 2: a++; b++; break;\n        case 3: a++; b++;\n    }\n    printf(\"\\na=%d,b=%d\", a,b);\n    return 0;\n}\n```",
       "options": [
         "A. a=1,b=0",
         "B. a=2,b=1",
@@ -3003,7 +3003,7 @@
         "19"
       ],
       "difficulty": 2,
-      "question": "在执行下述程序时，若从键盘输入 6 和 8，则输出结果是（ ）。\n```c\n#include <stdio.h> int main(){ int a,b,s; scanf(\"%d%d\", &a,&b); s=a; if(a<b) s=b; s*=s; printf(\"\\n%d\", s); return 0; }\n```",
+      "question": "在执行下述程序时，若从键盘输入 6 和 8，则输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a,b,s;\n    scanf(\"%d%d\", &a,&b);\n    s=a;\n    if(a<b) s=b;\n    s*=s;\n    printf(\"\\n%d\", s);\n    return 0;\n}\n```",
       "options": [
         "A. 36",
         "B. 48",
