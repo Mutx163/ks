@@ -519,98 +519,48 @@
 
 .bank-card-stat-num { font-weight: 600; color: var(--text); }
 
-/* ---- 主按钮区（瘦身：只保留 2 个主要入口） ---- */
-.bank-card-actions {
-    padding: var(--space-4) var(--space-5);
-    border-top: 1px solid var(--border);
+/* ---- 题型筛选行 ---- */
+.bank-card-types {
+    padding: var(--space-3) var(--space-5) 0;
     display: flex;
-    gap: var(--space-2);
+    flex-wrap: wrap;
+    gap: 6px;
 }
 
-.bank-card-actions .btn { flex: 1; }
-
-/* ---- 更多按钮弹出菜单 ---- */
-.bank-card-more-wrap {
-    position: relative;
-}
-
-.bank-card-more-btn {
-    padding: 0 var(--space-4);
+.bank-type-btn {
+    padding: 4px 12px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text-secondary);
-    font-size: 14px;
-    height: 100%;
-    min-height: 36px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    border-radius: 16px;
     background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 12px;
     cursor: pointer;
-    transition: var(--transition);
+    transition: var(--transition-bounce);
 }
 
-.bank-card-more-btn:hover {
+.bank-type-btn:hover {
     border-color: var(--primary);
     color: var(--primary);
     background: var(--primary-light);
 }
 
-.bank-card-more-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 4px);
-    min-width: 180px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-lg);
-    z-index: 50;
-    display: none;
-    overflow: hidden;
-    animation: fadeIn 0.15s ease;
-}
+.bank-type-btn:active { transform: scale(0.96); }
 
-.bank-card-more-menu.show { display: block; }
-
-.bank-card-more-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 100%;
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--font-size-sm);
-    color: var(--text);
-    cursor: pointer;
-    border: none;
-    background: none;
-    text-align: left;
-    transition: var(--transition);
-}
-
-.bank-card-more-item:hover { background: var(--bg-hover); }
-
-.bank-card-more-item:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
-.bank-card-more-item:disabled:hover { background: none; }
-
-.bank-card-more-group {
-    padding: 8px 16px 4px;
-    font-size: 11px;
+.bank-type-btn.active {
+    border-color: var(--primary);
+    color: var(--primary);
     font-weight: 600;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
-.bank-card-more-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 4px 12px;
+/* ---- 刷题模式按钮网格 ---- */
+.bank-card-modes {
+    padding: var(--space-3) var(--space-5);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--space-2);
 }
+
+.bank-card-modes .btn { width: 100%; font-size: 12px; padding: 8px 8px; }
 
 /* ---- 卡片底部操作 ---- */
 .bank-card-footer {

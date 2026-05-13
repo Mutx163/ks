@@ -477,38 +477,30 @@ const App = {
                         </div>
                     </div>
 
-                    <!-- 主按钮：开始刷题（全部题型）+ 更多菜单（含题型选择和刷题模式） -->
-                    <div class="bank-card-actions">
-                        <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')" aria-label="顺序刷题（全部题型）">
-                            🚀 开始刷题
-                        </button>
-                        <div class="bank-card-more-wrap">
-                            <button class="bank-card-more-btn" onclick="App.toggleMoreMenu(this)" aria-label="更多模式" title="选择题型或模式">
-                                ▾ 更多
+                    <!-- 题型筛选行 -->
+                    <div class="bank-card-types">
+                        ${bankTypes.map(type => `
+                            <button class="bank-type-btn ${type === 'all' ? 'active' : ''}" onclick="App.startQuiz('${bank.id}', 'all', '${type}')">
+                                ${type === 'all' ? '📚 全部' : this.getTypeLabel(type)}
                             </button>
-                            <div class="bank-card-more-menu">
-                                <div class="bank-card-more-group">📝 题型选择</div>
-                                ${bankTypes.map(type => `
-                                    <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'all', '${type}')">
-                                        ${type === 'all' ? '📚 全部题型' : '📝 只练' + this.getTypeLabel(type)}
-                                    </button>
-                                `).join('')}
-                                <div class="bank-card-more-divider"></div>
-                                <div class="bank-card-more-group">🎯 刷题模式</div>
-                                <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'random')">🎲 随机刷题</button>
-                                <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>
-                                    🔄 错题重做 ${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
-                                </button>
-                                <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'review')">📖 背题模式</button>
-                                ${dueCount > 0 ? `
-                                    <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'spaced')">🧠 智能复习 (${dueCount})</button>
-                                ` : ''}
-                                ${bookmarkCount > 0 ? `
-                                    <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'bookmark')">⭐ 收藏题 (${bookmarkCount})</button>
-                                ` : ''}
-                                <button class="bank-card-more-item" onclick="App.startExam('${bank.id}')">📝 模拟考试</button>
-                            </div>
-                        </div>
+                        `).join('')}
+                    </div>
+
+                    <!-- 刷题模式按钮网格 -->
+                    <div class="bank-card-modes">
+                        <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')">🚀 顺序刷题</button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'random')">🎲 随机</button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>
+                            🔄 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'review')">📖 背题</button>
+                        ${dueCount > 0 ? `
+                            <button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bank.id}', 'spaced')">🧠 复习(${dueCount})</button>
+                        ` : ''}
+                        ${bookmarkCount > 0 ? `
+                            <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'bookmark')">⭐ 收藏(${bookmarkCount})</button>
+                        ` : ''}
+                        <button class="btn btn-secondary btn-sm" onclick="App.startExam('${bank.id}')">📝 考试</button>
                     </div>
 
                     <div class="bank-card-footer">
@@ -522,32 +514,6 @@ const App = {
                 </div>
             `;
         }).join('');
-    },
-
-    /**
-     * 切换更多菜单
-     */
-    toggleMoreMenu(btn) {
-        const menu = btn.nextElementSibling;
-        const isOpen = menu.classList.contains('show');
-
-        // 关闭所有其他菜单
-        document.querySelectorAll('.bank-card-more-menu.show').forEach(m => {
-            if (m !== menu) m.classList.remove('show');
-        });
-
-        menu.classList.toggle('show', !isOpen);
-
-        // 点击外部关闭
-        if (!isOpen) {
-            const close = (e) => {
-                if (!menu.contains(e.target) && e.target !== btn) {
-                    menu.classList.remove('show');
-                    document.removeEventListener('click', close);
-                }
-            };
-            setTimeout(() => document.addEventListener('click', close), 0);
-        }
     },
 
     /**
