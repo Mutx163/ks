@@ -139,13 +139,13 @@ const Utils = {
         // 转义普通文本中的 HTML
         html = this.escapeHtml(html);
 
+        // 换行（先处理普通文本的换行，再还原占位符，避免代码块里的\n被转成<br>）
+        html = html.replace(/\n/g, '<br>');
+
         // 还原占位符
         html = html.replace(/%%PH(\d+)%%/g, (match, id) => {
             return placeholders[parseInt(id)];
         });
-
-        // 换行
-        html = html.replace(/\n/g, '<br>');
 
         // 加粗 (**...**) — 需要在转义后匹配
         html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
