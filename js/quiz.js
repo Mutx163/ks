@@ -132,11 +132,17 @@ const Quiz = {
             }
             this.state.questionTimes = session.questionTimes || {};
             this.state.optionOrderCache = session.optionOrderCache || {};
+            this.state.savedOrderIds = session.questionOrderIds || null;
         }
     },
 
     saveSession() {
         if (this.state.mode === 'exam') return;
+
+        // 保存乱序/随机的题目顺序
+        const questionOrderIds = (this.state.mode === 'random' || this.state.mode === 'shuffle_options')
+            ? this.state.questions.map(q => q.id)
+            : undefined;
 
         Storage.saveSession(this.state.bankId, this.state.mode, {
             currentIndex: this.state.currentIndex,
@@ -146,7 +152,8 @@ const Quiz = {
             submitted: this.state.submitted,
             showExplanation: this.state.showExplanation,
             questionTimes: this.state.questionTimes,
-            optionOrderCache: this.state.optionOrderCache
+            optionOrderCache: this.state.optionOrderCache,
+            questionOrderIds
         });
     },
 
@@ -1138,6 +1145,9 @@ const Quiz = {
                 </div>
 
                 <div class="result-actions">
+                    <button class="btn btn-secondary btn-lg" onclick="Quiz.startReview()">
+                        📖 查看解析
+                    </button>
                     <button class="btn btn-secondary btn-lg" onclick="Quiz.restart()">
                         🔄 重新开始
                     </button>
@@ -1178,6 +1188,31 @@ const Quiz = {
 
         document.querySelector('.quiz-footer').style.display = '';
         document.getElementById('question-nav-bar').style.display = '';
+        this.render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    /**
+     * 考试复盘：返回答题视图，显示所有题目和解析
+     */
+    startReview() {
+        const container = document.getElementById('question-container');
+        if (!container) return;
+
+        // 设置复盘模式
+        this.state.isReviewMode = true;
+        this.state.currentIndex = 0;
+        this.state.isFinished = false;
+
+        // 确保所有已答题都显示解析
+        Object.keys(this.state.submitted).forEach(qId => {
+            this.state.showExplanation[qId] = true;
+        });
+
+        // 恢复底部栏
+        document.querySelector('.quiz-footer').style.display = '';
+        document.getElementById('question-nav-bar').style.display = '';
+
         this.render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
