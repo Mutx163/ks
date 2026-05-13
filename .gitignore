@@ -10,3 +10,4 @@ progress.md
 *.bak
 banks/*.bak
 gclx/
+_*.py
