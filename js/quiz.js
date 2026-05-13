@@ -28,6 +28,7 @@ const Quiz = {
         filterType: 'all',
         lightningMode: false,
         isReviewMode: false,
+        isNavigating: false,
         optionOrderCache: {}
     },
 
@@ -896,13 +897,16 @@ const Quiz = {
     },
 
     nextQuestion() {
+        if (this.state.isNavigating) return;
         if (this.state.currentIndex < this.state.questions.length - 1) {
+            this.state.isNavigating = true;
             this.recordQuestionTime();
             this.state.currentIndex++;
             this.state.questionStartTime = Date.now();
             this.saveSession();
             this.render();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => { this.state.isNavigating = false; }, 250);
         }
     },
 
@@ -913,24 +917,30 @@ const Quiz = {
     },
 
     prevQuestion() {
+        if (this.state.isNavigating) return;
         if (this.state.currentIndex > 0) {
+            this.state.isNavigating = true;
             this.recordQuestionTime();
             this.state.currentIndex--;
             this.state.questionStartTime = Date.now();
             this.saveSession();
             this.render();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => { this.state.isNavigating = false; }, 250);
         }
     },
 
     goToQuestion(index) {
+        if (this.state.isNavigating) return;
         if (index >= 0 && index < this.state.questions.length) {
+            this.state.isNavigating = true;
             this.recordQuestionTime();
             this.state.currentIndex = index;
             this.state.questionStartTime = Date.now();
             this.saveSession();
             this.render();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => { this.state.isNavigating = false; }, 250);
         }
     },
 

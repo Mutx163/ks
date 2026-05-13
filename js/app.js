@@ -65,12 +65,66 @@ const App = {
 
     render() {
         this.renderSmartBanner();
+        this.renderWrongBook();
         this.renderStatsTabs();
         this.renderStatsOverview();
         this.renderTrend();
         this.renderWeakCategories();
         this.renderHistory();
         this.renderBankGrid();
+    },
+
+    /**
+     * 渲染错题本入口
+     */
+    renderWrongBook() {
+        const el = document.getElementById('wrong-book');
+        if (!el) return;
+
+        const stats = Storage.getGlobalWrongStats();
+
+        if (stats.totalWrong === 0) {
+            el.style.display = 'none';
+            return;
+        }
+
+        el.innerHTML = `
+            <div class="wrong-book">
+                <div class="wrong-book-header">
+                    <span class="wrong-book-icon">❌</span>
+                    <span class="wrong-book-title">错题本</span>
+                    <span class="wrong-book-count">${stats.totalWrong} 题</span>
+                </div>
+                <div class="wrong-book-body">
+                    ${stats.details.map(d => `
+                        <div class="wrong-book-bank">
+                            <span class="wrong-book-bank-name">${Utils.escapeHtml(d.bankName)}</span>
+                            <span class="wrong-book-bank-count">${d.count} 题</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="wrong-book-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="App.clearAllWrong()">🗑️ 清空错题本</button>
+                    <button class="btn btn-primary btn-sm" onclick="App.startWrongPractice()">🚀 错题重做</button>
+                </div>
+            </div>
+        `;
+        el.style.display = '';
+    },
+
+    clearAllWrong() {
+        if (!confirm('确定清空全部错题本？此操作不可恢复。')) return;
+        Storage.clearAllWrong();
+        Utils.showToast('错题本已清空', 'success');
+        this.loadData();
+        this.render();
+    },
+
+    startWrongPractice() {
+        const stats = Storage.getGlobalWrongStats();
+        if (stats.totalWrong === 0) return;
+        const firstBank = stats.details[0];
+        this.startQuiz(firstBank.bankId, 'wrong');
     },
 
     /**

@@ -408,6 +408,47 @@ const Storage = {
         return wrongIds;
     },
 
+    /**
+     * 获取全局错题统计
+     */
+    getGlobalWrongStats() {
+        const banks = this.getBanks();
+        let totalWrong = 0;
+        const details = [];
+
+        for (const bank of banks) {
+            const wrongIds = this.getWrongQuestions(bank.id);
+            if (wrongIds.length > 0) {
+                totalWrong += wrongIds.length;
+                details.push({ bankId: bank.id, bankName: bank.name, wrongIds, count: wrongIds.length });
+            }
+        }
+
+        return { totalWrong, details };
+    },
+
+    /**
+     * 清空全局错题本
+     */
+    clearAllWrong() {
+        const progress = this.getProgress();
+        for (const bankId of Object.keys(progress)) {
+            if (progress[bankId] && progress[bankId].questions) {
+                const questions = progress[bankId].questions;
+                let corrected = 0;
+                for (const [qId, qProgress] of Object.entries(questions)) {
+                    if (!qProgress.correct) {
+                        questions[qId] = { ...qProgress, correct: true };
+                        corrected++;
+                    }
+                }
+                progress[bankId].wrong = 0;
+                progress[bankId].correct += corrected;
+            }
+        }
+        this.set(this.KEYS.PROGRESS, progress);
+    },
+
     // ==================== 收藏管理 ====================
 
     /**
