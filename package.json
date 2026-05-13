@@ -5,16 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp -r css/* dist/css/ && cp -r js/* dist/js/ && cp -r banks/* dist/banks/",
     "preview": "vite preview"
-  },
-  "dependencies": {
-
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
-    
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-static-copy": "^4.1.0"
   }
 }

@@ -44,6 +44,22 @@ const Quiz = {
         // 准备题目
         this.prepareQuestions();
         
+        // 背题模式：自动标记所有题目为已提交
+        if (this.state.mode === 'review') {
+            this.state.questions.forEach(q => {
+                this.state.submitted[q.id] = true;
+                this.state.showExplanation[q.id] = true;
+                this.state.answers[q.id] = q.answer;
+            });
+        }
+        
+        // 错题模式：检查是否有错题
+        if (this.state.mode === 'wrong' && this.state.questions.length === 0) {
+            Utils.showToast('没有错题，真棒！', 'success');
+            setTimeout(() => window.location.href = 'index.html', 1000);
+            return;
+        }
+        
         // 记录开始时间
         this.state.startTime = Date.now();
 
@@ -70,6 +86,10 @@ const Quiz = {
                 // 随机模式
                 questions = Utils.shuffleArray(questions);
                 break;
+            case 'review':
+                // 背题模式 - 直接显示答案
+                this.state.isReviewMode = true;
+                break;
             case 'all':
             default:
                 break;
@@ -86,6 +106,15 @@ const Quiz = {
         this.renderQuestionNav();
         this.renderQuestion();
         this.renderFooter();
+        
+        // 背题模式下隐藏提交按钮
+        if (this.state.isReviewMode) {
+            const submitBtn = document.getElementById('btn-submit');
+            if (submitBtn) submitBtn.style.display = 'none';
+            
+            const hint = document.getElementById('footer-hint');
+            if (hint) hint.textContent = '📖 背题模式 - 直接查看答案和解析';
+        }
     },
 
     /**
@@ -93,6 +122,19 @@ const Quiz = {
      */
     renderHeader() {
         document.getElementById('quiz-title').textContent = this.state.bank.name;
+        
+        // 显示模式标签
+        const modeTag = document.getElementById('quiz-mode-tag');
+        if (modeTag) {
+            const modeNames = {
+                'all': '顺序刷题',
+                'random': '随机刷题',
+                'wrong': '错题重做',
+                'review': '背题模式'
+            };
+            modeTag.textContent = modeNames[this.state.mode] || '刷题';
+        }
+        
         this.updateProgress();
     },
 
@@ -148,10 +190,11 @@ const Quiz = {
         if (!question) return;
 
         const container = document.getElementById('question-container');
-        const isSubmitted = this.state.submitted[question.id];
-        const userAnswer = this.state.answers[question.id];
-        const isCorrect = isSubmitted ? this.checkAnswer(question) : null;
-        const showExplanation = this.state.showExplanation[question.id];
+        const isReviewMode = this.state.isReviewMode;
+        const isSubmitted = isReviewMode || this.state.submitted[question.id];
+        const userAnswer = isReviewMode ? question.answer : this.state.answers[question.id];
+        const isCorrect = isReviewMode ? true : (isSubmitted ? this.checkAnswer(question) : null);
+        const showExplanation = isReviewMode || this.state.showExplanation[question.id];
 
         let html = `
             <div class="question-card">
@@ -384,7 +427,7 @@ const Quiz = {
      * 绑定选项事件
      */
     bindOptionEvents(question) {
-        const isSubmitted = this.state.submitted[question.id];
+        const isSubmitted = this.state.isReviewMode || this.state.submitted[question.id];
         if (isSubmitted) return;
 
         // 单选题

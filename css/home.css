@@ -532,3 +532,159 @@
         display: none;
     }
 }
+
+/* ================= 刷题模式卡片 ================= */
+.mode-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.mode-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+}
+
+.mode-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.mode-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+}
+
+.mode-name {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.mode-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* ================= 题库卡片扩展 ================= */
+.bank-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.bank-card-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: linear-gradient(135deg, var(--blue), #5856d6);
+    color: white;
+    flex-shrink: 0;
+}
+
+.bank-card-info {
+    flex: 1;
+}
+
+.bank-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.bank-card-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.bank-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.bank-card-progress {
+    margin-bottom: 16px;
+}
+
+.bank-card-progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.bank-card-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.bank-card-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bank-card-stat-icon {
+    font-size: 14px;
+}
+
+.bank-card-modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.bank-card-modes .btn {
+    width: 100%;
+    font-size: 13px;
+    padding: 10px 12px;
+}
+
+.bank-card-modes .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.bank-card-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+/* 题库卡片颜色变体 */
+.bank-card[data-color="green"] .bank-card-icon {
+    background: linear-gradient(135deg, var(--green), #00c853);
+}
+
+.bank-card[data-color="orange"] .bank-card-icon {
+    background: linear-gradient(135deg, var(--orange), #ff6d00);
+}
+
+.bank-card[data-color="purple"] .bank-card-icon {
+    background: linear-gradient(135deg, var(--purple), #7c4dff);
+}
+
+.bank-card[data-color="red"] .bank-card-icon {
+    background: linear-gradient(135deg, var(--red), #ff1744);
+}

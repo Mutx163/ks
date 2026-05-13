@@ -39,16 +39,8 @@
                 <div class="home-logo-icon">📚</div>
                 <div class="home-logo-text">
                     <h1>智能刷题系统</h1>
-                    <p>多题库 · 代码支持 · 数学公式</p>
+                    <p>多题库 · 代码高亮 · 数学公式 · 多种刷题模式</p>
                 </div>
-            </div>
-            <div class="home-actions">
-                <button class="btn btn-secondary" onclick="App.showImportModal()">
-                    📥 导入题库
-                </button>
-                <button class="btn btn-ghost" onclick="showSettings()">
-                    ⚙️ 设置
-                </button>
             </div>
         </div>
     </header>
@@ -88,16 +80,45 @@
                 </div>
             </div>
 
+            <!-- 刷题模式说明 -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span class="section-title-icon">🎮</span>
+                        刷题模式
+                    </h2>
+                </div>
+                <div class="mode-cards">
+                    <div class="mode-card">
+                        <div class="mode-icon">🚀</div>
+                        <div class="mode-name">顺序刷题</div>
+                        <div class="mode-desc">按题目顺序依次作答，适合首次学习</div>
+                    </div>
+                    <div class="mode-card">
+                        <div class="mode-icon">🎲</div>
+                        <div class="mode-name">随机刷题</div>
+                        <div class="mode-desc">随机打乱题目顺序，检验掌握程度</div>
+                    </div>
+                    <div class="mode-card">
+                        <div class="mode-icon">🔄</div>
+                        <div class="mode-name">错题重做</div>
+                        <div class="mode-desc">只做之前答错的题目，针对性复习</div>
+                    </div>
+                    <div class="mode-card">
+                        <div class="mode-icon">📖</div>
+                        <div class="mode-name">背题模式</div>
+                        <div class="mode-desc">直接显示答案解析，快速记忆</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 题库区域 -->
             <section class="section">
                 <div class="section-header">
                     <h2 class="section-title">
                         <span class="section-title-icon">📖</span>
-                        我的题库
+                        内置题库
                     </h2>
-                    <button class="btn btn-ghost btn-sm" onclick="App.loadExampleBank('c-language.json')">
-                        加载C语言示例
-                    </button>
                 </div>
                 <div class="bank-grid" id="bank-grid">
                     <!-- 动态渲染 -->
@@ -109,153 +130,13 @@
     <!-- 页脚 -->
     <footer class="home-footer">
         <div class="container">
-            <p>智能刷题系统 - 支持多题库、代码高亮、数学公式</p>
+            <p>智能刷题系统 - 内置题库 · 支持代码高亮和数学公式</p>
         </div>
     </footer>
-
-    <!-- 导入弹窗 -->
-    <div class="modal-overlay" id="import-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">📥 导入题库</h3>
-                <button class="modal-close" onclick="App.closeImportModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="import-zone" id="import-zone" onclick="document.getElementById('import-file').click()">
-                    <div class="import-zone-icon">📁</div>
-                    <div class="import-zone-title">点击或拖拽文件到此处</div>
-                    <div class="import-zone-desc">支持 JSON 格式的题库文件</div>
-                    <div class="import-zone-hint">文件格式请参考 <a href="questionbank-schema.md" target="_blank">题库格式规范</a></div>
-                </div>
-                <input type="file" id="import-file" accept=".json" style="display: none;">
-                <div id="import-preview" style="display: none;"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="App.closeImportModal()">取消</button>
-                <button class="btn btn-primary" onclick="App.confirmImport()">确认导入</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 题库详情弹窗 -->
-    <div class="modal-overlay" id="bank-detail-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title" id="detail-title">题库详情</h3>
-                <button class="modal-close" onclick="App.closeBankDetail()">×</button>
-            </div>
-            <div class="modal-body" id="detail-body">
-                <!-- 动态渲染 -->
-            </div>
-        </div>
-    </div>
-
-    <!-- 设置弹窗 -->
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">⚙️ 设置</h3>
-                <button class="modal-close" onclick="closeSettings()">×</button>
-            </div>
-            <div class="modal-body">
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin-bottom: 12px;">答题设置</h4>
-                    <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer;">
-                        <input type="checkbox" id="setting-show-answer" checked>
-                        <span>答题后显示答案解析</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer;">
-                        <input type="checkbox" id="setting-auto-next">
-                        <span>答题后自动跳转下一题</span>
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer;">
-                        <input type="checkbox" id="setting-random-order">
-                        <span>默认随机顺序</span>
-                    </label>
-                </div>
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin-bottom: 12px;">数据管理</h4>
-                    <div style="display: flex; gap: 12px;">
-                        <button class="btn btn-secondary" onclick="exportAllData()">📤 导出数据</button>
-                        <button class="btn btn-secondary" onclick="importAllData()">📥 导入数据</button>
-                        <button class="btn btn-danger" onclick="clearAllData()">🗑️ 清空数据</button>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
-            </div>
-        </div>
-    </div>
 
     <!-- JavaScript -->
     <script src="js/storage.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/app.js"></script>
-    
-    <script>
-        // 设置相关函数
-        function showSettings() {
-            const settings = Storage.getSettings();
-            document.getElementById('setting-show-answer').checked = settings.showAnswer;
-            document.getElementById('setting-auto-next').checked = settings.autoNext;
-            document.getElementById('setting-random-order').checked = settings.randomOrder;
-            document.getElementById('settings-modal').classList.add('active');
-        }
-        
-        function closeSettings() {
-            document.getElementById('settings-modal').classList.remove('active');
-        }
-        
-        function saveSettings() {
-            Storage.updateSettings({
-                showAnswer: document.getElementById('setting-show-answer').checked,
-                autoNext: document.getElementById('setting-auto-next').checked,
-                randomOrder: document.getElementById('setting-random-order').checked
-            });
-            Utils.showToast('设置已保存', 'success');
-            closeSettings();
-        }
-        
-        function exportAllData() {
-            const data = Storage.exportData();
-            Utils.downloadJSON(data, '刷题系统数据备份.json');
-            Utils.showToast('数据已导出', 'success');
-        }
-        
-        function importAllData() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    try {
-                        const data = await Utils.readJSONFile(file);
-                        if (confirm('导入数据将覆盖现有数据，确定继续吗？')) {
-                            Storage.importData(data);
-                            Utils.showToast('数据已导入', 'success');
-                            App.loadData();
-                            App.render();
-                        }
-                    } catch (error) {
-                        Utils.showToast(error.message, 'error');
-                    }
-                }
-            };
-            input.click();
-        }
-        
-        async function clearAllData() {
-            if (confirm('确定要清空所有数据吗？此操作不可恢复！')) {
-                if (confirm('再次确认：真的要清空所有数据吗？')) {
-                    Storage.clearAll();
-                    Utils.showToast('数据已清空', 'success');
-                    App.loadData();
-                    App.render();
-                }
-            }
-        }
-    </script>
 </body>
 </html>
