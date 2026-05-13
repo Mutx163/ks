@@ -490,6 +490,7 @@ const App = {
                     <div class="bank-card-modes">
                         <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')">🚀 顺序刷题</button>
                         <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'random')">🎲 随机</button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'shuffle_options')">🎲 选项乱序</button>
                         <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>
                             🔄 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
                         </button>

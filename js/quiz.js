@@ -27,7 +27,8 @@ const Quiz = {
         autoNext: false,
         filterType: 'all',
         lightningMode: false,
-        isReviewMode: false
+        isReviewMode: false,
+        optionOrderCache: {}
     },
 
     async init() {
@@ -125,6 +126,7 @@ const Quiz = {
                 this.state.showExplanation = session.showExplanation || {};
             }
             this.state.questionTimes = session.questionTimes || {};
+            this.state.optionOrderCache = session.optionOrderCache || {};
         }
     },
 
@@ -138,7 +140,8 @@ const Quiz = {
             answers: this.state.answers,
             submitted: this.state.submitted,
             showExplanation: this.state.showExplanation,
-            questionTimes: this.state.questionTimes
+            questionTimes: this.state.questionTimes,
+            optionOrderCache: this.state.optionOrderCache
         });
     },
 
@@ -180,6 +183,7 @@ const Quiz = {
                 questions = questions.filter(q => wrongIds.includes(q.id));
                 break;
             case 'random':
+            case 'shuffle_options':
                 questions = Utils.shuffleArray(questions);
                 break;
             case 'review':
@@ -455,28 +459,59 @@ const Quiz = {
         }
     },
 
-    renderSingleOptions(question, isSubmitted, userAnswer) {
+    /**
+     * 获取选项的显示列表（支持选项乱序）
+     * 每个选项格式：{ displayLetter, originalLetter, text }
+     * data-answer 始终存 originalLetter，checkAnswer 无需修改
+     */
+    getDisplayOptions(question) {
         const options = question.options || [];
+        const normal = options.map((option, index) => ({
+            displayLetter: String.fromCharCode(65 + index),
+            originalLetter: String.fromCharCode(65 + index),
+            text: option
+        }));
+
+        if (this.state.mode !== 'shuffle_options') return normal;
+
+        // 缓存乱序顺序，保证同一题目刷新/切换后顺序不变
+        if (!this.state.optionOrderCache[question.id]) {
+            const indices = options.map((_, i) => i);
+            this.state.optionOrderCache[question.id] = Utils.shuffleArray(indices);
+        }
+
+        return this.state.optionOrderCache[question.id].map((origIdx, displayIdx) => ({
+            displayLetter: String.fromCharCode(65 + displayIdx),
+            originalLetter: String.fromCharCode(65 + origIdx),
+            text: options[origIdx]
+        }));
+    },
+
+    renderSingleOptions(question, isSubmitted, userAnswer) {
+        const displayOpts = this.getDisplayOptions(question);
         return `
             <div class="options-list" role="radiogroup" aria-label="选项">
-                ${options.map((option, index) => {
-                    const letter = String.fromCharCode(65 + index);
+                ${displayOpts.map(opt => {
+                    const letter = opt.displayLetter;
+                    const origLetter = opt.originalLetter;
+                    const isCorrect = origLetter === question.answer;
+                    const isUserSel = origLetter === userAnswer;
                     let cls = 'option-item';
                     if (isSubmitted) {
-                        if (letter === question.answer) {
+                        if (isCorrect) {
                             cls += ' correct disabled';
-                        } else if (letter === userAnswer && letter !== question.answer) {
+                        } else if (isUserSel && !isCorrect) {
                             cls += ' wrong disabled';
                         } else {
                             cls += ' disabled';
                         }
-                    } else if (userAnswer === letter) {
+                    } else if (isUserSel) {
                         cls += ' selected';
                     }
                     return `
-                        <div class="${cls}" data-answer="${letter}" role="radio" aria-checked="${userAnswer === letter}" tabindex="0">
+                        <div class="${cls}" data-answer="${origLetter}" role="radio" aria-checked="${isUserSel}" tabindex="0">
                             <div class="option-marker">${letter}</div>
-                            <div class="option-content">${Utils.parseMarkdown(option.replace(/^[A-Z]\.\s*/, ''))}</div>
+                            <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
                         </div>
                     `;
                 }).join('')}
@@ -485,17 +520,18 @@ const Quiz = {
     },
 
     renderMultipleOptions(question, isSubmitted, userAnswer) {
-        const options = question.options || [];
+        const displayOpts = this.getDisplayOptions(question);
         const userAnswers = userAnswer || [];
         const correctAnswers = question.answer || [];
         return `
             <div class="options-list" role="group" aria-label="选项">
-                ${options.map((option, index) => {
-                    const letter = String.fromCharCode(65 + index);
+                ${displayOpts.map(opt => {
+                    const letter = opt.displayLetter;
+                    const origLetter = opt.originalLetter;
                     let cls = 'option-item';
                     if (isSubmitted) {
-                        const isCorrectOption = correctAnswers.includes(letter);
-                        const isUserSelected = userAnswers.includes(letter);
+                        const isCorrectOption = correctAnswers.includes(origLetter);
+                        const isUserSelected = userAnswers.includes(origLetter);
                         if (isCorrectOption) {
                             cls += ' correct disabled';
                         } else if (isUserSelected) {
@@ -503,13 +539,13 @@ const Quiz = {
                         } else {
                             cls += ' disabled';
                         }
-                    } else if (userAnswers.includes(letter)) {
+                    } else if (userAnswers.includes(origLetter)) {
                         cls += ' selected';
                     }
                     return `
-                        <div class="${cls}" data-answer="${letter}" role="checkbox" aria-checked="${userAnswers.includes(letter)}" tabindex="0">
+                        <div class="${cls}" data-answer="${origLetter}" role="checkbox" aria-checked="${userAnswers.includes(origLetter)}" tabindex="0">
                             <div class="option-marker">${letter}</div>
-                            <div class="option-content">${Utils.parseMarkdown(option.replace(/^[A-Z]\.\s*/, ''))}</div>
+                            <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
                         </div>
                     `;
                 }).join('')}
@@ -1019,10 +1055,11 @@ const Quiz = {
         this.state.submitted = {};
         this.state.showExplanation = {};
         this.state.questionTimes = {};
+        this.state.optionOrderCache = {};
         this.state.isFinished = false;
         this.state.startTime = Date.now();
 
-        if (this.state.mode === 'random') {
+        if (this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
             this.prepareQuestions();
         }
 
