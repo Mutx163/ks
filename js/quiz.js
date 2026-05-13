@@ -103,7 +103,6 @@ const Quiz = {
 
         this.render();
         this.bindEvents();
-        this.updateNavDots();
 
         this.autoSaveInterval = setInterval(() => this.saveSession(), 30000);
         this.timerInterval = setInterval(() => this.updateTimerDisplay(), 1000);
@@ -234,7 +233,6 @@ const Quiz = {
 
     render() {
         this.renderHeader();
-        this.renderQuestionNavDots();
         this.renderQuestion();
         this.renderFooter();
         this.renderSidebarGrid();
@@ -379,47 +377,6 @@ const Quiz = {
     /**
      * 渲染导航面包屑（固定在题目上方）
      */
-    renderQuestionNavDots() {
-        const bar = document.getElementById('question-nav-bar');
-        if (!bar) return;
-
-        const questions = this.state.questions;
-        const visibleCount = Math.min(questions.length, 50); // 最多显示 50 个点
-
-        let html = '';
-        for (let i = 0; i < visibleCount; i++) {
-            const q = questions[i];
-            let cls = 'question-nav-dot';
-
-            if (i === this.state.currentIndex) {
-                cls += ' current';
-            } else if (this.state.submitted[q.id]) {
-                cls += this.checkAnswer(q) ? ' correct' : ' wrong';
-            }
-
-            html += `<div class="${cls}" data-index="${i}" title="第 ${i+1} 题">${i + 1}</div>`;
-        }
-
-        if (questions.length > 50) {
-            html += `<div class="question-nav-dot" style="border-style:dashed;cursor:default" title="还有 ${questions.length - 50} 题">+${questions.length - 50}</div>`;
-        }
-
-        bar.innerHTML = html;
-
-        // 绑定点击事件
-        bar.querySelectorAll('.question-nav-dot').forEach(item => {
-            const idx = parseInt(item.dataset.index);
-            if (!isNaN(idx)) {
-                item.addEventListener('click', () => this.goToQuestion(idx));
-            }
-        });
-
-        // 滚动当前点到可视区域
-        const currentDot = bar.querySelector('.question-nav-dot.current');
-        if (currentDot) {
-            currentDot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-    },
 
     toggleNav() {
         const panel = document.getElementById('nav-panel');
@@ -819,7 +776,6 @@ const Quiz = {
         }
         this.saveSession();
         this.renderQuestion();
-        this.renderQuestionNavDots();
     },
 
     toggleAnswer(questionId, answer) {
@@ -844,7 +800,6 @@ const Quiz = {
         }
         this.saveSession();
         this.renderQuestion();
-        this.renderQuestionNavDots();
     },
 
     updateFillAnswer(questionId) {
@@ -880,7 +835,6 @@ const Quiz = {
         this.saveSession();
 
         this.renderQuestion();
-        this.renderQuestionNavDots();
 
         if (this.state.lightningMode && isCorrect) {
             setTimeout(() => this.nextQuestion(), 300);
@@ -948,8 +902,7 @@ const Quiz = {
             this.state.questionStartTime = Date.now();
             this.saveSession();
             this.render();
-            this.updateNavDots();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
 
@@ -966,8 +919,7 @@ const Quiz = {
             this.state.questionStartTime = Date.now();
             this.saveSession();
             this.render();
-            this.updateNavDots();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
 
@@ -978,26 +930,14 @@ const Quiz = {
             this.state.questionStartTime = Date.now();
             this.saveSession();
             this.render();
-            this.updateNavDots();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     },
 
     /**
      * 滚动导航面包屑到当前题目
      */
-    updateNavDots() {
-        const bar = document.getElementById('question-nav-bar');
-        if (!bar) return;
-        const currentDot = bar.querySelector('.question-nav-dot.current');
-        if (currentDot) {
-            currentDot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-    },
 
-    /**
-     * 自定义结束确认——替代原生 confirm
-     */
     showFinishModal() {
         const total = this.state.questions.length;
         const answered = Object.keys(this.state.submitted).length;
@@ -1159,7 +1099,7 @@ const Quiz = {
         `;
 
         document.querySelector('.quiz-footer').style.display = 'none';
-        document.getElementById('question-nav-bar').style.display = 'none';
+        
     },
 
     restart() {
@@ -1187,7 +1127,7 @@ const Quiz = {
         }
 
         document.querySelector('.quiz-footer').style.display = '';
-        document.getElementById('question-nav-bar').style.display = '';
+        
         this.render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
@@ -1211,7 +1151,7 @@ const Quiz = {
 
         // 恢复底部栏
         document.querySelector('.quiz-footer').style.display = '';
-        document.getElementById('question-nav-bar').style.display = '';
+        
 
         this.render();
         window.scrollTo({ top: 0, behavior: 'smooth' });

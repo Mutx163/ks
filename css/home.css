@@ -662,6 +662,9 @@
 
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
+    /* 防止横向滚动溢出 */
+    body { overflow-x: hidden; }
+
     .home-header { padding: var(--space-2) 0; }
 
     .home-logo-text p { display: none; }

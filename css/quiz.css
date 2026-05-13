@@ -215,69 +215,7 @@
     text-align: center;
 }
 
-/* ===== 导航面包屑（移动端） ===== */
-.question-nav-bar {
-    display: flex;
-    gap: 4px;
-    padding: var(--space-2) 0;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    margin-bottom: var(--space-4);
-}
-
-.question-nav-bar::-webkit-scrollbar { display: none; }
-
-.question-nav-dot {
-    min-width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    transition: var(--transition-bounce);
-    flex-shrink: 0;
-    background: var(--bg-card);
-}
-
-.question-nav-dot:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    transform: scale(1.1);
-}
-
-.question-nav-dot.current {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: white;
-}
-
-.question-nav-dot.correct {
-    border-color: var(--success);
-    color: var(--success);
-    background: var(--success-light);
-}
-
-.question-nav-dot.correct.current {
-    background: var(--success);
-    color: white;
-}
-
-.question-nav-dot.wrong {
-    border-color: var(--danger);
-    color: var(--danger);
-    background: var(--danger-light);
-}
-
-.question-nav-dot.wrong.current {
-    background: var(--danger);
-    color: white;
-}
+/* ===== 导航按钮（进度文字，点击打开面板，参照 gclx） ===== */
 
 /* ===== 导航浮动面板（移动端） ===== */
 .question-nav-panel {
@@ -1006,8 +944,7 @@
     .essay-input { font-size: 15px; padding: var(--space-3); }
 
     /* 导航点 */
-    .question-nav-bar { padding: var(--space-1) 0; margin-bottom: var(--space-3); }
-    .question-nav-dot { min-width: 22px; height: 22px; font-size: 9px; border-width: 1.5px; }
+    /* 导航点在移动端已移除，改用面板 */
     .quiz-progress { display: none; }
 
     /* 题目图片 */
@@ -1042,7 +979,7 @@
     .judge-options { grid-template-columns: 1fr; }
     .judge-option { min-height: 48px; }
 
-    .question-nav-dot { min-width: 20px; height: 20px; font-size: 8px; border-width: 1.5px; }
+    /* 移除导航点样式（已迁移到面板） */
 
     .option-item { padding: 12px 14px; min-height: 48px; }
     .option-marker { width: 26px; height: 26px; font-size: 12px; }

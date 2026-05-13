@@ -29,9 +29,10 @@
                 <button class="quiz-back" onclick="Quiz.goHome()" aria-label="返回首页">&#8592;</button>
                 <span class="quiz-title" id="quiz-title">加载中...</span>
                 <span class="exam-timer" id="exam-timer" style="display:none;" aria-label="考试倒计时">00:00</span>
-                <span class="quiz-progress mobile-hide">
-                    <span class="quiz-progress-text" id="quiz-progress-text">0 / 0</span>
-                </span>
+                <!-- 进度指示器（可点击打开导航面板，参考 gclx） -->
+                <button class="quiz-nav-btn" id="btn-nav" onclick="Quiz.toggleNav()" title="点击打开题目列表" aria-label="打开题目导航">
+                    <span id="quiz-progress-text">0 / 0</span>
+                </button>
                 <button class="btn btn-ghost btn-sm" onclick="Quiz.finish()" aria-label="完成答题" id="btn-finish">完成</button>
             </div>
         </div>
@@ -42,11 +43,6 @@
 
         <!-- 左侧：题目区域 -->
         <main class="quiz-main-col">
-            <!-- 导航面包屑（移动端） -->
-            <div class="container mobile-only">
-                <div class="question-nav-bar" id="question-nav-bar"></div>
-            </div>
-
             <div class="quiz-content-wrap">
                 <div class="container">
                     <div class="quiz-container">
