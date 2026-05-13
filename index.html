@@ -36,6 +36,11 @@
             <div class="home-actions">
                 <button class="btn btn-ghost btn-sm" id="btn-shortcuts" aria-label="快捷键" title="快捷键参考">⌨</button>
                 <button class="btn btn-ghost btn-sm" id="btn-theme" aria-label="切换主题" title="切换主题">🌓</button>
+                <label class="lightning-toggle" title="闪电模式：点击选项直接判对错，正确自动跳下一题">
+                    <input type="checkbox" id="lightning-mode" onchange="App.toggleLightning(this.checked)">
+                    <span class="lightning-icon" aria-hidden="true">⚡</span>
+                    <span class="lightning-label">闪电</span>
+                </label>
                 <button class="btn btn-ghost btn-sm" id="btn-settings" aria-label="设置" title="设置">⚙</button>
                 <button class="btn btn-secondary btn-sm" id="btn-history" aria-label="答题历史">📋 历史</button>
                 <button class="btn btn-primary btn-sm" id="btn-import" aria-label="导入题库">📥 导入题库</button>
@@ -49,22 +54,7 @@
             <!-- 智能头条 -->
             <div id="smart-banner"></div>
 
-            <!-- 题型筛选 + 闪电模式 -->
-            <div class="filter-bar">
-                <div class="type-filter-bar" role="tablist" aria-label="题型筛选">
-                    <button class="type-filter-btn active" data-type="all" onclick="App.filterByType('all')" role="tab" aria-selected="true">全部</button>
-                    <button class="type-filter-btn" data-type="single" onclick="App.filterByType('single')" role="tab">单选</button>
-                    <button class="type-filter-btn" data-type="multiple" onclick="App.filterByType('multiple')" role="tab">多选</button>
-                    <button class="type-filter-btn" data-type="judge" onclick="App.filterByType('judge')" role="tab">判断</button>
-                    <button class="type-filter-btn" data-type="fill" onclick="App.filterByType('fill')" role="tab">填空</button>
-                    <button class="type-filter-btn" data-type="code" onclick="App.filterByType('code')" role="tab">编程</button>
-                </div>
-                <label class="lightning-toggle" title="闪电模式：点击选项直接判对错，正确自动跳下一题">
-                    <input type="checkbox" id="lightning-mode" onchange="App.toggleLightning(this.checked)">
-                    <span class="lightning-icon" aria-hidden="true">⚡</span>
-                    <span class="lightning-label">闪电</span>
-                </label>
-            </div>
+            <!-- 统计标签页 -->
 
             <!-- 统计标签页 -->
             <div id="stats-tabs" class="stats-tabs">

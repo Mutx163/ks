@@ -381,7 +381,6 @@ const App = {
     renderBankGrid() {
         const container = document.getElementById('bank-grid');
         const banks = this.state.banks;
-        const filterType = this.state.filterType;
 
         if (banks.length === 0) {
             container.innerHTML = `
@@ -401,9 +400,7 @@ const App = {
             const bookmarkCount = Storage.getBookmarkCount(bank.id);
 
             const questions = bank.questions || [];
-            const typeCount = filterType === 'all' ? questions.length : questions.filter(q => q.type === filterType).length;
-
-            if (typeCount === 0 && filterType !== 'all') return '';
+            const bankTypes = this.getBankTypes(bank);
 
             const iconClass = bank.id.includes('c-language') ? 'c-lang' : 
                              bank.id.includes('mechanics') ? 'mechanics' : 'default';
@@ -421,10 +418,11 @@ const App = {
                     </div>
 
                     <div class="bank-card-meta">
-                        ${(bank.categories || []).slice(0, 4).map(cat => 
+                        ${(bank.categories || []).slice(0, 3).map(cat => 
                             `<span class="tag">${Utils.escapeHtml(cat)}</span>`
                         ).join('')}
                         ${dueCount > 0 ? `<span class="tag tag-warning">🧠 ${dueCount} 待复习</span>` : ''}
+                        <span class="tag">${bankTypes.filter(t => t !== 'all').map(t => this.getTypeLabel(t)).join(' · ')}</span>
                     </div>
 
                     <div class="bank-card-progress">
@@ -440,7 +438,7 @@ const App = {
 
                     <div class="bank-card-stats">
                         <div class="bank-card-stat">
-                            ${filterType === 'all' ? '共' : '筛选'} <span class="bank-card-stat-num">${typeCount}</span> 题
+                            共 <span class="bank-card-stat-num">${questions.length}</span> 题
                         </div>
                         <div class="bank-card-stat">
                             已答 <span class="bank-card-stat-num">${stats.answered}</span>
@@ -450,16 +448,24 @@ const App = {
                         </div>
                     </div>
 
-                    <!-- 主按钮：只保留 2 个核心入口 -->
+                    <!-- 主按钮：开始刷题（全部题型）+ 更多菜单（含题型选择和刷题模式） -->
                     <div class="bank-card-actions">
-                        <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')" aria-label="顺序刷题">
+                        <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')" aria-label="顺序刷题（全部题型）">
                             🚀 开始刷题
                         </button>
                         <div class="bank-card-more-wrap">
-                            <button class="bank-card-more-btn" onclick="App.toggleMoreMenu(this)" aria-label="更多模式" title="更多刷题模式">
+                            <button class="bank-card-more-btn" onclick="App.toggleMoreMenu(this)" aria-label="更多模式" title="选择题型或模式">
                                 ▾ 更多
                             </button>
                             <div class="bank-card-more-menu">
+                                <div class="bank-card-more-group">📝 题型选择</div>
+                                ${bankTypes.map(type => `
+                                    <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'all', '${type}')">
+                                        ${type === 'all' ? '📚 全部题型' : '📝 只练' + this.getTypeLabel(type)}
+                                    </button>
+                                `).join('')}
+                                <div class="bank-card-more-divider"></div>
+                                <div class="bank-card-more-group">🎯 刷题模式</div>
                                 <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'random')">🎲 随机刷题</button>
                                 <button class="bank-card-more-item" onclick="App.startQuiz('${bank.id}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>
                                     🔄 错题重做 ${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
@@ -516,19 +522,6 @@ const App = {
     },
 
     /**
-     * 按题型筛选
-     */
-    filterByType(type) {
-        this.state.filterType = type;
-
-        document.querySelectorAll('.type-filter-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.type === type);
-        });
-
-        this.renderBankGrid();
-    },
-
-    /**
      * 切换闪电模式
      */
     toggleLightning(checked) {
@@ -537,9 +530,12 @@ const App = {
 
     /**
      * 开始刷题
+     * @param {string} bankId - 题库 ID
+     * @param {string} mode - 模式（all/random/wrong/review/spaced/bookmark/exam）
+     * @param {string} type - 题型筛选（all/single/multiple/judge/fill/code），可选
      */
-    startQuiz(bankId, mode) {
-        const typeParam = this.state.filterType !== 'all' ? `&type=${this.state.filterType}` : '';
+    startQuiz(bankId, mode, type) {
+        const typeParam = type && type !== 'all' ? `&type=${type}` : '';
         const lightningParam = this.state.lightningMode ? '&lightning=1' : '';
         window.location.href = `quiz.html?bank=${bankId}&mode=${mode}${typeParam}${lightningParam}`;
     },

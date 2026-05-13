@@ -366,56 +366,12 @@
     font-size: 14px;
 }
 
-/* ===== 题库筛选栏 ===== */
-.filter-bar {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin-bottom: var(--space-4);
-}
-
-.type-filter-bar {
-    display: flex;
-    gap: var(--space-2);
-    overflow-x: auto;
-    flex: 1;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
-}
-
-.type-filter-btn {
-    padding: 6px 16px;
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: var(--transition-bounce);
-    flex-shrink: 0;
-}
-
-.type-filter-btn:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    transform: translateY(-1px);
-}
-
-.type-filter-btn:active { transform: scale(0.96); }
-
-.type-filter-btn.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: white;
-}
-
-/* ---- 闪电模式开关 ---- */
+/* ===== 闪电模式开关（在头部） ===== */
 .lightning-toggle {
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    padding: 6px 12px;
+    padding: 6px 10px;
     border: 1px solid var(--border);
     border-radius: 20px;
     cursor: pointer;
@@ -431,13 +387,13 @@
 .lightning-toggle input { display: none; }
 
 .lightning-icon {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
     opacity: 0.4;
     transition: var(--transition);
 }
 
 .lightning-label {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     color: var(--text-secondary);
 }
 
@@ -641,6 +597,21 @@
 
 .bank-card-more-item:disabled:hover { background: none; }
 
+.bank-card-more-group {
+    padding: 8px 16px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.bank-card-more-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 12px;
+}
+
 /* ---- 卡片底部操作 ---- */
 .bank-card-footer {
     padding: var(--space-3) var(--space-5);
@@ -729,4 +700,3 @@
 /* ===== 暗色模式适配 ===== */
 [data-theme="dark"] .bank-card-icon.c-lang { background: #1a1a2e; }
 [data-theme="dark"] .bank-card-icon.mechanics { background: #1a1a2e; }
-[data-theme="dark"] .type-filter-btn.active { background: var(--primary); }
