@@ -8,11 +8,10 @@ export default defineConfig({
         host: '0.0.0.0',
     },
     plugins: [
+        // 只复制非 JS 的静态资源（CSS 由 Vite 处理，JSON 题库需静态复制）
         viteStaticCopy({
             targets: [
-                { src: 'css/*.css', dest: 'css' },
-                { src: 'js/*.js', dest: 'js' },
-                { src: 'banks/*.json', dest: 'banks' }
+                { src: 'banks/*.json', dest: '.' }
             ]
         })
     ],
