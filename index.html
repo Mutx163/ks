@@ -30,8 +30,12 @@
                 <div class="home-logo-icon">Q</div>
                 <div class="home-logo-text">
                     <h1>智能刷题系统</h1>
-                    <p>多题库 · 代码高亮 · 数学公式</p>
+                    <p>多题库 · 间隔重复 · 代码高亮 · 数学公式</p>
                 </div>
+            </div>
+            <div class="home-actions">
+                <button class="btn btn-secondary btn-sm" id="btn-history">📋 历史</button>
+                <button class="btn btn-primary btn-sm" id="btn-import">📥 导入题库</button>
             </div>
         </div>
     </header>
@@ -39,6 +43,23 @@
     <!-- 主内容 -->
     <main class="home-main">
         <div class="container">
+            <!-- 题型筛选 + 闪电模式 -->
+            <div class="filter-bar">
+                <div class="type-filter-bar">
+                    <button class="type-filter-btn active" data-type="all" onclick="App.filterByType('all')">全部</button>
+                    <button class="type-filter-btn" data-type="single" onclick="App.filterByType('single')">单选</button>
+                    <button class="type-filter-btn" data-type="multiple" onclick="App.filterByType('multiple')">多选</button>
+                    <button class="type-filter-btn" data-type="judge" onclick="App.filterByType('judge')">判断</button>
+                    <button class="type-filter-btn" data-type="fill" onclick="App.filterByType('fill')">填空</button>
+                    <button class="type-filter-btn" data-type="code" onclick="App.filterByType('code')">编程</button>
+                </div>
+                <label class="lightning-toggle" title="闪电模式：点击选项直接判对错，正确自动跳下一题">
+                    <input type="checkbox" id="lightning-mode" onchange="App.toggleLightning(this.checked)">
+                    <span class="lightning-icon">⚡</span>
+                    <span class="lightning-label">闪电</span>
+                </label>
+            </div>
+
             <!-- 统计 -->
             <div class="stats-grid">
                 <div class="stat-card">
@@ -59,6 +80,18 @@
                 </div>
             </div>
 
+            <!-- 今日待复习 -->
+            <div id="today-due" style="display: none;"></div>
+
+            <!-- 薄弱知识点 -->
+            <div id="weak-categories" style="display: none;"></div>
+
+            <!-- 学习趋势 -->
+            <div id="trend-section" style="display: none;"></div>
+
+            <!-- 历史记录（默认隐藏） -->
+            <div id="history-section" style="display: none;"></div>
+
             <!-- 题库 -->
             <section class="section">
                 <div class="section-header">
@@ -74,13 +107,11 @@
     <!-- 页脚 -->
     <footer class="home-footer">
         <div class="container">
-            <p>智能刷题系统 · 内置题库 · 支持代码高亮和数学公式</p>
+            <p>智能刷题系统 · 间隔重复 · 内置题库 · 支持代码高亮和数学公式</p>
         </div>
     </footer>
 
     <!-- JavaScript -->
-    <script src="js/storage.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/app.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

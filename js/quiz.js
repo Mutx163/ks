@@ -3,6 +3,9 @@
  * 处理答题逻辑、进度管理等
  */
 
+import Storage from './storage.js';
+import Utils from './utils.js';
+
 const Quiz = {
     // 状态
     state: {
@@ -10,22 +13,37 @@ const Quiz = {
         bank: null,
         questions: [],
         currentIndex: 0,
-        mode: 'all', // all, wrong, random
+        mode: 'all', // all, wrong, random, review, spaced, bookmark, exam
         answers: {},
         submitted: {},
         showExplanation: {},
         isFinished: false,
-        startTime: null
+        startTime: null,
+        // 计时相关
+        questionStartTime: null,
+        questionTimes: {}, // { questionId: seconds }
+        // 考试模式
+        examTimeLimit: 0, // 总限时（秒），0 表示不限时
+        examPassRate: 60, // 及格线（百分比）
+        examTimeRemaining: 0,
+        examTimer: null,
+        // 自动下一题
+        autoNext: false
     },
 
     /**
      * 初始化
      */
-    init() {
+    async init() {
         // 获取URL参数
         const params = new URLSearchParams(window.location.search);
         this.state.bankId = params.get('bank');
         this.state.mode = params.get('mode') || 'all';
+        this.state.filterType = params.get('type') || 'all';
+        this.state.lightningMode = params.get('lightning') === '1';
+        // 考试模式参数
+        this.state.examTimeLimit = parseInt(params.get('time')) || 0;
+        this.state.examPassRate = parseInt(params.get('pass')) || 60;
 
         if (!this.state.bankId) {
             Utils.showToast('缺少题库参数', 'error');
@@ -33,10 +51,14 @@ const Quiz = {
             return;
         }
 
-        // 加载题库
+        // 加载题库（先从内存取；如果只有 localStorage 元数据、没有 questions，则继续从 JSON 文件加载完整题库）
         this.state.bank = Storage.getBank(this.state.bankId);
-        if (!this.state.bank) {
-            Utils.showToast('题库不存在', 'error');
+        if (!this.state.bank || !Array.isArray(this.state.bank.questions)) {
+            // 尝试从JSON文件加载完整题库
+            await this.loadBankFromJson();
+        }
+        if (!this.state.bank || !Array.isArray(this.state.bank.questions)) {
+            Utils.showToast('题库加载失败', 'error');
             setTimeout(() => window.location.href = 'index.html', 1000);
             return;
         }
@@ -59,22 +81,138 @@ const Quiz = {
             setTimeout(() => window.location.href = 'index.html', 1000);
             return;
         }
+
+        // 智能复习模式：检查是否有到期题目
+        if (this.state.mode === 'spaced' && this.state.questions.length === 0) {
+            Utils.showToast('没有需要复习的题目', 'info');
+            setTimeout(() => window.location.href = 'index.html', 1000);
+            return;
+        }
+
+        // 收藏模式：检查是否有收藏题目
+        if (this.state.mode === 'bookmark' && this.state.questions.length === 0) {
+            Utils.showToast('没有收藏的题目', 'info');
+            setTimeout(() => window.location.href = 'index.html', 1000);
+            return;
+        }
+        
+        // 恢复会话状态（进度和答案）
+        this.restoreSession();
         
         // 记录开始时间
         this.state.startTime = Date.now();
+        this.state.questionStartTime = Date.now();
+
+        // 考试模式：启动倒计时
+        if (this.state.mode === 'exam') {
+            this.startExamTimer();
+        }
 
         // 渲染页面
         this.render();
         this.bindEvents();
         
+        // 初始化自动下一题按钮
+        const autoBtn = document.getElementById('btn-auto');
+        if (autoBtn) {
+            autoBtn.classList.toggle('active', this.state.autoNext);
+            autoBtn.title = this.state.autoNext ? '自动下一题：开' : '自动下一题：关';
+        }
+        
+        // 定期自动保存会话
+        this.autoSaveInterval = setInterval(() => this.saveSession(), 30000);
+        
+        // 启动计时器更新
+        this.timerInterval = setInterval(() => this.updateTimerDisplay(), 1000);
+        
         console.log('Quiz initialized', this.state);
+    },
+    
+    /**
+     * 更新计时器显示
+     */
+    updateTimerDisplay() {
+        const timerEl = document.getElementById('question-timer');
+        if (timerEl) {
+            timerEl.textContent = this.getQuestionTimeDisplay();
+        }
+    },
+    
+    /**
+     * 恢复会话状态
+     */
+    restoreSession() {
+        // 考试模式不恢复
+        if (this.state.mode === 'exam') return;
+        
+        const session = Storage.getSession(this.state.bankId, this.state.mode);
+        if (session && session.currentIndex < this.state.questions.length) {
+            this.state.currentIndex = session.currentIndex || 0;
+            this.state.autoNext = session.autoNext || false;
+            // 只有URL没有type参数时才恢复session的type
+            if (!new URLSearchParams(window.location.search).get('type')) {
+                this.state.filterType = session.filterType || 'all';
+            }
+            // 背题模式只恢复位置，不恢复答案（因为答案是自动填充的）
+            if (this.state.mode !== 'review') {
+                this.state.answers = session.answers || {};
+                this.state.submitted = session.submitted || {};
+                this.state.showExplanation = session.showExplanation || {};
+            }
+            this.state.questionTimes = session.questionTimes || {};
+        }
+    },
+    
+    /**
+     * 保存会话状态
+     */
+    saveSession() {
+        // 考试模式不保存
+        if (this.state.mode === 'exam') return;
+        
+        Storage.saveSession(this.state.bankId, this.state.mode, {
+            currentIndex: this.state.currentIndex,
+            filterType: this.state.filterType || 'all',
+            autoNext: this.state.autoNext,
+            answers: this.state.answers,
+            submitted: this.state.submitted,
+            showExplanation: this.state.showExplanation,
+            questionTimes: this.state.questionTimes
+        });
+    },
+
+    /**
+     * 从JSON文件加载题库
+     */
+    async loadBankFromJson() {
+        const jsonFiles = ['c-language.json', 'engineering-mechanics.json'];
+        for (const filename of jsonFiles) {
+            try {
+                const response = await fetch(`banks/${filename}`);
+                if (response.ok) {
+                    const bank = await response.json();
+                    if (bank.id === this.state.bankId) {
+                        Storage.addBank(bank);
+                        this.state.bank = bank;
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error(`Failed to load ${filename}:`, e);
+            }
+        }
     },
 
     /**
      * 准备题目列表
      */
     prepareQuestions() {
-        let questions = [...this.state.bank.questions];
+        let questions = [...(this.state.bank.questions || [])];
+
+        // 按题型筛选
+        if (this.state.filterType && this.state.filterType !== 'all') {
+            questions = questions.filter(q => q.type === this.state.filterType);
+        }
 
         switch (this.state.mode) {
             case 'wrong':
@@ -89,6 +227,19 @@ const Quiz = {
             case 'review':
                 // 背题模式 - 直接显示答案
                 this.state.isReviewMode = true;
+                break;
+            case 'spaced':
+                // 智能复习模式 - 只显示到期的题目
+                const dueQuestions = Storage.getDueQuestions(this.state.bankId);
+                questions = dueQuestions;
+                break;
+            case 'bookmark':
+                // 收藏模式 - 只显示收藏的题目
+                const bookmarkIds = Storage.getBankBookmarks(this.state.bankId);
+                questions = questions.filter(q => bookmarkIds.includes(q.id));
+                break;
+            case 'exam':
+                // 考试模式 - 顺序答题，有时间限制
                 break;
             case 'all':
             default:
@@ -109,6 +260,74 @@ const Quiz = {
     },
     
     /**
+     * 记录当前题目用时
+     */
+    recordQuestionTime() {
+        const question = this.state.questions[this.state.currentIndex];
+        if (!question || !this.state.questionStartTime) return;
+
+        const elapsed = Math.round((Date.now() - this.state.questionStartTime) / 1000);
+        if (!this.state.questionTimes[question.id]) {
+            this.state.questionTimes[question.id] = 0;
+        }
+        this.state.questionTimes[question.id] += elapsed;
+        this.state.questionStartTime = Date.now();
+    },
+
+    /**
+     * 获取当前题目用时显示
+     */
+    getQuestionTimeDisplay() {
+        const question = this.state.questions[this.state.currentIndex];
+        if (!question) return '';
+
+        const saved = this.state.questionTimes[question.id] || 0;
+        const current = this.state.questionStartTime ? Math.round((Date.now() - this.state.questionStartTime) / 1000) : 0;
+        const total = saved + current;
+
+        if (total < 60) return `${total}秒`;
+        const minutes = Math.floor(total / 60);
+        const seconds = total % 60;
+        return `${minutes}分${seconds}秒`;
+    },
+
+    /**
+     * 启动考试倒计时
+     */
+    startExamTimer() {
+        this.state.examTimeRemaining = this.state.examTimeLimit;
+        this.state.examTimer = setInterval(() => {
+            this.state.examTimeRemaining--;
+            this.updateExamTimerDisplay();
+
+            if (this.state.examTimeRemaining <= 0) {
+                clearInterval(this.state.examTimer);
+                Utils.showToast('考试时间到！', 'error');
+                this.finish();
+            }
+        }, 1000);
+    },
+
+    /**
+     * 更新考试倒计时显示
+     */
+    updateExamTimerDisplay() {
+        const el = document.getElementById('exam-timer');
+        if (!el) return;
+
+        const remaining = this.state.examTimeRemaining;
+        const minutes = Math.floor(remaining / 60);
+        const seconds = remaining % 60;
+        const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        el.textContent = display;
+
+        // 最后 5 分钟变红
+        if (remaining <= 300) {
+            el.classList.add('danger');
+        }
+    },
+
+    /**
      * 渲染底部栏
      */
     renderFooter() {
@@ -119,8 +338,12 @@ const Quiz = {
             // 背题模式：隐藏提交按钮，显示提示
             if (submitBtn) submitBtn.style.display = 'none';
             if (hint) hint.textContent = '📖 背题模式 - 直接查看答案和解析';
+        } else if (this.state.lightningMode) {
+            // 闪电模式：隐藏提交按钮
+            if (submitBtn) submitBtn.style.display = 'none';
+            if (hint) hint.textContent = '⚡ 闪电模式 - 点击选项直接判对错';
         } else {
-            // 非背题模式：显示提交按钮
+            // 普通模式：显示提交按钮
             if (submitBtn) submitBtn.style.display = '';
             if (hint) hint.textContent = '按 Enter 提交答案，Alt+← → 切换题目';
         }
@@ -139,9 +362,18 @@ const Quiz = {
                 'all': '顺序刷题',
                 'random': '随机刷题',
                 'wrong': '错题重做',
-                'review': '背题模式'
+                'review': '背题模式',
+                'spaced': '智能复习',
+                'bookmark': '收藏题目',
+                'exam': '模拟考试'
             };
             modeTag.textContent = modeNames[this.state.mode] || '刷题';
+        }
+
+        // 显示考试计时器
+        const timerEl = document.getElementById('exam-timer');
+        if (timerEl) {
+            timerEl.style.display = this.state.mode === 'exam' ? '' : 'none';
         }
         
         this.updateProgress();
@@ -153,12 +385,50 @@ const Quiz = {
     updateProgress() {
         const current = this.state.currentIndex + 1;
         const total = this.state.questions.length;
-        const percentage = Math.round((current / total) * 100);
 
-        document.getElementById('quiz-progress-fill').style.width = percentage + '%';
-        document.getElementById('quiz-progress-text').textContent = `${current} / ${total}`;
+        const progressFill = document.getElementById('quiz-progress-fill');
+        if (progressFill) {
+            const percentage = Math.round((current / total) * 100);
+            progressFill.style.width = percentage + '%';
+        }
+        
+        const progressText = document.getElementById('quiz-progress-text');
+        if (progressText) {
+            progressText.textContent = `${current} / ${total}`;
+        }
     },
 
+    /**
+     * 切换自动下一题
+     */
+    toggleAutoNext() {
+        this.state.autoNext = !this.state.autoNext;
+        const btn = document.getElementById('btn-auto');
+        if (btn) {
+            btn.classList.toggle('active', this.state.autoNext);
+            btn.title = this.state.autoNext ? '自动下一题：开' : '自动下一题：关';
+        }
+        Utils.showToast(this.state.autoNext ? '已开启自动下一题' : '已关闭自动下一题', 'info', 1500);
+    },
+    
+    /**
+     * 切换题目导航面板
+     */
+    toggleNav() {
+        const panel = document.getElementById('nav-panel');
+        const overlay = document.getElementById('nav-overlay');
+        panel.classList.toggle('show');
+        overlay.classList.toggle('show');
+        
+        // 展开时滚动到当前题
+        if (panel.classList.contains('show')) {
+            const current = panel.querySelector('.question-nav-item.current');
+            if (current) {
+                current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }
+    },
+    
     /**
      * 渲染题目导航
      */
@@ -187,6 +457,9 @@ const Quiz = {
             item.addEventListener('click', () => {
                 const index = parseInt(item.dataset.index);
                 this.goToQuestion(index);
+                // 关闭导航面板
+                document.getElementById('nav-panel').classList.remove('show');
+                document.getElementById('nav-overlay').classList.remove('show');
             });
         });
     },
@@ -211,6 +484,7 @@ const Quiz = {
                     <div class="question-meta">
                         <span class="question-number">第 ${this.state.currentIndex + 1} 题</span>
                         <span class="question-type ${question.type}">${Utils.getTypeName(question.type)}</span>
+                        <span class="question-timer" id="question-timer">${this.getQuestionTimeDisplay()}</span>
                         ${question.difficulty ? `
                             <div class="question-difficulty">
                                 ${Array.from({length: 5}, (_, i) => 
@@ -219,7 +493,10 @@ const Quiz = {
                             </div>
                         ` : ''}
                     </div>
-                    ${question.category ? `<span class="question-category">${question.category}</span>` : ''}
+                    <div class="question-actions">
+                        ${question.category ? `<span class="question-category">${Utils.escapeHtml(question.category)}</span>` : ''}
+                        ${!isReviewMode ? `<button class="btn-bookmark ${Storage.isBookmarked(this.state.bankId, question.id) ? 'active' : ''}" onclick="Quiz.toggleBookmark(${question.id})" title="收藏">${Storage.isBookmarked(this.state.bankId, question.id) ? '⭐' : '☆'}</button>` : ''}
+                    </div>
                 </div>
                 
                 <div class="question-body">
@@ -408,11 +685,15 @@ const Quiz = {
      * 渲染解析
      */
     renderExplanation(question, isCorrect) {
+        const isReviewMode = this.state.isReviewMode;
+        
         return `
+            ${!isReviewMode ? `
             <div class="result-banner ${isCorrect ? 'correct' : 'wrong'}">
                 <span class="result-banner-icon">${isCorrect ? '🎉' : '😔'}</span>
                 <span class="result-banner-text">${isCorrect ? '回答正确！' : '回答错误'}</span>
             </div>
+            ` : ''}
             
             <div class="explanation">
                 <div class="explanation-header">
@@ -493,7 +774,21 @@ const Quiz = {
      * 选择答案（单选/判断）
      */
     selectAnswer(questionId, answer) {
+        // 闪电模式：如果已提交，直接跳下一题
+        if (this.state.lightningMode && this.state.submitted[questionId]) {
+            this.nextQuestion();
+            return;
+        }
+        
         this.state.answers[questionId] = answer;
+        
+        // 闪电模式：选择后立即提交
+        if (this.state.lightningMode) {
+            this.submitCurrent();
+            return;
+        }
+        
+        this.saveSession();
         this.renderQuestion();
     },
 
@@ -501,6 +796,12 @@ const Quiz = {
      * 切换答案（多选）
      */
     toggleAnswer(questionId, answer) {
+        // 闪电模式：如果已提交，直接跳下一题
+        if (this.state.lightningMode && this.state.submitted[questionId]) {
+            this.nextQuestion();
+            return;
+        }
+        
         if (!this.state.answers[questionId]) {
             this.state.answers[questionId] = [];
         }
@@ -515,6 +816,13 @@ const Quiz = {
             answers.sort();
         }
         
+        // 闪电模式：选择后立即提交
+        if (this.state.lightningMode && this.state.answers[questionId].length > 0) {
+            this.submitCurrent();
+            return;
+        }
+        
+        this.saveSession();
         this.renderQuestion();
     },
 
@@ -530,6 +838,7 @@ const Quiz = {
         });
         
         this.state.answers[questionId] = answers;
+        this.saveSession();
     },
 
     /**
@@ -539,11 +848,22 @@ const Quiz = {
         const question = this.state.questions[this.state.currentIndex];
         if (!question) return;
 
-        // 检查是否已作答
-        if (!this.hasAnswer(question)) {
-            Utils.showToast('请先作答', 'info');
+        // 如果已提交，直接跳下一题
+        if (this.state.submitted[question.id]) {
+            this.nextQuestion();
             return;
         }
+
+        // 检查是否已作答
+        if (!this.hasAnswer(question)) {
+            if (!this.state.lightningMode) {
+                Utils.showToast('请先作答', 'info');
+            }
+            return;
+        }
+
+        // 记录用时
+        this.recordQuestionTime();
 
         // 提交答案
         this.state.submitted[question.id] = true;
@@ -560,9 +880,18 @@ const Quiz = {
             this.state.answers[question.id]
         );
 
+        // 保存会话
+        this.saveSession();
+
         // 刷新显示
         this.renderQuestion();
         this.renderQuestionNav();
+
+        // 闪电模式：答对自动跳下一题
+        if (this.state.lightningMode && isCorrect) {
+            setTimeout(() => this.nextQuestion(), 300);
+            return;
+        }
 
         // 滚动到顶部
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -630,10 +959,22 @@ const Quiz = {
      */
     nextQuestion() {
         if (this.state.currentIndex < this.state.questions.length - 1) {
+            this.recordQuestionTime();
             this.state.currentIndex++;
+            this.state.questionStartTime = Date.now();
+            this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+    },
+
+    /**
+     * 切换收藏
+     */
+    toggleBookmark(questionId) {
+        const isBookmarked = Storage.toggleBookmark(this.state.bankId, questionId);
+        Utils.showToast(isBookmarked ? '已收藏' : '已取消收藏', 'success', 1500);
+        this.renderQuestion();
     },
 
     /**
@@ -641,7 +982,10 @@ const Quiz = {
      */
     prevQuestion() {
         if (this.state.currentIndex > 0) {
+            this.recordQuestionTime();
             this.state.currentIndex--;
+            this.state.questionStartTime = Date.now();
+            this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -652,7 +996,10 @@ const Quiz = {
      */
     goToQuestion(index) {
         if (index >= 0 && index < this.state.questions.length) {
+            this.recordQuestionTime();
             this.state.currentIndex = index;
+            this.state.questionStartTime = Date.now();
+            this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -671,6 +1018,23 @@ const Quiz = {
             }
         }
 
+        // 停止考试计时器
+        if (this.state.examTimer) {
+            clearInterval(this.state.examTimer);
+            this.state.examTimer = null;
+        }
+
+        // 停止自动保存
+        if (this.autoSaveInterval) {
+            clearInterval(this.autoSaveInterval);
+        }
+
+        // 记录最后一题用时
+        this.recordQuestionTime();
+
+        // 清除会话状态（已完成）
+        Storage.clearSession(this.state.bankId, this.state.mode);
+
         this.state.isFinished = true;
         this.renderResult();
     },
@@ -684,37 +1048,49 @@ const Quiz = {
         const minutes = Math.floor(duration / 60);
         const seconds = duration % 60;
 
+        // 计算本次正确率
+        const submittedIds = Object.keys(this.state.submitted);
+        const correctCount = submittedIds.filter(qId => {
+            const q = this.state.questions.find(q => q.id == qId);
+            return q && this.checkAnswer(q);
+        }).length;
+        const thisAccuracy = submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0;
+
+        // 考试模式：判断是否及格
+        const isExam = this.state.mode === 'exam';
+        const passed = isExam ? thisAccuracy >= this.state.examPassRate : null;
+        const resultIcon = isExam ? (passed ? '🎉' : '😞') : '🎉';
+        const resultTitle = isExam ? (passed ? '考试通过！' : '未通过考试') : '答题完成！';
+
         // 记录历史
         Storage.addHistory({
             bankId: this.state.bankId,
             bankName: this.state.bank.name,
             mode: this.state.mode,
             total: this.state.questions.length,
-            correct: Object.keys(this.state.submitted).filter(qId => {
-                const q = this.state.questions.find(q => q.id == qId);
-                return q && this.checkAnswer(q);
-            }).length,
+            correct: correctCount,
             duration: duration
         });
 
         const container = document.getElementById('question-container');
         container.innerHTML = `
             <div class="result-page">
-                <div class="result-icon">🎉</div>
-                <div class="result-title">答题完成！</div>
-                <div class="result-subtitle">${this.state.bank.name}</div>
+                <div class="result-icon">${resultIcon}</div>
+                <div class="result-title">${resultTitle}</div>
+                <div class="result-subtitle">${Utils.escapeHtml(this.state.bank.name)}</div>
+                ${isExam ? `<div class="result-exam-info">及格线 ${this.state.examPassRate}%，正确率 ${thisAccuracy}%</div>` : ''}
                 
                 <div class="result-stats">
                     <div class="result-stat">
-                        <div class="result-stat-value green">${stats.correct}</div>
+                        <div class="result-stat-value green">${correctCount}</div>
                         <div class="result-stat-label">答对</div>
                     </div>
                     <div class="result-stat">
-                        <div class="result-stat-value red">${stats.wrong}</div>
+                        <div class="result-stat-value red">${submittedIds.length - correctCount}</div>
                         <div class="result-stat-label">答错</div>
                     </div>
                     <div class="result-stat">
-                        <div class="result-stat-value">${stats.accuracy}%</div>
+                        <div class="result-stat-value ${isExam && !passed ? 'red' : ''}">${thisAccuracy}%</div>
                         <div class="result-stat-label">正确率</div>
                     </div>
                     <div class="result-stat">
@@ -742,15 +1118,28 @@ const Quiz = {
      * 重新开始
      */
     restart() {
+        // 清除会话状态
+        Storage.clearSession(this.state.bankId, this.state.mode);
+        
         this.state.currentIndex = 0;
         this.state.answers = {};
         this.state.submitted = {};
         this.state.showExplanation = {};
+        this.state.questionTimes = {};
         this.state.isFinished = false;
         this.state.startTime = Date.now();
         
         if (this.state.mode === 'random') {
             this.prepareQuestions();
+        }
+        
+        // 背题模式重新标记
+        if (this.state.mode === 'review') {
+            this.state.questions.forEach(q => {
+                this.state.submitted[q.id] = true;
+                this.state.showExplanation[q.id] = true;
+                this.state.answers[q.id] = q.answer;
+            });
         }
         
         document.querySelector('.quiz-footer').style.display = '';
@@ -769,6 +1158,9 @@ const Quiz = {
      * 绑定事件
      */
     bindEvents() {
+        // 页面关闭前保存
+        window.addEventListener('beforeunload', () => this.saveSession());
+        
         // 快捷键
         document.addEventListener('keydown', (e) => {
             // Enter 提交
@@ -822,3 +1214,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 导出
 window.Quiz = Quiz;
+export default Quiz;

@@ -98,36 +98,56 @@ const Utils = {
     /**
      * 解析Markdown风格的文本
      * 支持代码块、行内代码、数学公式等
+     * 安全策略：先提取特殊区块，再转义普通文本，最后还原区块
      */
     parseMarkdown(text) {
         if (!text) return '';
 
         let html = text;
+        const placeholders = [];
 
-        // 代码块 (```...```)
+        // 提取代码块 (```...```) 并用占位符替换
         html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
             const language = lang || 'plaintext';
             const escapedCode = this.escapeHtml(code.trim());
-            return `<pre><code class="language-${language}">${escapedCode}</code></pre>`;
+            const id = placeholders.length;
+            placeholders.push(`<pre><code class="language-${language}">${escapedCode}</code></pre>`);
+            return `%%PH${id}%%`;
         });
 
-        // 行内代码 (`...`)
-        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // 提取行内代码 (`...`)
+        html = html.replace(/`([^`]+)`/g, (match, code) => {
+            const id = placeholders.length;
+            placeholders.push(`<code>${this.escapeHtml(code)}</code>`);
+            return `%%PH${id}%%`;
+        });
 
-        // 数学公式块 ($$...$$)
+        // 提取数学公式块 ($$...$$)
         html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-            return `<div class="math-block" data-formula="${this.escapeHtml(formula.trim())}"></div>`;
+            const id = placeholders.length;
+            placeholders.push(`<div class="math-block" data-formula="${this.escapeHtml(formula.trim())}"></div>`);
+            return `%%PH${id}%%`;
         });
 
-        // 行内数学公式 ($...$)
+        // 提取行内数学公式 ($...$)
         html = html.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
-            return `<span class="math-inline" data-formula="${this.escapeHtml(formula.trim())}"></span>`;
+            const id = placeholders.length;
+            placeholders.push(`<span class="math-inline" data-formula="${this.escapeHtml(formula.trim())}"></span>`);
+            return `%%PH${id}%%`;
+        });
+
+        // 转义普通文本中的 HTML
+        html = this.escapeHtml(html);
+
+        // 还原占位符
+        html = html.replace(/%%PH(\d+)%%/g, (match, id) => {
+            return placeholders[parseInt(id)];
         });
 
         // 换行
         html = html.replace(/\n/g, '<br>');
 
-        // 加粗 (**...**)
+        // 加粗 (**...**) — 需要在转义后匹配
         html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
         // 斜体 (*...*)
@@ -140,9 +160,9 @@ const Utils = {
      * HTML转义
      */
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.appendChild(document.createTextNode(text));
-        return div.innerHTML;
+        if (!text) return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return String(text).replace(/[&<>"']/g, c => map[c]);
     },
 
     /**
@@ -213,7 +233,7 @@ const Utils = {
         // 自动移除
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-20px)';
+            toast.style.transform = 'translateX(-50%) translateY(-20px)';
             setTimeout(() => toast.remove(), 300);
         }, duration);
     },
@@ -266,6 +286,19 @@ const Utils = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    },
+
+    /**
+     * 选择文件
+     */
+    pickFile(accept = '*') {
+        return new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = accept;
+            input.onchange = () => resolve(input.files[0] || null);
+            input.click();
+        });
     },
 
     /**
@@ -369,3 +402,4 @@ const Utils = {
 
 // 导出
 window.Utils = Utils;
+export default Utils;
