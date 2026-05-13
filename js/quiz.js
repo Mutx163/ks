@@ -230,6 +230,42 @@ const Quiz = {
         this.renderQuestionNavDots();
         this.renderQuestion();
         this.renderFooter();
+        this.renderSidebarGrid();
+    },
+
+    /**
+     * 渲染桌面端侧边栏题号网格
+     */
+    renderSidebarGrid() {
+        const grid = document.getElementById('sidebar-grid');
+        if (!grid) return;
+
+        const questions = this.state.questions;
+        const countEl = document.getElementById('sidebar-count');
+        if (countEl) countEl.textContent = questions.length + ' 题';
+
+        grid.innerHTML = questions.map((q, i) => {
+            let cls = 'sidebar-grid-item';
+            if (i === this.state.currentIndex) cls += ' current';
+            else if (this.state.submitted[q.id]) {
+                cls += this.checkAnswer(q) ? ' correct' : ' wrong';
+            }
+            return `<div class="${cls}" data-index="${i}">${i + 1}</div>`;
+        }).join('');
+
+        // 绑定点击跳转
+        grid.querySelectorAll('.sidebar-grid-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const index = parseInt(item.dataset.index);
+                if (!isNaN(index)) this.goToQuestion(index);
+            });
+        });
+
+        // 滚动当前项到可视区域
+        const current = grid.querySelector('.sidebar-grid-item.current');
+        if (current) {
+            current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
     },
 
     recordQuestionTime() {
