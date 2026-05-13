@@ -422,6 +422,10 @@ const App = {
             return;
         }
 
+        // 更新题库计数
+        const countEl = document.getElementById('bank-count');
+        if (countEl) countEl.textContent = banks.length + ' 个题库';
+
         container.innerHTML = banks.map(bank => {
             const stats = Storage.getBankStats(bank.id);
             const wrongCount = Storage.getWrongQuestions(bank.id).length;
@@ -518,6 +522,60 @@ const App = {
     },
 
     /**
+     * 搜索题目（跨题库关键词搜索）
+     */
+    searchQuestions() {
+        const input = document.getElementById('search-input');
+        const keyword = input ? input.value.trim() : '';
+        if (!keyword) return;
+
+        const results = [];
+        const banks = this.state.banks;
+        for (const bank of banks) {
+            if (!bank.questions) continue;
+            const matched = bank.questions.filter(q => {
+                const searchText = [q.question, q.explanation, q.category, ...(q.options || []), q.answer].join(' ');
+                return searchText.toLowerCase().includes(keyword.toLowerCase());
+            });
+            if (matched.length > 0) {
+                results.push({ bank, matched, count: matched.length });
+            }
+        }
+
+        if (results.length === 0) {
+            Utils.showToast('未找到包含「' + keyword + '」的题目', 'info', 3000);
+            return;
+        }
+
+        const searchData = {
+            keyword,
+            banks: results.map(r => ({
+                bankId: r.bank.id,
+                questionIds: r.matched.map(q => q.id),
+                count: r.count
+            }))
+        };
+        sessionStorage.setItem('quiz_search_results', JSON.stringify(searchData));
+
+        const firstBank = results[0].bank;
+        Utils.showToast('找到 ' + results.reduce((s, r) => s + r.count, 0) + ' 道匹配题目', 'success', 2000);
+        setTimeout(() => {
+            window.location.href = 'quiz.html?bank=' + firstBank.id + '&mode=search&q=' + encodeURIComponent(keyword);
+        }, 300);
+    },
+
+    /**
+     * 清除搜索
+     */
+    clearSearch() {
+        const input = document.getElementById('search-input');
+        if (input) input.value = '';
+        const clearBtn = document.getElementById('search-clear');
+        if (clearBtn) clearBtn.style.display = 'none';
+        sessionStorage.removeItem('quiz_search_results');
+    },
+
+    /**
      * 切换闪电模式
      */
     toggleLightning(checked) {
@@ -527,8 +585,8 @@ const App = {
     /**
      * 开始刷题
      * @param {string} bankId - 题库 ID
-     * @param {string} mode - 模式（all/random/wrong/review/spaced/bookmark/exam）
-     * @param {string} type - 题型筛选（all/single/multiple/judge/fill/code），可选
+     * @param {string} mode - 模式
+     * @param {string} type - 题型筛选，可选
      */
     startQuiz(bankId, mode, type) {
         const typeParam = type && type !== 'all' ? `&type=${type}` : '';
@@ -724,6 +782,17 @@ const App = {
         const importBtn = document.getElementById('btn-import');
         if (importBtn) {
             importBtn.addEventListener('click', () => this.importBank());
+        }
+
+        // 搜索输入框实时显示清除按钮
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                const clearBtn = document.getElementById('search-clear');
+                if (clearBtn) {
+                    clearBtn.style.display = searchInput.value ? '' : 'none';
+                }
+            });
         }
 
         // 主题切换按钮

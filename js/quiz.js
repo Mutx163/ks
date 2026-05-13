@@ -40,6 +40,11 @@ const Quiz = {
         this.state.examTimeLimit = parseInt(params.get('time')) || 0;
         this.state.examPassRate = parseInt(params.get('pass')) || 60;
 
+        // 搜索模式关键词
+        if (this.state.mode === 'search') {
+            this.state.searchKeyword = params.get('q') || '';
+        }
+
         // 从设置读取 autoNext
         const settings = Storage.getSettings();
         this.state.autoNext = settings.autoNext || false;
@@ -171,6 +176,20 @@ const Quiz = {
     },
 
     prepareQuestions() {
+        // 搜索模式：从 URL 参数或 sessionStorage 读取关键词
+        if (this.state.mode === 'search' && this.state.searchKeyword) {
+            const keyword = this.state.searchKeyword.toLowerCase();
+            const allQuestions = [...(this.state.bank.questions || [])];
+            const matched = allQuestions.filter(q => {
+                const searchText = [q.question, q.explanation, q.category, ...(q.options || []), q.answer].join(' ');
+                return searchText.toLowerCase().includes(keyword);
+            });
+            if (matched.length === 0) {
+                Utils.showToast(`未找到匹配题目：「${this.state.searchKeyword}」`, 'info', 3000);
+            }
+            this.state.questions = matched;
+            return;
+        }
         let questions = [...(this.state.bank.questions || [])];
 
         if (this.state.filterType && this.state.filterType !== 'all') {
