@@ -799,10 +799,14 @@
 
 /* ===== 底部栏 ===== */
 .quiz-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     background: var(--bg-card);
     border-top: 1px solid var(--border);
     padding: 12px 0 calc(12px + var(--safe-bottom));
-    flex-shrink: 0;
+    z-index: 100;
 }
 
 .quiz-footer .container {
@@ -894,7 +898,7 @@
     .quiz-nav { gap: var(--space-2); }
     .exam-timer { font-size: 15px; padding: 2px 8px; }
 
-    .quiz-content-wrap { padding: var(--space-3) 0; }
+    .quiz-content-wrap { padding: var(--space-3) 0 110px; }
 
     /* 底部栏：安全区域 + 大按钮 */
     .quiz-footer {
