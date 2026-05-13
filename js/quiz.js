@@ -106,14 +106,23 @@ const Quiz = {
         this.renderQuestionNav();
         this.renderQuestion();
         this.renderFooter();
+    },
+    
+    /**
+     * 渲染底部栏
+     */
+    renderFooter() {
+        const submitBtn = document.getElementById('btn-submit');
+        const hint = document.getElementById('footer-hint');
         
-        // 背题模式下隐藏提交按钮
         if (this.state.isReviewMode) {
-            const submitBtn = document.getElementById('btn-submit');
+            // 背题模式：隐藏提交按钮，显示提示
             if (submitBtn) submitBtn.style.display = 'none';
-            
-            const hint = document.getElementById('footer-hint');
             if (hint) hint.textContent = '📖 背题模式 - 直接查看答案和解析';
+        } else {
+            // 非背题模式：显示提交按钮
+            if (submitBtn) submitBtn.style.display = '';
+            if (hint) hint.textContent = '按 Enter 提交答案，Alt+← → 切换题目';
         }
     },
 
