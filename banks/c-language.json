@@ -1,0 +1,136 @@
+{
+  "id": "c-language-basics",
+  "name": "C语言基础",
+  "description": "C语言程序设计基础题库",
+  "version": "1.0.0",
+  "author": "MiMo",
+  "categories": ["基础语法", "数据类型", "控制结构", "数组", "指针", "函数"],
+  "tags": ["C语言", "编程", "计算机二级"],
+  "questions": [
+    {
+      "id": 1,
+      "type": "single",
+      "category": "基础语法",
+      "tags": ["变量命名"],
+      "difficulty": 1,
+      "question": "以下哪个是C语言的合法标识符？",
+      "options": ["A. `123var`", "B. `_count`", "C. `int`", "D. `my-var`"],
+      "answer": "B",
+      "explanation": "标识符命名规则：\n1. 由字母、数字、下划线组成\n2. 不能以数字开头\n3. 不能是关键字（如 `int`）\n4. 不能包含特殊字符（如 `-`）"
+    },
+    {
+      "id": 2,
+      "type": "single",
+      "category": "数据类型",
+      "tags": ["sizeof"],
+      "difficulty": 1,
+      "question": "在32位系统中，`sizeof(int)` 的值通常是？",
+      "options": ["A. 2", "B. 4", "C. 8", "D. 不确定"],
+      "answer": "B",
+      "explanation": "在大多数32位和64位系统中，`int` 占4字节（32位）。但C标准只保证 `sizeof(int) >= 2`。",
+      "code": "#include <stdio.h>\nint main() {\n    printf(\"%zu\\n\", sizeof(int));\n    return 0;\n}",
+      "codeLanguage": "c"
+    },
+    {
+      "id": 3,
+      "type": "single",
+      "category": "数据类型",
+      "tags": ["类型转换"],
+      "difficulty": 2,
+      "question": "以下代码的输出结果是？\n```c\nint a = 5;\ndouble b = a / 2;\nprintf(\"%.1f\", b);\n```",
+      "options": ["A. `2.5`", "B. `2.0`", "C. `3.0`", "D. 编译错误"],
+      "answer": "B",
+      "explanation": "`5 / 2` 是整数除法，结果为 `2`，然后赋值给 `double` 变为 `2.0`。要得到 `2.5` 需要 `5.0 / 2` 或 `(double)a / 2`。",
+      "code": "#include <stdio.h>\nint main() {\n    int a = 5;\n    double b = a / 2;\n    printf(\"%.1f\", b);  // 输出 2.0\n    \n    double c = a / 2.0;\n    printf(\"%.1f\", c);  // 输出 2.5\n    return 0;\n}",
+      "codeLanguage": "c"
+    },
+    {
+      "id": 4,
+      "type": "single",
+      "category": "控制结构",
+      "tags": ["循环"],
+      "difficulty": 2,
+      "question": "以下代码执行后，`sum` 的值是？\n```c\nint sum = 0;\nfor (int i = 1; i <= 100; i++) {\n    sum += i;\n}\n```",
+      "options": ["A. `4950`", "B. `5000`", "C. `5050`", "D. `5100`"],
+      "answer": "C",
+      "explanation": "这是一个等差数列求和：$1 + 2 + 3 + ... + 100 = \\frac{100 \\times 101}{2} = 5050$"
+    },
+    {
+      "id": 5,
+      "type": "multiple",
+      "category": "数据类型",
+      "tags": ["基本类型"],
+      "difficulty": 1,
+      "question": "以下哪些是C语言的基本数据类型？",
+      "options": ["A. `int`", "B. `float`", "C. `string`", "D. `char`"],
+      "answer": ["A", "B", "D"],
+      "explanation": "C语言基本数据类型包括：\n- 整型：`int`, `short`, `long`, `long long`\n- 浮点型：`float`, `double`\n- 字符型：`char`\n- 空类型：`void`\n\nC语言没有内置的 `string` 类型，字符串用字符数组表示。"
+    },
+    {
+      "id": 6,
+      "type": "judge",
+      "category": "基础语法",
+      "tags": ["注释"],
+      "difficulty": 1,
+      "question": "C语言支持 `//` 单行注释和 `/* */` 多行注释。",
+      "options": [],
+      "answer": true,
+      "explanation": "C99标准开始支持 `//` 单行注释。`/* */` 是传统的C语言注释方式。"
+    },
+    {
+      "id": 7,
+      "type": "fill",
+      "category": "基础语法",
+      "tags": ["输入输出"],
+      "difficulty": 2,
+      "question": "在 `printf` 中，`%d` 用于输出 `int` 类型，`%f` 用于输出 `float` 或 `double` 类型，`%c` 用于输出 `char` 类型。",
+      "options": [],
+      "answer": ["%d", "%f", "%c"],
+      "explanation": "常用格式说明符：\n- `%d` 或 `%i`：整数\n- `%f`：浮点数\n- `%c`：字符\n- `%s`：字符串\n- `%p`：指针地址\n- `%x`：十六进制"
+    },
+    {
+      "id": 8,
+      "type": "single",
+      "category": "数组",
+      "tags": ["数组定义"],
+      "difficulty": 2,
+      "question": "以下哪个正确定义了一个包含10个元素的整型数组？",
+      "options": ["A. `int arr[10];`", "B. `int arr(10);`", "C. `int arr[] = 10;`", "D. `int[10] arr;`"],
+      "answer": "A",
+      "explanation": "C语言数组定义语法：`类型 数组名[大小];`\n\n注意：\n- 使用方括号 `[]`，不是圆括号\n- 大小必须是常量表达式（C99之前）",
+      "code": "#include <stdio.h>\nint main() {\n    int arr[10];  // 定义10个元素的数组\n    \n    // 初始化数组\n    for (int i = 0; i < 10; i++) {\n        arr[i] = i * 2;\n    }\n    \n    // 打印数组\n    for (int i = 0; i < 10; i++) {\n        printf(\"%d \", arr[i]);\n    }\n    return 0;\n}",
+      "codeLanguage": "c"
+    },
+    {
+      "id": 9,
+      "type": "single",
+      "category": "指针",
+      "tags": ["指针基础"],
+      "difficulty": 3,
+      "question": "以下代码的输出是？\n```c\nint x = 10;\nint *p = &x;\n*p = 20;\nprintf(\"%d\", x);\n```",
+      "options": ["A. `10`", "B. `20`", "C. 地址值", "D. 编译错误"],
+      "answer": "B",
+      "explanation": "`p` 是指向 `x` 的指针，`*p = 20` 通过指针修改了 `x` 的值。所以 `x` 变成了 `20`。\n\n指针操作：\n- `&`：取地址运算符\n- `*`：解引用运算符",
+      "code": "#include <stdio.h>\nint main() {\n    int x = 10;\n    int *p = &x;    // p 指向 x\n    \n    printf(\"x = %d\\n\", x);      // 10\n    printf(\"*p = %d\\n\", *p);    // 10\n    \n    *p = 20;  // 通过指针修改 x\n    printf(\"x = %d\\n\", x);      // 20\n    \n    return 0;\n}",
+      "codeLanguage": "c"
+    },
+    {
+      "id": 10,
+      "type": "single",
+      "category": "函数",
+      "tags": ["函数定义"],
+      "difficulty": 2,
+      "question": "以下哪个是正确的函数声明？",
+      "options": [
+        "A. `int add(int a, b);`",
+        "B. `int add(int a, int b);`",
+        "C. `add(int a, int b) int;`",
+        "D. `int add(a, b);`"
+      ],
+      "answer": "B",
+      "explanation": "函数声明语法：`返回类型 函数名(参数类型 参数名, ...);`\n\n每个参数都必须单独指定类型。",
+      "code": "#include <stdio.h>\n\n// 函数声明\nint add(int a, int b);\n\n// 函数定义\nint add(int a, int b) {\n    return a + b;\n}\n\nint main() {\n    int result = add(3, 5);\n    printf(\"3 + 5 = %d\", result);\n    return 0;\n}",
+      "codeLanguage": "c"
+    }
+  ]
+}
