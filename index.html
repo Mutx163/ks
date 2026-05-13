@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能刷题系统</title>
-    
+
     <!-- KaTeX 数学公式渲染 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    
+
     <!-- Prism.js 代码高亮 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
-    
+
     <!-- 样式 -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/home.css">
@@ -27,15 +27,18 @@
     <header class="home-header">
         <div class="container">
             <div class="home-logo">
-                <div class="home-logo-icon">Q</div>
+                <div class="home-logo-icon" aria-hidden="true">Q</div>
                 <div class="home-logo-text">
                     <h1>智能刷题系统</h1>
                     <p>多题库 · 间隔重复 · 代码高亮 · 数学公式</p>
                 </div>
             </div>
             <div class="home-actions">
-                <button class="btn btn-secondary btn-sm" id="btn-history">📋 历史</button>
-                <button class="btn btn-primary btn-sm" id="btn-import">📥 导入题库</button>
+                <button class="btn btn-ghost btn-sm" id="btn-shortcuts" aria-label="快捷键" title="快捷键参考">⌨</button>
+                <button class="btn btn-ghost btn-sm" id="btn-theme" aria-label="切换主题" title="切换主题">🌓</button>
+                <button class="btn btn-ghost btn-sm" id="btn-settings" aria-label="设置" title="设置">⚙</button>
+                <button class="btn btn-secondary btn-sm" id="btn-history" aria-label="答题历史">📋 历史</button>
+                <button class="btn btn-primary btn-sm" id="btn-import" aria-label="导入题库">📥 导入题库</button>
             </div>
         </div>
     </header>
@@ -43,57 +46,39 @@
     <!-- 主内容 -->
     <main class="home-main">
         <div class="container">
+            <!-- 智能头条 -->
+            <div id="smart-banner"></div>
+
             <!-- 题型筛选 + 闪电模式 -->
             <div class="filter-bar">
-                <div class="type-filter-bar">
-                    <button class="type-filter-btn active" data-type="all" onclick="App.filterByType('all')">全部</button>
-                    <button class="type-filter-btn" data-type="single" onclick="App.filterByType('single')">单选</button>
-                    <button class="type-filter-btn" data-type="multiple" onclick="App.filterByType('multiple')">多选</button>
-                    <button class="type-filter-btn" data-type="judge" onclick="App.filterByType('judge')">判断</button>
-                    <button class="type-filter-btn" data-type="fill" onclick="App.filterByType('fill')">填空</button>
-                    <button class="type-filter-btn" data-type="code" onclick="App.filterByType('code')">编程</button>
+                <div class="type-filter-bar" role="tablist" aria-label="题型筛选">
+                    <button class="type-filter-btn active" data-type="all" onclick="App.filterByType('all')" role="tab" aria-selected="true">全部</button>
+                    <button class="type-filter-btn" data-type="single" onclick="App.filterByType('single')" role="tab">单选</button>
+                    <button class="type-filter-btn" data-type="multiple" onclick="App.filterByType('multiple')" role="tab">多选</button>
+                    <button class="type-filter-btn" data-type="judge" onclick="App.filterByType('judge')" role="tab">判断</button>
+                    <button class="type-filter-btn" data-type="fill" onclick="App.filterByType('fill')" role="tab">填空</button>
+                    <button class="type-filter-btn" data-type="code" onclick="App.filterByType('code')" role="tab">编程</button>
                 </div>
                 <label class="lightning-toggle" title="闪电模式：点击选项直接判对错，正确自动跳下一题">
                     <input type="checkbox" id="lightning-mode" onchange="App.toggleLightning(this.checked)">
-                    <span class="lightning-icon">⚡</span>
+                    <span class="lightning-icon" aria-hidden="true">⚡</span>
                     <span class="lightning-label">闪电</span>
                 </label>
             </div>
 
-            <!-- 统计 -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">题库数量</div>
-                    <div class="stat-value blue" id="stat-banks">0</div>
+            <!-- 统计标签页 -->
+            <div id="stats-tabs" class="stats-tabs">
+                <div class="stats-tab-bar" role="tablist">
+                    <button class="stats-tab active" data-tab="overview" onclick="App.switchTab('overview')" role="tab" aria-selected="true">📊 概览</button>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">总题目数</div>
-                    <div class="stat-value" id="stat-questions">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">已答题数</div>
-                    <div class="stat-value green" id="stat-answered">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">正确率</div>
-                    <div class="stat-value orange" id="stat-accuracy">0%</div>
-                </div>
+                <div id="tab-overview" class="stats-tab-content active"></div>
+                <div id="tab-trend" class="stats-tab-content"></div>
+                <div id="tab-analysis" class="stats-tab-content"></div>
+                <div id="tab-history" class="stats-tab-content"></div>
             </div>
 
-            <!-- 今日待复习 -->
-            <div id="today-due" style="display: none;"></div>
-
-            <!-- 薄弱知识点 -->
-            <div id="weak-categories" style="display: none;"></div>
-
-            <!-- 学习趋势 -->
-            <div id="trend-section" style="display: none;"></div>
-
-            <!-- 历史记录（默认隐藏） -->
-            <div id="history-section" style="display: none;"></div>
-
             <!-- 题库 -->
-            <section class="section">
+            <section class="section" aria-label="题库列表">
                 <div class="section-header">
                     <h2 class="section-title">题库列表</h2>
                 </div>

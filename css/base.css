@@ -1,5 +1,133 @@
-/* ================= 基础变量 - 简约专业风格 ================= */
+/* ================= 设计令牌系统 ================= */
 :root {
+    /* ---- 语义色 ---- */
+    --primary: #1976d2;
+    --primary-light: #e3f2fd;
+    --primary-dark: #1565c0;
+    --success: #2e7d32;
+    --success-light: #e8f5e9;
+    --warning: #ef6c00;
+    --warning-light: #fff3e0;
+    --danger: #c62828;
+    --danger-light: #ffebee;
+    --info: #7b1fa2;
+    --info-light: #f3e5f5;
+
+    /* ---- 背景色 ---- */
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --bg-hover: #f5f5f5;
+    --bg-active: #eeeeee;
+
+    /* ---- 文字色 ---- */
+    --text: #212121;
+    --text-secondary: #757575;
+    --text-tertiary: #9e9e9e;
+
+    /* ---- 边框/阴影 ---- */
+    --border: #e0e0e0;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.1), 0 6px 10px rgba(0,0,0,0.08);
+
+    /* ---- 圆角 ---- */
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+
+    /* ---- 间距系统 (8px 网格) ---- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+
+    /* ---- 过渡 ---- */
+    --transition: all 0.15s ease;
+    --transition-bounce: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ---- 题型色 ---- */
+    --type-single-bg: #e3f2fd;
+    --type-single-color: #1976d2;
+    --type-multiple-bg: #f3e5f5;
+    --type-multiple-color: #7b1fa2;
+    --type-judge-bg: #e8f5e9;
+    --type-judge-color: #2e7d32;
+    --type-fill-bg: #fff3e0;
+    --type-fill-color: #ef6c00;
+    --type-code-bg: #263238;
+    --type-code-color: #eeffff;
+
+    /* ---- 字体大小（可调） ---- */
+    --font-size-base: 16px;
+    --font-size-sm: 13px;
+    --font-size-xs: 12px;
+    --font-size-lg: 15px;
+    --font-size-xl: 18px;
+    --font-size-2xl: 24px;
+    --font-size-3xl: 28px;
+}
+
+/* ================= 暗色模式 ================= */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #121212;
+        --bg-card: #1e1e1e;
+        --bg-hover: #2c2c2c;
+        --bg-active: #333333;
+        --text: #e0e0e0;
+        --text-secondary: #a0a0a0;
+        --text-tertiary: #7a7a7a;
+        --border: #333333;
+        --shadow: 0 1px 3px rgba(0,0,0,0.3);
+        --shadow-md: 0 4px 6px rgba(0,0,0,0.35);
+        --shadow-lg: 0 10px 25px rgba(0,0,0,0.4);
+
+        --primary-light: rgba(25, 118, 210, 0.2);
+        --success-light: rgba(46, 125, 50, 0.2);
+        --warning-light: rgba(239, 108, 0, 0.2);
+        --danger-light: rgba(198, 40, 40, 0.2);
+        --info-light: rgba(123, 31, 162, 0.2);
+
+        --type-single-bg: rgba(25, 118, 210, 0.2);
+        --type-multiple-bg: rgba(123, 31, 162, 0.2);
+        --type-judge-bg: rgba(46, 125, 50, 0.2);
+        --type-fill-bg: rgba(239, 108, 0, 0.2);
+        --type-code-bg: #1a1a2e;
+    }
+}
+
+/* 手动暗色模式覆盖 */
+[data-theme="dark"] {
+    --bg: #121212;
+    --bg-card: #1e1e1e;
+    --bg-hover: #2c2c2c;
+    --bg-active: #333333;
+    --text: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --text-tertiary: #7a7a7a;
+    --border: #333333;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.35);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.4);
+
+    --primary-light: rgba(25, 118, 210, 0.2);
+    --success-light: rgba(46, 125, 50, 0.2);
+    --warning-light: rgba(239, 108, 0, 0.2);
+    --danger-light: rgba(198, 40, 40, 0.2);
+    --info-light: rgba(123, 31, 162, 0.2);
+
+    --type-single-bg: rgba(25, 118, 210, 0.2);
+    --type-multiple-bg: rgba(123, 31, 162, 0.2);
+    --type-judge-bg: rgba(46, 125, 50, 0.2);
+    --type-fill-bg: rgba(239, 108, 0, 0.2);
+    --type-code-bg: #1a1a2e;
+}
+
+/* 手动浅色模式覆盖 */
+[data-theme="light"] {
     --bg: #fafafa;
     --bg-card: #ffffff;
     --bg-hover: #f5f5f5;
@@ -7,28 +135,28 @@
     --text: #212121;
     --text-secondary: #757575;
     --text-tertiary: #9e9e9e;
-    --blue: #1976d2;
-    --blue-light: #e3f2fd;
-    --blue-dark: #1565c0;
-    --green: #2e7d32;
-    --green-light: #e8f5e9;
-    --red: #c62828;
-    --red-light: #ffebee;
-    --orange: #ef6c00;
-    --orange-light: #fff3e0;
-    --purple: #7b1fa2;
     --border: #e0e0e0;
     --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
     --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
     --shadow-lg: 0 10px 25px rgba(0,0,0,0.1), 0 6px 10px rgba(0,0,0,0.08);
-    --radius: 8px;
-    --radius-sm: 6px;
-    --radius-lg: 12px;
-    --transition: all 0.15s ease;
+
+    --primary-light: #e3f2fd;
+    --success-light: #e8f5e9;
+    --warning-light: #fff3e0;
+    --danger-light: #ffebee;
+    --info-light: #f3e5f5;
+
+    --type-single-bg: #e3f2fd;
+    --type-multiple-bg: #f3e5f5;
+    --type-judge-bg: #e8f5e9;
+    --type-fill-bg: #fff3e0;
+    --type-code-bg: #263238;
 }
 
 /* ================= 重置样式 ================= */
-* {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -36,7 +164,7 @@
 }
 
 html {
-    font-size: 16px;
+    font-size: var(--font-size-base);
     -webkit-text-size-adjust: 100%;
 }
 
@@ -47,15 +175,17 @@ body {
     line-height: 1.6;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-    color: var(--blue);
+    color: var(--primary);
     text-decoration: none;
+    transition: var(--transition);
 }
 
 a:hover {
-    color: var(--blue-dark);
+    color: var(--primary-dark);
 }
 
 button {
@@ -68,11 +198,30 @@ button {
     transition: var(--transition);
 }
 
+/* ================= 屏幕阅读器友好 ================= */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ================= 聚焦样式 ================= */
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
 /* ================= 布局 ================= */
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 var(--space-5);
 }
 
 /* ================= 按钮 ================= */
@@ -80,22 +229,28 @@ button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: var(--space-2);
     padding: 10px 20px;
     border-radius: var(--radius);
     font-weight: 500;
     font-size: 14px;
-    transition: var(--transition);
+    transition: var(--transition-bounce);
     white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.btn:active {
+    transform: scale(0.97);
 }
 
 .btn-primary {
-    background: var(--blue);
+    background: var(--primary);
     color: white;
 }
 
 .btn-primary:hover {
-    background: var(--blue-dark);
+    background: var(--primary-dark);
 }
 
 .btn-secondary {
@@ -119,17 +274,18 @@ button {
 
 .btn-sm {
     padding: 6px 14px;
-    font-size: 13px;
+    font-size: var(--font-size-sm);
 }
 
 .btn-lg {
-    padding: 12px 24px;
-    font-size: 15px;
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--font-size-lg);
 }
 
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
 }
 
 /* ================= 卡片 ================= */
@@ -144,17 +300,32 @@ button {
 .tag {
     display: inline-flex;
     align-items: center;
-    padding: 4px 10px;
+    padding: var(--space-1) 10px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     font-weight: 500;
     background: var(--bg-hover);
     color: var(--text-secondary);
 }
 
-.tag-blue {
-    background: var(--blue-light);
-    color: var(--blue);
+.tag-primary {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.tag-success {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.tag-warning {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+.tag-danger {
+    background: var(--danger-light);
+    color: var(--danger);
 }
 
 /* ================= 进度条 ================= */
@@ -167,19 +338,23 @@ button {
 
 .progress-bar-fill {
     height: 100%;
-    background: var(--blue);
+    background: var(--primary);
     border-radius: 2px;
     transition: width 0.3s ease;
 }
 
 .progress-bar-fill.success {
-    background: var(--green);
+    background: var(--success);
+}
+
+.progress-bar-fill.warning {
+    background: var(--warning);
 }
 
 /* ================= 代码块 ================= */
 code {
-    background: #f5f5f5;
-    color: #d32f2f;
+    background: var(--bg-hover);
+    color: var(--danger);
     padding: 2px 6px;
     border-radius: 3px;
     font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
@@ -189,13 +364,13 @@ code {
 pre {
     background: #263238;
     color: #eeffff;
-    padding: 16px;
+    padding: var(--space-4);
     border-radius: var(--radius);
     font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
     font-size: 14px;
     line-height: 1.5;
     overflow-x: auto;
-    margin: 12px 0;
+    margin: var(--space-3) 0;
 }
 
 pre code {
@@ -210,7 +385,7 @@ pre code {
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    padding: 12px 24px;
+    padding: var(--space-3) var(--space-5);
     border-radius: var(--radius);
     background: var(--text);
     color: white;
@@ -218,14 +393,20 @@ pre code {
     box-shadow: var(--shadow-lg);
     z-index: 10000;
     animation: toastIn 0.2s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: 90vw;
 }
 
 .toast-success {
-    background: var(--green);
+    background: var(--success);
 }
 
 .toast-error {
-    background: var(--red);
+    background: var(--danger);
+}
+
+.toast-info {
+    background: var(--primary);
 }
 
 @keyframes toastIn {
@@ -250,21 +431,44 @@ pre code {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #bdbdbd;
+    background: var(--text-tertiary);
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #9e9e9e;
+    background: var(--text-secondary);
 }
 
 ::selection {
     background: rgba(25, 118, 210, 0.15);
 }
 
+/* ================= 动画工具 ================= */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
 /* ================= 响应式 ================= */
 @media (max-width: 768px) {
     .container {
-        padding: 0 16px;
+        padding: 0 var(--space-4);
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 var(--space-3);
     }
 }

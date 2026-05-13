@@ -40,7 +40,8 @@ const Storage = {
                 showAnswer: true,      // 答题后显示答案
                 autoNext: false,       // 自动下一题
                 randomOrder: false,    // 随机顺序
-                fontSize: 16           // 字体大小
+                fontSize: 16,          // 字体大小
+                theme: 'auto'          // 主题：auto|light|dark
             });
         }
         if (!this.get(this.KEYS.HISTORY)) {
@@ -114,8 +115,12 @@ const Storage = {
      * 通知用户存储空间不足
      */
     _notifyQuotaExceeded() {
-        if (typeof Utils !== 'undefined' && Utils.showToast) {
-            Utils.showToast('存储空间不足，部分数据可能无法保存。建议清理浏览器数据。', 'error', 5000);
+        try {
+            if (typeof Utils !== 'undefined' && Utils.showToast) {
+                Utils.showToast('存储空间不足，部分数据可能无法保存。建议清理浏览器数据。', 'error', 5000);
+            }
+        } catch (e) {
+            console.error('Failed to notify quota exceeded:', e);
         }
     },
 

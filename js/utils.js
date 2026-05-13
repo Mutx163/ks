@@ -169,50 +169,62 @@ const Utils = {
      * 渲染数学公式
      */
     renderMath(container) {
-        if (!window.katex) return;
+        if (!container) return;
+        try {
+            if (typeof window.katex === 'undefined' || !window.katex) return;
 
-        // 渲染行内公式
-        container.querySelectorAll('.math-inline').forEach(el => {
-            const formula = el.dataset.formula;
-            if (formula) {
-                try {
-                    katex.render(formula, el, {
-                        throwOnError: false,
-                        displayMode: false
-                    });
-                } catch (e) {
-                    el.textContent = formula;
-                    console.error('KaTeX render error:', e);
+            container.querySelectorAll('.math-inline').forEach(el => {
+                const formula = el.dataset.formula;
+                if (formula) {
+                    try {
+                        katex.render(formula, el, {
+                            throwOnError: false,
+                            displayMode: false
+                        });
+                    } catch (e) {
+                        el.textContent = formula;
+                        console.warn('KaTeX inline render error:', e.message);
+                    }
                 }
-            }
-        });
+            });
 
-        // 渲染块级公式
-        container.querySelectorAll('.math-block').forEach(el => {
-            const formula = el.dataset.formula;
-            if (formula) {
-                try {
-                    katex.render(formula, el, {
-                        throwOnError: false,
-                        displayMode: true
-                    });
-                } catch (e) {
-                    el.textContent = formula;
-                    console.error('KaTeX render error:', e);
+            container.querySelectorAll('.math-block').forEach(el => {
+                const formula = el.dataset.formula;
+                if (formula) {
+                    try {
+                        katex.render(formula, el, {
+                            throwOnError: false,
+                            displayMode: true
+                        });
+                    } catch (e) {
+                        el.textContent = formula;
+                        console.warn('KaTeX block render error:', e.message);
+                    }
                 }
-            }
-        });
+            });
+        } catch (e) {
+            console.warn('renderMath error:', e.message);
+        }
     },
 
     /**
      * 高亮代码块
      */
     highlightCode(container) {
-        if (!window.Prism) return;
+        if (!container) return;
+        try {
+            if (typeof window.Prism === 'undefined' || !window.Prism) return;
 
-        container.querySelectorAll('pre code').forEach(el => {
-            Prism.highlightElement(el);
-        });
+            container.querySelectorAll('pre code').forEach(el => {
+                try {
+                    Prism.highlightElement(el);
+                } catch (e) {
+                    console.warn('Prism highlight error:', e.message);
+                }
+            });
+        } catch (e) {
+            console.warn('highlightCode error:', e.message);
+        }
     },
 
     /**

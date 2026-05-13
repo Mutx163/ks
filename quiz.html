@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>刷题 - 智能刷题系统</title>
-    
+
     <!-- KaTeX 数学公式渲染 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    
+
     <!-- Prism.js 代码高亮 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
@@ -17,7 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
-    
+
     <!-- 样式 -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/quiz.css">
@@ -27,16 +27,21 @@
     <header class="quiz-header">
         <div class="container">
             <div class="quiz-nav">
-                <button class="quiz-back" onclick="Quiz.goHome()">&#8592;</button>
+                <button class="quiz-back" onclick="Quiz.goHome()" aria-label="返回首页">&#8592;</button>
                 <span class="quiz-title" id="quiz-title">加载中...</span>
-                <button class="quiz-nav-btn" id="btn-nav" onclick="Quiz.toggleNav()" title="题目导航">
+                <span class="exam-timer" id="exam-timer" style="display:none;" aria-label="考试倒计时">00:00</span>
+                <button class="quiz-nav-btn" id="btn-nav" onclick="Quiz.toggleNav()" title="题目导航" aria-label="打开题目导航">
                     <span id="quiz-progress-text">0 / 0</span>
                 </button>
-                <span class="exam-timer" id="exam-timer" style="display:none;">00:00</span>
-                <button class="btn btn-ghost btn-sm" onclick="Quiz.finish()">完成</button>
+                <button class="btn btn-ghost btn-sm" onclick="Quiz.finish()" aria-label="完成答题">完成</button>
             </div>
         </div>
     </header>
+
+    <!-- 题目导航面包屑（固定在题目上方） -->
+    <div class="container">
+        <div class="question-nav-bar" id="question-nav-bar"></div>
+    </div>
 
     <!-- 主内容 -->
     <main class="quiz-main">
@@ -45,8 +50,8 @@
                 <!-- 题目内容 -->
                 <div id="question-container"></div>
             </div>
-            
-            <!-- 题目导航浮动面板 -->
+
+            <!-- 题目导航浮动面板（移动端备用） -->
             <div class="question-nav-overlay" id="nav-overlay" onclick="Quiz.toggleNav()"></div>
             <div class="question-nav-panel" id="nav-panel">
                 <div class="question-nav-grid" id="question-nav-grid"></div>
@@ -57,11 +62,11 @@
     <!-- 底部栏 -->
     <footer class="quiz-footer">
         <div class="container">
-            <div class="quiz-footer-hint" id="footer-hint">Enter 提交 · Alt+方向键 切换</div>
+            <div class="quiz-footer-hint" id="footer-hint">按 Enter 提交 · A-D 选答案 · Alt+←→ 切换</div>
             <div class="quiz-footer-actions">
-                <button class="btn btn-secondary btn-sm" onclick="Quiz.prevQuestion()">上一题</button>
-                <button class="btn btn-primary btn-sm" id="btn-submit" onclick="Quiz.submitCurrent()">提交</button>
-                <button class="btn btn-secondary btn-sm" onclick="Quiz.nextQuestion()">下一题</button>
+                <button class="btn btn-secondary btn-sm" onclick="Quiz.prevQuestion()" aria-label="上一题">上一题</button>
+                <button class="btn btn-primary btn-sm" id="btn-submit" onclick="Quiz.submitCurrent()" aria-label="提交答案">提交</button>
+                <button class="btn btn-secondary btn-sm" onclick="Quiz.nextQuestion()" aria-label="下一题">下一题</button>
             </div>
         </div>
     </footer>
