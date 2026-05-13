@@ -21,22 +21,13 @@
     <!-- 样式 -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/quiz.css">
-    
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1P9SBMX5ND"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-1P9SBMX5ND');
-    </script>
 </head>
 <body>
-    <!-- 头部导航 -->
+    <!-- 头部 -->
     <header class="quiz-header">
         <div class="container">
             <div class="quiz-nav">
-                <button class="quiz-back" onclick="Quiz.goHome()">←</button>
+                <button class="quiz-back" onclick="Quiz.goHome()">&#8592;</button>
                 <span class="quiz-title" id="quiz-title">加载中...</span>
             </div>
             <div class="quiz-progress">
@@ -47,7 +38,7 @@
             </div>
             <div class="quiz-actions">
                 <span class="tag tag-blue" id="quiz-mode-tag"></span>
-                <button class="btn btn-ghost btn-sm" onclick="Quiz.finish()">📊 完成</button>
+                <button class="btn btn-ghost btn-sm" onclick="Quiz.finish()">完成</button>
             </div>
         </div>
     </header>
@@ -59,35 +50,23 @@
                 <!-- 题目导航 -->
                 <div class="question-nav">
                     <div class="question-nav-title">题目导航</div>
-                    <div class="question-nav-grid" id="question-nav-grid">
-                        <!-- 动态渲染 -->
-                    </div>
+                    <div class="question-nav-grid" id="question-nav-grid"></div>
                 </div>
                 
                 <!-- 题目内容 -->
-                <div id="question-container">
-                    <!-- 动态渲染 -->
-                </div>
+                <div id="question-container"></div>
             </div>
         </div>
     </main>
 
-    <!-- 底部操作栏 -->
+    <!-- 底部栏 -->
     <footer class="quiz-footer">
         <div class="container">
-            <div class="quiz-footer-info">
-                <span id="footer-hint">按 Enter 提交答案，Alt+← → 切换题目</span>
-            </div>
+            <div class="quiz-footer-hint" id="footer-hint">Enter 提交 · Alt+方向键 切换</div>
             <div class="quiz-footer-actions">
-                <button class="btn btn-secondary" onclick="Quiz.prevQuestion()">
-                    ← 上一题
-                </button>
-                <button class="btn btn-primary" id="btn-submit" onclick="Quiz.submitCurrent()">
-                    提交答案
-                </button>
-                <button class="btn btn-secondary" onclick="Quiz.nextQuestion()">
-                    下一题 →
-                </button>
+                <button class="btn btn-secondary btn-sm" onclick="Quiz.prevQuestion()">上一题</button>
+                <button class="btn btn-primary btn-sm" id="btn-submit" onclick="Quiz.submitCurrent()">提交答案</button>
+                <button class="btn btn-secondary btn-sm" onclick="Quiz.nextQuestion()">下一题</button>
             </div>
         </div>
     </footer>

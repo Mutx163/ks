@@ -21,25 +21,16 @@
     <!-- 样式 -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/home.css">
-    
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1P9SBMX5ND"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-1P9SBMX5ND');
-    </script>
 </head>
 <body>
     <!-- 头部 -->
     <header class="home-header">
         <div class="container">
             <div class="home-logo">
-                <div class="home-logo-icon">📚</div>
+                <div class="home-logo-icon">Q</div>
                 <div class="home-logo-text">
                     <h1>智能刷题系统</h1>
-                    <p>多题库 · 代码高亮 · 数学公式 · 多种刷题模式</p>
+                    <p>多题库 · 代码高亮 · 数学公式</p>
                 </div>
             </div>
         </div>
@@ -48,45 +39,30 @@
     <!-- 主内容 -->
     <main class="home-main">
         <div class="container">
-            <!-- 统计卡片 -->
+            <!-- 统计 -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-icon blue">📚</div>
-                    <div class="stat-info">
-                        <h3 id="stat-banks">0</h3>
-                        <p>题库数量</p>
-                    </div>
+                    <div class="stat-label">题库数量</div>
+                    <div class="stat-value blue" id="stat-banks">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon green">📝</div>
-                    <div class="stat-info">
-                        <h3 id="stat-questions">0</h3>
-                        <p>总题目数</p>
-                    </div>
+                    <div class="stat-label">总题目数</div>
+                    <div class="stat-value" id="stat-questions">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon orange">✅</div>
-                    <div class="stat-info">
-                        <h3 id="stat-answered">0</h3>
-                        <p>已答题数</p>
-                    </div>
+                    <div class="stat-label">已答题数</div>
+                    <div class="stat-value green" id="stat-answered">0</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon purple">🎯</div>
-                    <div class="stat-info">
-                        <h3 id="stat-accuracy">0%</h3>
-                        <p>正确率</p>
-                    </div>
+                    <div class="stat-label">正确率</div>
+                    <div class="stat-value orange" id="stat-accuracy">0%</div>
                 </div>
             </div>
 
-            <!-- 题库区域 -->
+            <!-- 题库 -->
             <section class="section">
                 <div class="section-header">
-                    <h2 class="section-title">
-                        <span class="section-title-icon">📖</span>
-                        内置题库
-                    </h2>
+                    <h2 class="section-title">题库列表</h2>
                 </div>
                 <div class="bank-grid" id="bank-grid">
                     <!-- 动态渲染 -->
@@ -98,7 +74,7 @@
     <!-- 页脚 -->
     <footer class="home-footer">
         <div class="container">
-            <p>智能刷题系统 - 内置题库 · 支持代码高亮和数学公式</p>
+            <p>智能刷题系统 · 内置题库 · 支持代码高亮和数学公式</p>
         </div>
     </footer>
 
