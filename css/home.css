@@ -665,12 +665,29 @@
     .home-header { padding: var(--space-2) 0; }
 
     .home-logo-text p { display: none; }
+    .home-logo-icon { width: 30px; height: 30px; font-size: 14px; border-radius: 6px; }
+    .home-logo-text h1 { font-size: 15px; }
 
-    .home-logo-icon { width: 32px; height: 32px; font-size: var(--font-size-base); }
-
-    .home-logo-text h1 { font-size: var(--font-size-base); }
+    /* 头部：紧凑布局 */
+    .home-actions { gap: 4px; }
+    .home-actions .btn { padding: 6px 8px; font-size: 12px; min-height: 34px; }
+    .home-actions .btn-ghost { padding: 6px; }
+    .lightning-toggle { padding: 4px 8px; gap: 3px; }
+    .lightning-label { font-size: 11px; }
+    .lightning-icon { font-size: 14px; }
+    /* 隐藏次要按钮文字，只显示图标 */
+    #btn-history span,
+    #btn-import span { display: none; }
 
     .home-main { padding: var(--space-3) 0; }
+
+    /* 搜索栏 */
+    .search-input-wrap { padding: 6px 12px; border-radius: 10px; }
+    .search-input { font-size: 13px; }
+
+    /* 统计标签页 */
+    .stats-tab-bar { gap: 4px; padding-bottom: var(--space-1); }
+    .stats-tab { padding: 6px 10px; font-size: 12px; }
 
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -678,40 +695,72 @@
     }
 
     .stat-card { padding: var(--space-3); }
-
     .stat-label { font-size: 10px; margin-bottom: var(--space-1); }
-    .stat-value { font-size: 20px; }
+    .stat-value { font-size: 18px; }
 
-    .stat-ring-chart { width: 60px; height: 60px; }
-    .stat-ring-center { font-size: var(--font-size-base); }
+    .stat-ring-chart { width: 54px; height: 54px; }
+    .stat-ring-center { font-size: 14px; }
+    .stat-ring-labels { gap: 2px; }
+    .stat-ring-label { font-size: 11px; }
 
-    .section { margin-bottom: var(--space-4); }
-
-    .bank-grid { grid-template-columns: 1fr; }
-
+    /* 智能头条 */
     .smart-banner {
         flex-direction: column;
         text-align: center;
         padding: var(--space-3);
         margin-bottom: var(--space-3);
+        gap: var(--space-2);
     }
+    .smart-banner-icon { font-size: 28px; }
+    .smart-banner-title { font-size: 14px; }
+    .smart-banner-desc { font-size: 12px; }
 
-    .home-footer { padding: var(--space-4) 0; }
+    .section { margin-bottom: var(--space-4); }
+    .section-title { font-size: var(--font-size-base); }
+    .bank-count { font-size: 11px; }
 
-    .bank-card-footer .btn span { display: none; }
+    /* 题库卡片：紧凑模式 */
+    .bank-grid { grid-template-columns: 1fr; }
+    .bank-card-header { padding: var(--space-4) var(--space-4) 0; gap: var(--space-3); }
+    .bank-card-icon { width: 40px; height: 40px; font-size: 16px; }
+    .bank-card-title { font-size: 14px; }
+    .bank-card-desc { font-size: 12px; }
+    .bank-card-meta { padding: var(--space-2) var(--space-4); gap: 4px; }
+    .bank-card-meta .tag { font-size: 11px; padding: 2px 8px; }
+    .bank-card-progress { padding: 0 var(--space-4) var(--space-3); }
+    .bank-card-stats { padding: 0 var(--space-4) var(--space-3); gap: var(--space-3); font-size: 12px; }
+
+    /* 题型按钮 */
+    .bank-card-types { padding: var(--space-2) var(--space-4) 0; gap: 4px; }
+    .bank-type-btn { font-size: 11px; padding: 3px 10px; }
+
+    /* 模式按钮：2列 */
+    .bank-card-modes {
+        padding: var(--space-2) var(--space-4);
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+    .bank-card-modes .btn { font-size: 11px; padding: 7px 6px; min-height: 36px; }
+
+    .bank-card-footer { padding: var(--space-2) var(--space-4); gap: var(--space-1); }
+    .bank-card-footer .btn { font-size: 11px; padding: 6px 10px; }
+
+    .home-footer { padding: var(--space-4) 0; font-size: 12px; }
 }
 
 @media (max-width: 480px) {
-    .home-actions { gap: var(--space-1); }
+    .home-actions { gap: 3px; }
+    .home-actions .btn { padding: 5px 6px; font-size: 11px; min-height: 32px; }
 
-    .home-actions .btn { padding: 6px 8px; font-size: var(--font-size-xs); }
+    .stats-grid { gap: 6px; }
+    .stat-card { padding: var(--space-2); }
+    .stat-value { font-size: 16px; }
 
-    .stats-grid { gap: var(--space-1); }
-    .stat-card { padding: var(--space-2) var(--space-2); }
-    .stat-value { font-size: 18px; }
+    .stats-tab-bar { gap: 3px; }
+    .stats-tab { padding: 4px 8px; font-size: 11px; }
 
-    .stats-tab-bar { gap: var(--space-1); }
-    .stats-tab { padding: var(--space-1) var(--space-3); font-size: var(--font-size-xs); }
+    .bank-card-modes { grid-template-columns: 1fr 1fr; gap: 4px; }
+    .bank-card-modes .btn { font-size: 11px; padding: 6px 4px; min-height: 34px; }
 }
 
 /* ===== 暗色模式适配 ===== */

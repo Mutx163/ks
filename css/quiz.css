@@ -863,7 +863,7 @@
 .quiz-footer {
     background: var(--bg-card);
     border-top: 1px solid var(--border);
-    padding: 12px 0;
+    padding: 12px 0 calc(12px + var(--safe-bottom));
     flex-shrink: 0;
 }
 
@@ -948,37 +948,108 @@
 }
 
 @media (max-width: 768px) {
-    .quiz-header .container { gap: var(--space-2); }
+    /* 头部：紧凑 */
+    .quiz-header { padding: 8px 0; }
+    .quiz-header .container { gap: 6px; }
+    .quiz-title { font-size: 14px; max-width: 100px; }
+    .quiz-back { width: 32px; height: 32px; font-size: 16px; }
+    .quiz-nav { gap: var(--space-2); }
+    .exam-timer { font-size: 15px; padding: 2px 8px; }
 
-    .quiz-title { font-size: 14px; max-width: 120px; }
+    .quiz-content-wrap { padding: var(--space-3) 0; }
 
-    .quiz-content-wrap { padding: var(--space-3) 0 80px; }
+    /* 底部栏：安全区域 + 大按钮 */
+    .quiz-footer {
+        padding: 8px 0 calc(8px + var(--safe-bottom));
+    }
+    .quiz-footer-hint { display: none; }
+    .quiz-footer-actions { width: 100%; justify-content: center; }
+    .quiz-footer-actions .btn {
+        flex: 1;
+        min-height: 44px;
+        font-size: 14px;
+        padding: 10px 8px;
+        max-width: 140px;
+    }
+    #btn-submit { flex: 1.2; max-width: 160px; }
 
+    /* 题目卡片 */
+    .question-header { padding: var(--space-3) var(--space-4); flex-wrap: wrap; gap: 4px; }
+    .question-meta { gap: 4px; flex-wrap: wrap; }
+    .question-number { font-size: 12px; }
+    .question-type { font-size: 10px; padding: 2px 6px; }
+    .question-category { font-size: 10px; padding: 1px 6px; }
+    .question-body { padding: var(--space-4); }
+    .question-text { font-size: 15px; line-height: 1.65; word-break: break-word; }
+
+    /* 选项：大触控区域 */
+    .options-list { gap: 8px; }
+    .option-item {
+        padding: 14px 16px;
+        min-height: 52px;
+        border-radius: 10px;
+    }
+    .option-marker { width: 28px; height: 28px; font-size: 13px; flex-shrink: 0; }
+    .option-content { font-size: 15px; line-height: 1.5; padding-top: 3px; }
+
+    /* 判断题 */
+    .judge-options { gap: 10px; }
+    .judge-option { padding: var(--space-4); min-height: 52px; font-size: 15px; }
+
+    /* 填空题 */
+    .fill-input { padding: 12px; min-height: 44px; font-size: 15px; }
+
+    /* 代码编辑器 */
+    .code-editor { font-size: 13px; padding: var(--space-3); }
+
+    /* 简答题 */
+    .essay-input { font-size: 15px; padding: var(--space-3); }
+
+    /* 导航点 */
+    .question-nav-bar { padding: var(--space-1) 0; margin-bottom: var(--space-3); }
+    .question-nav-dot { min-width: 22px; height: 22px; font-size: 9px; border-width: 1.5px; }
     .quiz-progress { display: none; }
 
-    .question-header { padding: var(--space-3) var(--space-4); flex-wrap: wrap; gap: 6px; }
-    .question-meta { gap: 6px; }
-    .question-body { padding: var(--space-4); }
+    /* 题目图片 */
+    .question-image { border-radius: 6px; margin: var(--space-3) 0; }
 
-    .question-text { font-size: 14px; word-break: break-word; }
-    .options-list { gap: var(--space-2); }
-    .option-item { padding: 12px 14px; min-height: 48px; }
-    .option-content { font-size: 14px; word-break: break-word; }
+    /* 解析 */
+    .explanation { padding: var(--space-3); margin-top: var(--space-3); }
+    .explanation-content { font-size: 13px; }
+    .result-banner { padding: 10px 14px; }
 
+    /* 结果页 */
+    .result-page { padding: var(--space-6) var(--space-4); }
+    .result-icon { font-size: 48px; margin-bottom: var(--space-3); }
+    .result-title { font-size: 20px; }
     .result-stats { gap: var(--space-5); flex-wrap: wrap; }
     .result-stat-value { font-size: 20px; }
+    .result-actions { flex-direction: column; gap: 8px; }
+    .result-actions .btn { width: 100%; padding: 14px; }
 
-    .question-nav-dot { min-width: 24px; height: 24px; font-size: 10px; }
+    /* 结束模态框 */
+    .finish-modal { padding: var(--space-5); margin: var(--space-4); }
+    .finish-modal-stats { gap: var(--space-4); flex-wrap: wrap; }
 
-    .finish-modal { padding: var(--space-5); }
-    .finish-modal-stats { gap: var(--space-4); }
-
-    .quiz-footer-hint { display: none; }
-    .quiz-footer-actions { width: 100%; }
-    .quiz-footer-actions .btn { flex: 1; }
+    /* 浮动导航面板 */
+    .question-nav-panel { width: 95%; max-height: 65vh; }
+    .question-nav-item { width: 40px; height: 40px; font-size: 14px; }
 }
 
 @media (max-width: 480px) {
+    .quiz-title { max-width: 80px; font-size: 13px; }
+
     .judge-options { grid-template-columns: 1fr; }
-    .question-nav-dot { min-width: 22px; height: 22px; font-size: 9px; border-width: 1.5px; }
+    .judge-option { min-height: 48px; }
+
+    .question-nav-dot { min-width: 20px; height: 20px; font-size: 8px; border-width: 1.5px; }
+
+    .option-item { padding: 12px 14px; min-height: 48px; }
+    .option-marker { width: 26px; height: 26px; font-size: 12px; }
+    .option-content { font-size: 14px; }
+
+    .result-stats { gap: var(--space-4); }
+    .result-stat-value { font-size: 18px; }
+
+    .quiz-footer-actions .btn { font-size: 13px; }
 }
