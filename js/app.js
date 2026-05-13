@@ -43,8 +43,10 @@ const App = {
                 const response = await fetch(`banks/${filename}`);
                 if (response.ok) {
                     const bank = await response.json();
+                    // 检查是否需要更新：无此题库、版本不同、或内存中没有完整题目
                     const localBank = Storage.getBank(bank.id);
-                    if (!localBank || localBank.version !== bank.version) {
+                    const needsUpdate = !localBank || localBank.version !== bank.version || !localBank.questions;
+                    if (needsUpdate) {
                         Storage.addBank(bank);
                         cacheVersions[bank.id] = bank.version;
                     }
@@ -373,6 +375,33 @@ const App = {
             </div>
             ${history.length > 20 ? '<div style="text-align:center;margin-top:8px;font-size:12px;color:var(--text-tertiary)">仅显示最近 20 条</div>' : ''}
         `;
+    },
+
+    /**
+     * 获取题库的可用题型列表
+     */
+    getBankTypes(bank) {
+        if (!bank || !bank.questions) return [];
+        const typeSet = new Set();
+        bank.questions.forEach(q => {
+            if (q.type) typeSet.add(q.type);
+        });
+        return ['all', ...typeSet].filter(Boolean);
+    },
+
+    /**
+     * 获取题型显示名称
+     */
+    getTypeLabel(type) {
+        const map = {
+            all: '全部题型',
+            single: '单选',
+            multiple: '多选',
+            judge: '判断',
+            fill: '填空',
+            code: '编程'
+        };
+        return map[type] || type;
     },
 
     /**
