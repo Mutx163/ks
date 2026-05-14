@@ -6,7 +6,7 @@ import Storage from './storage.js';
 import Utils from './utils.js';
 
 const App = {
-    builtinBanks: ['c-language.json', 'engineering-mechanics.json'],
+    builtinBanks: ['c-language.json'],
 
     state: {
         banks: [],
