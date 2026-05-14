@@ -28,8 +28,7 @@ ks/
 │   ├── storage.js          # 本地存储管理
 │   └── utils.js            # 工具函数
 ├── banks/                  # 内置题库目录
-│   ├── c-language.json     # C语言题库
-│   └── engineering-mechanics.json  # 工程力学题库
+│   └── c-language.json     # C语言题库
 ├── 题库导入文档.md          # 题库格式说明
 └── AGENTS.md               # 本文档
 ```
@@ -56,7 +55,6 @@ npm run build
 ```javascript
 builtinBanks: [
     'c-language.json',
-    'engineering-mechanics.json',
     'new-bank.json'  // 新增
 ],
 ```
