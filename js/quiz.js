@@ -690,6 +690,12 @@ const Quiz = {
                 <div class="explanation-content">
                     ${Utils.parseMarkdown(question.explanation || '暂无解析')}
                 </div>
+                ${question.memoryAid ? `
+                    <div class="memory-aid">
+                        <span class="memory-aid-icon">🧠</span>
+                        <span class="memory-aid-text">${Utils.escapeHtml(question.memoryAid)}</span>
+                    </div>
+                ` : ''}
                 ${question.code ? `
                     <div style="margin-top:var(--space-4)">
                         <strong>参考代码：</strong>
