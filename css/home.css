@@ -602,7 +602,6 @@
 }
 
 .bank-card-icon.c-lang { background: #263238; }
-.bank-card-icon.mechanics { background: #37474f; }
 .bank-card-icon.default { background: var(--primary); }
 
 .bank-card-info { flex: 1; min-width: 0; }
@@ -840,4 +839,3 @@
 
 /* ===== 暗色模式适配 ===== */
 [data-theme="dark"] .bank-card-icon.c-lang { background: #1a1a2e; }
-[data-theme="dark"] .bank-card-icon.mechanics { background: #1a1a2e; }

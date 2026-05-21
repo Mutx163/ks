@@ -6,7 +6,7 @@ import Storage from './storage.js';
 import Utils from './utils.js';
 
 const App = {
-    builtinBanks: ['c-language.json'],
+    builtinBanks: ['c-language.json', 'cnc-machine.json'],
 
     state: {
         banks: [],
@@ -17,10 +17,44 @@ const App = {
     },
 
     async init() {
+        this.removeDeprecatedBanks();
         await this.loadBuiltinBanks();
         this.loadData();
         this.render();
         this.bindEvents();
+    },
+
+    removeDeprecatedBanks() {
+        const deprecatedIds = new Set(['engineering-mechanics']);
+
+        Storage.getBanks().forEach(bank => {
+            if (bank.id === 'engineering-mechanics' || bank.name === '工程力学') {
+                deprecatedIds.add(bank.id);
+            }
+        });
+
+        deprecatedIds.forEach(bankId => Storage.removeBank(bankId));
+
+        const history = Storage.getHistory().filter(record =>
+            !deprecatedIds.has(record.bankId) && record.bankName !== '工程力学'
+        );
+        Storage.set(Storage.KEYS.HISTORY, history);
+
+        const sessions = Storage.get(Storage.KEYS.SESSION) || {};
+        for (const key of Object.keys(sessions)) {
+            const [bankId] = key.split(':');
+            if (deprecatedIds.has(bankId)) {
+                delete sessions[key];
+            }
+        }
+        Storage.set(Storage.KEYS.SESSION, sessions);
+
+        const cacheKey = 'quiz_cache_versions';
+        const cacheVersions = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+        deprecatedIds.forEach(bankId => {
+            delete cacheVersions[bankId];
+        });
+        localStorage.setItem(cacheKey, JSON.stringify(cacheVersions));
     },
 
     /**
@@ -453,7 +487,8 @@ const App = {
             multiple: '多选',
             judge: '判断',
             fill: '填空',
-            code: '编程'
+            code: '编程',
+            essay: '简答'
         };
         return map[type] || type;
     },
@@ -489,10 +524,8 @@ const App = {
             const questions = bank.questions || [];
             const bankTypes = this.getBankTypes(bank);
 
-            const iconClass = bank.id.includes('c-language') ? 'c-lang' : 
-                             bank.id.includes('mechanics') ? 'mechanics' : 'default';
-            const iconText = bank.id.includes('c-language') ? 'C' : 
-                            bank.id.includes('mechanics') ? 'M' : 'Q';
+            const iconClass = bank.id.includes('c-language') ? 'c-lang' : 'default';
+            const iconText = bank.id.includes('c-language') ? 'C' : 'Q';
 
             return `
                 <div class="bank-card" data-id="${bank.id}">

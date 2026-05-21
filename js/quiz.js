@@ -158,7 +158,7 @@ const Quiz = {
     },
 
     async loadBankFromJson() {
-        const jsonFiles = ['c-language.json', 'engineering-mechanics.json'];
+        const jsonFiles = ['c-language.json', 'cnc-machine.json'];
         let lastError = '';
         for (const filename of jsonFiles) {
             try {
@@ -331,13 +331,18 @@ const Quiz = {
     renderFooter() {
         const submitBtn = document.getElementById('btn-submit');
         const hint = document.getElementById('footer-hint');
+        const question = this.state.questions[this.state.currentIndex];
+        const isLightningMultiple = this.state.lightningMode && question?.type === 'multiple';
 
         if (this.state.isReviewMode) {
             if (submitBtn) submitBtn.style.display = 'none';
             if (hint) hint.textContent = '📖 背题模式 - 直接查看答案和解析';
-        } else if (this.state.lightningMode) {
+        } else if (this.state.lightningMode && !isLightningMultiple) {
             if (submitBtn) submitBtn.style.display = 'none';
             if (hint) hint.textContent = '⚡ 闪电模式 - 点击选项直接判对错';
+        } else if (isLightningMultiple) {
+            if (submitBtn) submitBtn.style.display = '';
+            if (hint) hint.textContent = '⚡ 闪电模式 · 多选题请选择完整答案后提交';
         } else {
             if (submitBtn) submitBtn.style.display = '';
             if (hint) hint.textContent = '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换';
@@ -674,8 +679,17 @@ const Quiz = {
 
     renderExplanation(question, isCorrect) {
         const isReviewMode = this.state.isReviewMode;
+        const isEssay = question.type === 'essay' || question.type === '简答题';
+        const essaySelfMarked = !isEssay || this.state.answers[question.id]?.selfCorrect !== undefined;
+        const showResultBanner = !isReviewMode && essaySelfMarked;
+        const essayAnswer = isEssay && question.answer ? `
+            <div style="margin-bottom:var(--space-4)">
+                <strong>参考答案：</strong>
+                <div style="margin-top:8px">${Utils.parseMarkdown(question.answer)}</div>
+            </div>
+        ` : '';
         return `
-            ${!isReviewMode ? `
+            ${showResultBanner ? `
             <div class="result-banner ${isCorrect ? 'correct' : 'wrong'}">
                 <span class="result-banner-icon">${isCorrect ? '🎉' : '😔'}</span>
                 <span class="result-banner-text">${isCorrect ? '回答正确！' : '回答错误'}</span>
@@ -688,6 +702,7 @@ const Quiz = {
                     <span>答案解析</span>
                 </div>
                 <div class="explanation-content">
+                    ${essayAnswer}
                     ${Utils.parseMarkdown(question.explanation || '暂无解析')}
                 </div>
                 ${question.memoryAid ? `
@@ -801,10 +816,6 @@ const Quiz = {
             answers.push(answer);
             answers.sort();
         }
-        if (this.state.lightningMode && this.state.answers[questionId].length > 0) {
-            this.submitCurrent();
-            return;
-        }
         this.saveSession();
         this.renderQuestion();
     },
@@ -815,6 +826,38 @@ const Quiz = {
         inputs.forEach(input => { answers.push(input.value.trim()); });
         this.state.answers[questionId] = answers;
         this.saveSession();
+    },
+
+    submitEssay(questionId) {
+        const question = this.state.questions.find(q => q.id === questionId);
+        if (!question) return;
+
+        const editor = document.getElementById('essay-input');
+        const text = editor ? editor.value.trim() : '';
+        this.recordQuestionTime();
+        this.state.answers[questionId] = { text };
+        this.state.submitted[questionId] = true;
+        this.state.showExplanation[questionId] = true;
+        this.saveSession();
+        this.renderQuestion();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    selfMarkEssay(questionId, isCorrect) {
+        const question = this.state.questions.find(q => q.id === questionId);
+        if (!question) return;
+
+        const previous = this.state.answers[questionId] || {};
+        const answer = {
+            text: previous.text || '',
+            selfCorrect: isCorrect
+        };
+        this.state.answers[questionId] = answer;
+        this.state.submitted[questionId] = true;
+        this.state.showExplanation[questionId] = true;
+        Storage.updateQuestionProgress(this.state.bankId, questionId, isCorrect, answer);
+        this.saveSession();
+        this.renderQuestion();
     },
 
     submitCurrent() {
