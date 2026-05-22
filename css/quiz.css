@@ -916,6 +916,16 @@
     .desktop-only { display: none !important; }
 }
 
+/* 闪电模式答对闪烁动画 */
+@keyframes correct-flash {
+    0% { background-color: rgba(34, 197, 94, 0.2); }
+    100% { background-color: transparent; }
+}
+
+.question-card.correct-flash {
+    animation: correct-flash 0.3s ease-out;
+}
+
 @media (max-width: 768px) {
     /* 头部：紧凑 */
     .quiz-header { padding: 8px 0; }
@@ -941,6 +951,10 @@
         max-width: 140px;
     }
     #btn-submit { flex: 1.2; max-width: 160px; }
+    /* 提交按钮隐藏后，上一题下一题各占一半 */
+    .quiz-footer-actions.submit-hidden .btn {
+        max-width: none;
+    }
 
     /* 题目卡片 */
     .question-header { padding: var(--space-3) var(--space-4); flex-wrap: wrap; gap: 4px; }

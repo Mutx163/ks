@@ -331,21 +331,40 @@ const Quiz = {
     renderFooter() {
         const submitBtn = document.getElementById('btn-submit');
         const hint = document.getElementById('footer-hint');
+        const footerActions = document.querySelector('.quiz-footer-actions');
         const question = this.state.questions[this.state.currentIndex];
         const isLightningMultiple = this.state.lightningMode && question?.type === 'multiple';
+        const isSubmitted = question && this.state.submitted[question.id];
+        const hasAns = question && this.hasAnswer(question);
 
         if (this.state.isReviewMode) {
+            // 背题模式：隐藏提交按钮
             if (submitBtn) submitBtn.style.display = 'none';
+            if (footerActions) footerActions.classList.add('submit-hidden');
             if (hint) hint.textContent = '📖 背题模式 - 直接查看答案和解析';
         } else if (this.state.lightningMode && !isLightningMultiple) {
+            // 闪电模式（非多选）：隐藏提交按钮
             if (submitBtn) submitBtn.style.display = 'none';
+            if (footerActions) footerActions.classList.add('submit-hidden');
             if (hint) hint.textContent = '⚡ 闪电模式 - 点击选项直接判对错';
-        } else if (isLightningMultiple) {
-            if (submitBtn) submitBtn.style.display = '';
-            if (hint) hint.textContent = '⚡ 闪电模式 · 多选题请选择完整答案后提交';
+        } else if (isSubmitted) {
+            // 已提交：隐藏提交按钮
+            if (submitBtn) submitBtn.style.display = 'none';
+            if (footerActions) footerActions.classList.add('submit-hidden');
+            if (hint) hint.textContent = '';
         } else {
-            if (submitBtn) submitBtn.style.display = '';
-            if (hint) hint.textContent = '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换';
+            // 未提交：显示提交按钮（禁用/启用）
+            if (submitBtn) {
+                submitBtn.style.display = '';
+                submitBtn.disabled = !hasAns;
+                submitBtn.title = hasAns ? '' : '请先作答';
+            }
+            if (footerActions) footerActions.classList.remove('submit-hidden');
+            if (hint) {
+                hint.textContent = isLightningMultiple
+                    ? '⚡ 闪电模式 · 多选题请选择完整答案后提交'
+                    : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换';
+            }
         }
     },
 
@@ -797,7 +816,11 @@ const Quiz = {
             return;
         }
         this.saveSession();
-        this.renderQuestion();
+        // 只更新选中状态，不重绘整个题目
+        document.querySelectorAll('.option-item, .judge-option').forEach(item => {
+            item.classList.toggle('selected', item.dataset.answer === answer);
+        });
+        this.renderFooter();
     },
 
     toggleAnswer(questionId, answer) {
@@ -817,7 +840,11 @@ const Quiz = {
             answers.sort();
         }
         this.saveSession();
-        this.renderQuestion();
+        // 只更新选中状态，不重绘整个题目
+        document.querySelectorAll('.option-item').forEach(item => {
+            item.classList.toggle('selected', answers.includes(item.dataset.answer));
+        });
+        this.renderFooter();
     },
 
     updateFillAnswer(questionId) {
@@ -826,6 +853,7 @@ const Quiz = {
         inputs.forEach(input => { answers.push(input.value.trim()); });
         this.state.answers[questionId] = answers;
         this.saveSession();
+        this.renderFooter();
     },
 
     submitEssay(questionId) {
@@ -885,8 +913,12 @@ const Quiz = {
         this.saveSession();
 
         this.renderQuestion();
+        this.renderFooter();
 
         if (this.state.lightningMode && isCorrect) {
+            // 答对时添加闪烁动画
+            const questionCard = document.querySelector('.question-card');
+            if (questionCard) questionCard.classList.add('correct-flash');
             setTimeout(() => this.nextQuestion(), 300);
             return;
         }
@@ -1222,6 +1254,40 @@ const Quiz = {
 
     bindEvents() {
         window.addEventListener('beforeunload', () => this.saveSession());
+
+        // 左右滑动手势支持（移动端）
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const SWIPE_THRESHOLD = 50;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].clientX;
+            touchStartY = e.changedTouches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            // 模态框打开时不处理
+            if (document.getElementById('finish-modal')) return;
+            // 导航面板打开时不处理
+            const navPanel = document.getElementById('nav-panel');
+            if (navPanel && navPanel.classList.contains('show')) return;
+
+            const deltaX = e.changedTouches[0].clientX - touchStartX;
+            const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+            // 忽略垂直滑动（用户在滚动页面）
+            if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+            // 未达到阈值
+            if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+
+            if (deltaX < 0) {
+                // 左滑 → 下一题
+                this.nextQuestion();
+            } else {
+                // 右滑 → 上一题
+                this.prevQuestion();
+            }
+        }, { passive: true });
 
         document.addEventListener('keydown', (e) => {
             // 如果模态框开着不处理快捷键
