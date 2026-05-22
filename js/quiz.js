@@ -5,6 +5,14 @@
 
 import Storage from './storage.js';
 import Utils from './utils.js';
+import { builtinBanks } from './config.js';
+
+const INPUT_SAVE_DEBOUNCE_MS = 300;
+const FILL_AUTO_FOCUS_DELAY_MS = 100;
+const LIGHTNING_NEXT_DELAY_MS = 300;
+const NAV_UNLOCK_DELAY_MS = 250;
+const SAVE_AND_QUIT_DELAY_MS = 300;
+const SWIPE_THRESHOLD_PX = 70;
 
 const Quiz = {
     state: {
@@ -158,9 +166,8 @@ const Quiz = {
     },
 
     async loadBankFromJson() {
-        const jsonFiles = ['c-language.json', 'cnc-machine.json'];
         let lastError = '';
-        for (const filename of jsonFiles) {
+        for (const filename of builtinBanks) {
             try {
                 const response = await fetch(`banks/${filename}`);
                 if (!response.ok) {
@@ -337,35 +344,51 @@ const Quiz = {
         const isSubmitted = question && this.state.submitted[question.id];
         const hasAns = question && this.hasAnswer(question);
 
+        const setSubmitHidden = (hidden) => {
+            if (submitBtn) submitBtn.style.display = hidden ? 'none' : '';
+            if (footerActions) footerActions.classList.toggle('submit-hidden', hidden);
+        };
+        const setHint = (text) => {
+            if (hint) hint.textContent = text;
+        };
+
+        if (!question) {
+            setSubmitHidden(true);
+            setHint('');
+            return;
+        }
+
         if (this.state.isReviewMode) {
-            // 背题模式：隐藏提交按钮
-            if (submitBtn) submitBtn.style.display = 'none';
-            if (footerActions) footerActions.classList.add('submit-hidden');
-            if (hint) hint.textContent = '📖 背题模式 - 直接查看答案和解析';
-        } else if (this.state.lightningMode && !isLightningMultiple) {
-            // 闪电模式（非多选）：隐藏提交按钮
-            if (submitBtn) submitBtn.style.display = 'none';
-            if (footerActions) footerActions.classList.add('submit-hidden');
-            if (hint) hint.textContent = '⚡ 闪电模式 - 点击选项直接判对错';
+            setSubmitHidden(true);
+            setHint('📖 背题模式 - 直接查看答案和解析');
         } else if (isSubmitted) {
-            // 已提交：隐藏提交按钮
-            if (submitBtn) submitBtn.style.display = 'none';
-            if (footerActions) footerActions.classList.add('submit-hidden');
-            if (hint) hint.textContent = '';
+            setSubmitHidden(true);
+            setHint(this.getSubmittedHint(question));
+        } else if (this.state.lightningMode && !isLightningMultiple) {
+            setSubmitHidden(true);
+            setHint('⚡ 闪电模式 - 点击选项直接判对错');
         } else {
-            // 未提交：显示提交按钮（禁用/启用）
+            setSubmitHidden(false);
             if (submitBtn) {
-                submitBtn.style.display = '';
                 submitBtn.disabled = !hasAns;
                 submitBtn.title = hasAns ? '' : '请先作答';
             }
-            if (footerActions) footerActions.classList.remove('submit-hidden');
-            if (hint) {
-                hint.textContent = isLightningMultiple
-                    ? '⚡ 闪电模式 · 多选题请选择完整答案后提交'
-                    : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换';
-            }
+            setHint(isLightningMultiple
+                ? '⚡ 闪电模式 · 多选题请选择完整答案后提交'
+                : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换');
         }
+    },
+
+    getSubmittedHint(question) {
+        const answer = this.state.answers[question.id];
+        const isEssay = question.type === 'essay' || question.type === '简答题';
+        if (isEssay && answer?.selfCorrect === undefined) {
+            return '已显示参考答案，请完成自评';
+        }
+
+        return this.checkAnswer(question)
+            ? '回答正确，可进入下一题'
+            : '回答错误，查看解析后继续';
     },
 
     renderHeader() {
@@ -454,7 +477,7 @@ const Quiz = {
         const showExplanation = isReviewMode || this.state.showExplanation[question.id];
 
         let html = `
-            <div class="question-card">
+            <div class="question-card" data-question-id="${Utils.escapeHtml(question.id)}">
                 <div class="question-header">
                     <div class="question-meta">
                         <span class="question-number">第 ${this.state.currentIndex + 1} 题</span>
@@ -740,12 +763,41 @@ const Quiz = {
         `;
     },
 
+    getQuestionCard() {
+        return document.querySelector('#question-container .question-card');
+    },
+
+    updateSelectedOptionState(answer) {
+        const card = this.getQuestionCard();
+        if (!card) return;
+
+        card.querySelectorAll('.option-item, .judge-option').forEach(item => {
+            const selected = item.dataset.answer === String(answer);
+            item.classList.toggle('selected', selected);
+            item.setAttribute('aria-checked', String(selected));
+        });
+    },
+
+    updateMultipleOptionState(answers) {
+        const card = this.getQuestionCard();
+        if (!card) return;
+
+        card.querySelectorAll('.option-item').forEach(item => {
+            const selected = answers.includes(item.dataset.answer);
+            item.classList.toggle('selected', selected);
+            item.setAttribute('aria-checked', String(selected));
+        });
+    },
+
     bindOptionEvents(question) {
         const isSubmitted = this.state.isReviewMode || this.state.submitted[question.id];
         if (isSubmitted) return;
 
+        const card = this.getQuestionCard();
+        if (!card) return;
+
         if (question.type === 'single') {
-            document.querySelectorAll('.option-item').forEach(item => {
+            card.querySelectorAll('.option-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const answer = item.dataset.answer;
                     this.selectAnswer(question.id, answer);
@@ -754,7 +806,7 @@ const Quiz = {
         }
 
         if (question.type === 'multiple') {
-            document.querySelectorAll('.option-item').forEach(item => {
+            card.querySelectorAll('.option-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const answer = item.dataset.answer;
                     this.toggleAnswer(question.id, answer);
@@ -763,7 +815,7 @@ const Quiz = {
         }
 
         if (question.type === 'judge') {
-            document.querySelectorAll('.judge-option').forEach(item => {
+            card.querySelectorAll('.judge-option').forEach(item => {
                 item.addEventListener('click', () => {
                     const answer = item.dataset.answer === 'true';
                     this.selectAnswer(question.id, answer);
@@ -772,15 +824,15 @@ const Quiz = {
         }
 
         if (question.type === 'fill') {
-            document.querySelectorAll('.fill-input').forEach(input => {
+            card.querySelectorAll('.fill-input').forEach(input => {
                 input.addEventListener('input', Utils.debounce(() => {
                     this.updateFillAnswer(question.id);
-                }, 300));
+                }, INPUT_SAVE_DEBOUNCE_MS));
                 // Enter 跳到下一空
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        const inputs = [...document.querySelectorAll('.fill-input')];
+                        const inputs = [...card.querySelectorAll('.fill-input')];
                         const idx = inputs.indexOf(input);
                         if (idx < inputs.length - 1) {
                             inputs[idx + 1].focus();
@@ -791,16 +843,16 @@ const Quiz = {
                 });
             });
             // 自动聚焦第一个空
-            const firstInput = document.querySelector('.fill-input');
-            if (firstInput) setTimeout(() => firstInput.focus(), 100);
+            const firstInput = card.querySelector('.fill-input');
+            if (firstInput) setTimeout(() => firstInput.focus(), FILL_AUTO_FOCUS_DELAY_MS);
         }
 
         if (question.type === 'code') {
-            const editor = document.getElementById('code-editor');
+            const editor = card.querySelector('#code-editor');
             if (editor) {
                 editor.addEventListener('input', Utils.debounce(() => {
                     this.state.answers[question.id] = editor.value;
-                }, 300));
+                }, INPUT_SAVE_DEBOUNCE_MS));
             }
         }
     },
@@ -817,9 +869,7 @@ const Quiz = {
         }
         this.saveSession();
         // 只更新选中状态，不重绘整个题目
-        document.querySelectorAll('.option-item, .judge-option').forEach(item => {
-            item.classList.toggle('selected', item.dataset.answer === answer);
-        });
+        this.updateSelectedOptionState(answer);
         this.renderFooter();
     },
 
@@ -841,14 +891,13 @@ const Quiz = {
         }
         this.saveSession();
         // 只更新选中状态，不重绘整个题目
-        document.querySelectorAll('.option-item').forEach(item => {
-            item.classList.toggle('selected', answers.includes(item.dataset.answer));
-        });
+        this.updateMultipleOptionState(answers);
         this.renderFooter();
     },
 
     updateFillAnswer(questionId) {
-        const inputs = document.querySelectorAll('.fill-input');
+        const card = this.getQuestionCard();
+        const inputs = card ? card.querySelectorAll('.fill-input') : [];
         const answers = [];
         inputs.forEach(input => { answers.push(input.value.trim()); });
         this.state.answers[questionId] = answers;
@@ -868,6 +917,7 @@ const Quiz = {
         this.state.showExplanation[questionId] = true;
         this.saveSession();
         this.renderQuestion();
+        this.renderFooter();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
@@ -886,6 +936,7 @@ const Quiz = {
         Storage.updateQuestionProgress(this.state.bankId, questionId, isCorrect, answer);
         this.saveSession();
         this.renderQuestion();
+        this.renderFooter();
     },
 
     submitCurrent() {
@@ -917,9 +968,12 @@ const Quiz = {
 
         if (this.state.lightningMode && isCorrect) {
             // 答对时添加闪烁动画
-            const questionCard = document.querySelector('.question-card');
-            if (questionCard) questionCard.classList.add('correct-flash');
-            setTimeout(() => this.nextQuestion(), 300);
+            const questionCard = this.getQuestionCard();
+            if (questionCard) {
+                questionCard.classList.add('correct-flash');
+                setTimeout(() => questionCard.classList.remove('correct-flash'), LIGHTNING_NEXT_DELAY_MS);
+            }
+            setTimeout(() => this.nextQuestion(), LIGHTNING_NEXT_DELAY_MS);
             return;
         }
 
@@ -987,7 +1041,7 @@ const Quiz = {
             this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => { this.state.isNavigating = false; }, 250);
+            setTimeout(() => { this.state.isNavigating = false; }, NAV_UNLOCK_DELAY_MS);
         }
     },
 
@@ -1007,7 +1061,7 @@ const Quiz = {
             this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => { this.state.isNavigating = false; }, 250);
+            setTimeout(() => { this.state.isNavigating = false; }, NAV_UNLOCK_DELAY_MS);
         }
     },
 
@@ -1021,7 +1075,7 @@ const Quiz = {
             this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => { this.state.isNavigating = false; }, 250);
+            setTimeout(() => { this.state.isNavigating = false; }, NAV_UNLOCK_DELAY_MS);
         }
     },
 
@@ -1093,7 +1147,7 @@ const Quiz = {
         this.closeFinishModal();
         this.saveSession();
         Utils.showToast('进度已保存', 'success');
-        setTimeout(() => window.location.href = 'index.html', 300);
+        setTimeout(() => window.location.href = 'index.html', SAVE_AND_QUIT_DELAY_MS);
     },
 
     /**
@@ -1258,7 +1312,6 @@ const Quiz = {
         // 左右滑动手势支持（移动端）
         let touchStartX = 0;
         let touchStartY = 0;
-        const SWIPE_THRESHOLD = 50;
 
         document.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].clientX;
@@ -1278,7 +1331,7 @@ const Quiz = {
             // 忽略垂直滑动（用户在滚动页面）
             if (Math.abs(deltaY) > Math.abs(deltaX)) return;
             // 未达到阈值
-            if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+            if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
 
             if (deltaX < 0) {
                 // 左滑 → 下一题

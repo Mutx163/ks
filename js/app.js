@@ -4,15 +4,15 @@
 
 import Storage from './storage.js';
 import Utils from './utils.js';
+import { builtinBanks } from './config.js';
 
 const App = {
-    builtinBanks: ['c-language.json', 'cnc-machine.json'],
+    builtinBanks,
 
     state: {
         banks: [],
         stats: null,
         lightningMode: false,
-        activeTab: 'overview',
         selectedTypes: {}
     },
 
@@ -100,11 +100,7 @@ const App = {
     render() {
         this.renderSmartBanner();
         this.renderWrongBook();
-        this.renderStatsTabs();
         this.renderStatsOverview();
-        this.renderTrend();
-        this.renderWeakCategories();
-        this.renderHistory();
         this.renderBankGrid();
     },
 
@@ -228,58 +224,6 @@ const App = {
     },
 
     /**
-     * 切换统计标签页
-     */
-    switchTab(tab) {
-        this.state.activeTab = tab;
-
-        document.querySelectorAll('.stats-tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.tab === tab);
-        });
-        document.querySelectorAll('.stats-tab-content').forEach(c => {
-            c.classList.toggle('active', c.id === `tab-${tab}`);
-        });
-    },
-
-    /**
-     * 渲染统计标签页导航
-     */
-    renderStatsTabs() {
-        const stats = this.state.stats;
-        const hasData = stats.totalAnswered > 0;
-        const history = Storage.getHistory();
-        const hasHistory = history.length > 0;
-
-        // 动态显示有内容的标签页
-        const tabs = [
-            { id: 'overview', label: '📊 概览', show: true },
-            { id: 'trend', label: '📈 趋势', show: hasData },
-            { id: 'analysis', label: '📊 分析', show: hasData },
-            { id: 'history', label: '📋 历史', show: hasHistory }
-        ].filter(t => t.show);
-
-        const el = document.getElementById('stats-tabs');
-        if (!el) return;
-
-        if (tabs.length <= 1) {
-            el.style.display = 'none';
-            return;
-        }
-
-        el.innerHTML = `
-            <div class="stats-tab-bar">
-                ${tabs.map(t => `
-                    <button class="stats-tab ${t.id === this.state.activeTab ? 'active' : ''}" 
-                            data-tab="${t.id}" onclick="App.switchTab('${t.id}')">
-                        ${t.label}
-                    </button>
-                `).join('')}
-            </div>
-        `;
-        el.style.display = '';
-    },
-
-    /**
      * 渲染概览统计（含环形图）
      */
     renderStatsOverview() {
@@ -294,19 +238,19 @@ const App = {
 
         el.innerHTML = `
             <div class="stats-grid">
-                <div class="stat-card">
+                <div class="stat-card stat-card-compact">
                     <div class="stat-label">题库数量</div>
                     <div class="stat-value primary">${stats.bankCount}</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card-compact">
                     <div class="stat-label">总题目数</div>
                     <div class="stat-value">${Utils.formatNumber(stats.totalQuestions)}</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card-compact">
                     <div class="stat-label">已答题数</div>
                     <div class="stat-value success">${Utils.formatNumber(stats.totalAnswered)}</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card stat-card-accuracy">
                     <div class="stat-label">正确率</div>
                     <div class="stat-ring">
                         <div class="stat-ring-chart">
@@ -325,143 +269,6 @@ const App = {
                     </div>
                 </div>
             </div>
-        `;
-    },
-
-    /**
-     * 渲染学习趋势
-     */
-    renderTrend() {
-        const el = document.getElementById('tab-trend');
-        if (!el) return;
-
-        const history = Storage.getHistory();
-        if (history.length < 2) {
-            el.innerHTML = '<div class="empty-hint">继续答题即可查看学习趋势 📈</div>';
-            return;
-        }
-
-        // 按天聚合
-        const dayMap = {};
-        const now = new Date();
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(d.getDate() - i);
-            const key = `${d.getMonth() + 1}/${d.getDate()}`;
-            dayMap[key] = { correct: 0, total: 0 };
-        }
-
-        for (const h of history) {
-            const d = new Date(h.timestamp);
-            const key = `${d.getMonth() + 1}/${d.getDate()}`;
-            if (dayMap[key]) {
-                dayMap[key].correct += h.correct || 0;
-                dayMap[key].total += h.total || 0;
-            }
-        }
-
-        const days = Object.entries(dayMap);
-        const maxTotal = Math.max(1, ...days.map(([_, d]) => d.total));
-
-        el.innerHTML = `
-            <div class="trend-chart">
-                ${days.map(([label, data]) => {
-                    const acc = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
-                    const barHeight = data.total > 0 ? Math.max(4, Math.round((data.total / maxTotal) * 100)) : 0;
-                    return `
-                        <div class="trend-bar-group">
-                            <div class="trend-bar-value">${data.total > 0 ? acc + '%' : '-'}</div>
-                            <div class="trend-bar-track">
-                                <div class="trend-bar-fill" style="height: ${barHeight}%"></div>
-                            </div>
-                            <div class="trend-bar-label">${label}</div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    },
-
-    /**
-     * 渲染薄弱知识点
-     */
-    renderWeakCategories() {
-        const el = document.getElementById('tab-analysis');
-        if (!el) return;
-
-        const allWeak = [];
-        for (const bank of this.state.banks) {
-            const weak = Storage.getWeakCategories(bank.id, 3);
-            for (const w of weak) {
-                allWeak.push({ bankName: bank.name, bankId: bank.id, ...w });
-            }
-        }
-
-        allWeak.sort((a, b) => a.accuracy - b.accuracy);
-        const topWeak = allWeak.slice(0, 5);
-
-        if (topWeak.length === 0) {
-            el.innerHTML = '<div class="empty-hint">继续答题即可分析薄弱知识点 📊</div>';
-            return;
-        }
-
-        const accClass = (acc) => acc < 60 ? 'danger' : acc < 80 ? 'warning' : 'success';
-
-        el.innerHTML = `
-            <div class="weak-list">
-                ${topWeak.map(w => `
-                    <div class="weak-item">
-                        <div class="weak-item-info">
-                            <span class="weak-item-name">${Utils.escapeHtml(w.name)}</span>
-                            <span class="weak-item-bank">${Utils.escapeHtml(w.bankName)}</span>
-                        </div>
-                        <div class="weak-item-stats">
-                            <span class="weak-item-accuracy ${accClass(w.accuracy)}">${w.accuracy}%</span>
-                            <span class="weak-item-detail">${w.correct}/${w.answered} 正确</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    },
-
-    /**
-     * 渲染历史记录
-     */
-    renderHistory() {
-        const el = document.getElementById('tab-history');
-        if (!el) return;
-
-        const history = Storage.getHistory();
-        if (history.length === 0) {
-            el.innerHTML = '<div class="empty-hint">暂无答题记录 📋</div>';
-            return;
-        }
-
-        el.innerHTML = `
-            <div class="history-list">
-                ${history.slice(0, 20).map(h => {
-                    const date = new Date(h.timestamp);
-                    const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
-                    const duration = h.duration || 0;
-                    const minutes = Math.floor(duration / 60);
-                    const seconds = duration % 60;
-                    return `
-                        <div class="history-item">
-                            <div class="history-item-info">
-                                <span class="history-item-name">${Utils.escapeHtml(h.bankName || '未知题库')}</span>
-                                <span class="history-item-mode">${h.mode || ''}</span>
-                            </div>
-                            <div class="history-item-stats">
-                                <span class="history-item-correct">${h.correct || 0}/${h.total || 0}</span>
-                                <span>${minutes > 0 ? minutes + '分' : ''}${seconds}秒</span>
-                                <span>${dateStr}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-            ${history.length > 20 ? '<div style="text-align:center;margin-top:8px;font-size:12px;color:var(--text-tertiary)">仅显示最近 20 条</div>' : ''}
         `;
     },
 
@@ -902,6 +709,13 @@ const App = {
         const settingsBtn = document.getElementById('btn-settings');
         if (settingsBtn) {
             settingsBtn.addEventListener('click', () => this.showSettings());
+        }
+
+        const historyBtn = document.getElementById('btn-history');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', () => {
+                window.location.href = 'trend.html#recent-history';
+            });
         }
 
         // 快捷键帮助

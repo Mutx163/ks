@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习趋势 - 智能刷题系统</title>
+
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/insights.css">
+</head>
+<body data-page="trend">
+    <header class="insight-header">
+        <div class="container">
+            <div class="insight-heading">
+                <a class="btn btn-ghost btn-sm" href="index.html" aria-label="返回首页">←</a>
+                <div>
+                    <h1>学习趋势</h1>
+                    <p>近期答题节奏与题库表现</p>
+                </div>
+            </div>
+            <div class="insight-actions">
+                <a class="btn btn-secondary btn-sm" href="analysis.html">分析</a>
+                <a class="btn btn-primary btn-sm" href="index.html#bank-grid">刷题</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="insight-main">
+        <div class="container">
+            <section class="insight-summary" id="trend-summary" aria-label="趋势概览"></section>
+
+            <section class="insight-panel">
+                <div class="insight-panel-header">
+                    <h2>14 日趋势</h2>
+                    <span id="trend-range" class="insight-subtle"></span>
+                </div>
+                <div id="daily-trend"></div>
+            </section>
+
+            <section class="insight-grid">
+                <div class="insight-panel">
+                    <div class="insight-panel-header">
+                        <h2>题库表现</h2>
+                    </div>
+                    <div id="bank-trend"></div>
+                </div>
+
+                <div class="insight-panel">
+                    <div class="insight-panel-header">
+                        <h2>最近记录</h2>
+                    </div>
+                    <div id="recent-history"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script type="module" src="js/insights.js"></script>
+</body>
+</html>

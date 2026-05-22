@@ -19,7 +19,9 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: path.resolve(__dirname, 'index.html'),
-                quiz: path.resolve(__dirname, 'quiz.html')
+                quiz: path.resolve(__dirname, 'quiz.html'),
+                trend: path.resolve(__dirname, 'trend.html'),
+                analysis: path.resolve(__dirname, 'analysis.html')
             }
         }
     },

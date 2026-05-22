@@ -50,13 +50,13 @@ npm run build
 
 1. 按照 `题库导入文档.md` 格式编写JSON文件
 2. 保存到 `banks/` 目录，如 `banks/new-bank.json`
-3. 编辑 `js/app.js`，在 `builtinBanks` 数组中添加文件名：
+3. 编辑 `js/config.js`，在 `builtinBanks` 数组中添加文件名：
 
 ```javascript
-builtinBanks: [
+export const builtinBanks = [
     'c-language.json',
     'new-bank.json'  // 新增
-],
+];
 ```
 
 4. 本地测试：`npm run dev`
