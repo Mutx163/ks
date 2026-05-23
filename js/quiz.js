@@ -5,7 +5,7 @@
 
 import Storage from './storage.js';
 import Utils from './utils.js';
-import { builtinBanks } from './config.js';
+import BankLoader from './bankLoader.js';
 
 const INPUT_SAVE_DEBOUNCE_MS = 300;
 const FILL_AUTO_FOCUS_DELAY_MS = 100;
@@ -166,27 +166,13 @@ const Quiz = {
     },
 
     async loadBankFromJson() {
-        let lastError = '';
-        for (const filename of builtinBanks) {
-            try {
-                const response = await fetch(`banks/${filename}`);
-                if (!response.ok) {
-                    lastError = `HTTP ${response.status}: ${response.statusText}`;
-                    continue;
-                }
-                const bank = await response.json();
-                if (bank.id === this.state.bankId) {
-                    Storage.addBank(bank);
-                    this.state.bank = bank;
-                    Utils.showToast(`题库 "${bank.name}" 加载成功`, 'success', 1500);
-                    return;
-                }
-            } catch (e) {
-                lastError = e.message || '网络错误';
-                console.error(`Failed to load ${filename}:`, e);
-            }
+        const bank = await BankLoader.loadBankById(this.state.bankId);
+        if (bank) {
+            this.state.bank = bank;
+            Utils.showToast(`题库 "${bank.name}" 加载成功`, 'success', 1500);
+        } else {
+            Utils.showToast('题库加载失败', 'error', 5000);
         }
-        Utils.showToast(`题库加载失败：${lastError || '题库文件未找到'}`, 'error', 5000);
     },
 
     prepareQuestions() {

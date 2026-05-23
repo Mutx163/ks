@@ -4,11 +4,9 @@
 
 import Storage from './storage.js';
 import Utils from './utils.js';
-import { builtinBanks } from './config.js';
+import BankLoader from './bankLoader.js';
 
 const App = {
-    builtinBanks,
-
     state: {
         banks: [],
         stats: null,
@@ -17,79 +15,11 @@ const App = {
     },
 
     async init() {
-        this.removeDeprecatedBanks();
-        await this.loadBuiltinBanks();
+        BankLoader.removeDeprecatedBanks(new Set(['engineering-mechanics', '工程力学']));
+        await BankLoader.loadAllBuiltinBanks();
         this.loadData();
         this.render();
         this.bindEvents();
-    },
-
-    removeDeprecatedBanks() {
-        const deprecatedIds = new Set(['engineering-mechanics']);
-
-        Storage.getBanks().forEach(bank => {
-            if (bank.id === 'engineering-mechanics' || bank.name === '工程力学') {
-                deprecatedIds.add(bank.id);
-            }
-        });
-
-        deprecatedIds.forEach(bankId => Storage.removeBank(bankId));
-
-        const history = Storage.getHistory().filter(record =>
-            !deprecatedIds.has(record.bankId) && record.bankName !== '工程力学'
-        );
-        Storage.set(Storage.KEYS.HISTORY, history);
-
-        const sessions = Storage.get(Storage.KEYS.SESSION) || {};
-        for (const key of Object.keys(sessions)) {
-            const [bankId] = key.split(':');
-            if (deprecatedIds.has(bankId)) {
-                delete sessions[key];
-            }
-        }
-        Storage.set(Storage.KEYS.SESSION, sessions);
-
-        const cacheKey = 'quiz_cache_versions';
-        const cacheVersions = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-        deprecatedIds.forEach(bankId => {
-            delete cacheVersions[bankId];
-        });
-        localStorage.setItem(cacheKey, JSON.stringify(cacheVersions));
-    },
-
-    /**
-     * 加载内置题库（带版本缓存，避免重复 fetch）
-     */
-    async loadBuiltinBanks() {
-        const cacheKey = 'quiz_cache_versions';
-        const cacheVersions = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-
-        for (const filename of this.builtinBanks) {
-            try {
-                const bankId = filename.replace('.json', '');
-                const existing = Storage.getBank(bankId);
-
-                // 如果已有完整数据且版本匹配，跳过 fetch
-                if (existing && existing.questions && cacheVersions[bankId] === existing.version) {
-                    continue;
-                }
-
-                const response = await fetch(`banks/${filename}`);
-                if (response.ok) {
-                    const bank = await response.json();
-                    // 检查是否需要更新：无此题库、版本不同、或内存中没有完整题目
-                    const localBank = Storage.getBank(bank.id);
-                    const needsUpdate = !localBank || localBank.version !== bank.version || !localBank.questions;
-                    if (needsUpdate) {
-                        Storage.addBank(bank);
-                        cacheVersions[bank.id] = bank.version;
-                    }
-                }
-            } catch (e) {
-                console.error(`Failed to load ${filename}:`, e);
-            }
-        }
-        localStorage.setItem(cacheKey, JSON.stringify(cacheVersions));
     },
 
     loadData() {

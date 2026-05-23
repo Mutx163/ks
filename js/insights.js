@@ -1,6 +1,6 @@
 import Storage from './storage.js';
 import Utils from './utils.js';
-import { builtinBanks } from './config.js';
+import BankLoader from './bankLoader.js';
 
 const Insights = {
     state: {
@@ -35,16 +35,7 @@ const Insights = {
     },
 
     async loadBuiltinBanks() {
-        for (const filename of builtinBanks) {
-            try {
-                const response = await fetch(`banks/${filename}`);
-                if (!response.ok) continue;
-                const bank = await response.json();
-                Storage.addBank(bank);
-            } catch (e) {
-                console.error(`Failed to load ${filename}:`, e);
-            }
-        }
+        await BankLoader.loadAllBuiltinBanks();
     },
 
     loadData() {
