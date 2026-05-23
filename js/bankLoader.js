@@ -91,41 +91,10 @@ const BankLoader = {
      */
     async loadAllBuiltinBanks() {
         const results = [];
-        const cacheVersions = this._getCacheVersions();
-
         for (const filename of builtinBanks) {
-            try {
-                const bankId = filename.replace('.json', '');
-                const existing = Storage.getBank(bankId);
-
-                // 如果已有完整数据且版本匹配，跳过 fetch
-                if (existing && existing.questions && cacheVersions[bankId] === existing.version) {
-                    results.push(existing);
-                    continue;
-                }
-
-                const response = await fetch(`banks/${filename}`);
-                if (!response.ok) {
-                    console.error(`Failed to load ${filename}: HTTP ${response.status}`);
-                    continue;
-                }
-
-                const bank = await response.json();
-                const localBank = Storage.getBank(bank.id);
-                const needsUpdate = !localBank || localBank.version !== bank.version || !localBank.questions;
-
-                if (needsUpdate) {
-                    Storage.addBank(bank);
-                    cacheVersions[bank.id] = bank.version;
-                }
-
-                results.push(bank);
-            } catch (e) {
-                console.error(`Failed to load ${filename}:`, e);
-            }
+            const bank = await this.loadBank(filename);
+            if (bank) results.push(bank);
         }
-
-        this._saveCacheVersions(cacheVersions);
         return results;
     },
 

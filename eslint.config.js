@@ -31,7 +31,12 @@ export default [
                 prompt: 'readonly',
                 KaTeX: 'readonly',
                 Prism: 'readonly',
-                katex: 'readonly'
+                katex: 'readonly',
+                console: 'readonly',
+                Blob: 'readonly',
+                URL: 'readonly',
+                URLSearchParams: 'readonly',
+                FileReader: 'readonly'
             }
         }
     },

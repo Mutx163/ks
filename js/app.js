@@ -438,7 +438,7 @@ const App = {
         const totalQuestions = bank.questions?.length || 0;
 
         const content = `
-            <p style="margin-bottom: var(--space-3); color: var(--text-secondary);">题库：${bank.name}（${totalQuestions}题）</p>
+            <p style="margin-bottom: var(--space-3); color: var(--text-secondary);">题库：${Utils.escapeHtml(bank.name)}（${totalQuestions}题）</p>
             <label>考试限时（分钟，0表示不限时）</label>
             <input type="number" id="exam-time" value="60" min="0" max="300">
             <label>及格线（百分比）</label>
