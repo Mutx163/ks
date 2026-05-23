@@ -28,22 +28,6 @@ const BankLoader = {
     },
 
     /**
-     * 清除指定题库的版本缓存
-     */
-    clearCache(bankId) {
-        const versions = this._getCacheVersions();
-        delete versions[bankId];
-        this._saveCacheVersions(versions);
-    },
-
-    /**
-     * 清除所有版本缓存
-     */
-    clearAllCache() {
-        localStorage.removeItem(CACHE_KEY);
-    },
-
-    /**
      * 加载单个题库（带版本缓存）
      * @param {string} filename - 题库文件名，如 'c-language.json'
      * @returns {Promise<object|null>} - 返回题库数据或 null

@@ -73,11 +73,29 @@ const App = {
     },
 
     clearAllWrong() {
-        if (!confirm('确定清空全部错题本？此操作不可恢复。')) return;
-        Storage.clearAllWrong();
-        Utils.showToast('错题本已清空', 'success');
-        this.loadData();
-        this.render();
+        Utils.showModal({
+            title: '⚠️ 清空错题本',
+            content: '<p>确定清空全部错题本？此操作不可恢复。</p>',
+            buttons: [
+                {
+                    label: '确定清空',
+                    class: 'btn-danger',
+                    onClick: (modal) => {
+                        modal.remove();
+                        Storage.clearAllWrong();
+                        Utils.showToast('错题本已清空', 'success');
+                        this.loadData();
+                        this.render();
+                    }
+                },
+                {
+                    label: '取消',
+                    class: 'btn-secondary',
+                    onClick: (modal) => modal.remove()
+                }
+            ],
+            size: 'sm'
+        });
     },
 
     startWrongPractice() {
@@ -491,12 +509,29 @@ const App = {
         const bank = Storage.getBank(bankId);
         if (!bank) return;
 
-        if (confirm(`确定要重置 "${bank.name}" 的所有进度吗？`)) {
-            Storage.resetBankProgress(bankId);
-            Utils.showToast('进度已重置', 'success');
-            this.loadData();
-            this.render();
-        }
+        Utils.showModal({
+            title: '⚠️ 重置进度',
+            content: `<p>确定要重置「${Utils.escapeHtml(bank.name)}」的所有进度吗？</p>`,
+            buttons: [
+                {
+                    label: '确定重置',
+                    class: 'btn-danger',
+                    onClick: (modal) => {
+                        modal.remove();
+                        Storage.resetBankProgress(bankId);
+                        Utils.showToast('进度已重置', 'success');
+                        this.loadData();
+                        this.render();
+                    }
+                },
+                {
+                    label: '取消',
+                    class: 'btn-secondary',
+                    onClick: (modal) => modal.remove()
+                }
+            ],
+            size: 'sm'
+        });
     },
 
     /**
@@ -526,9 +561,26 @@ const App = {
             }
 
             if (Storage.bankExists(data.id)) {
-                if (!confirm(`题库 "${data.name}" 已存在，是否覆盖？`)) {
-                    return;
-                }
+                const confirmed = await new Promise(resolve => {
+                    Utils.showModal({
+                        title: '⚠️ 覆盖题库',
+                        content: `<p>题库「${Utils.escapeHtml(data.name)}」已存在，是否覆盖？</p>`,
+                        buttons: [
+                            {
+                                                                label: '确定覆盖',
+                                class: 'btn-danger',
+                                onClick: (modal) => { modal.remove(); resolve(true); }
+                            },
+                            {
+                                label: '取消',
+                                class: 'btn-secondary',
+                                onClick: (modal) => { modal.remove(); resolve(false); }
+                            }
+                        ],
+                        size: 'sm'
+                    });
+                });
+                if (!confirmed) return;
             }
 
             Storage.addBank(data);

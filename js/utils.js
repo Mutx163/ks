@@ -251,16 +251,6 @@ const Utils = {
     },
 
     /**
-     * 显示确认对话框
-     */
-    showConfirm(message, title = '确认') {
-        return new Promise((resolve) => {
-            const confirmed = window.confirm(message);
-            resolve(confirmed);
-        });
-    },
-
-    /**
      * 复制文本到剪贴板
      */
     async copyToClipboard(text) {
@@ -470,12 +460,6 @@ const Utils = {
         return overlay;
     },
 
-    /**
-     * 关闭指定模态框
-     */
-    closeModal(modal) {
-        if (modal) modal.remove();
-    }
 };
 
 // 导出

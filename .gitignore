@@ -30,3 +30,7 @@ coverage/
 
 # 构建缓存
 .vite/
+.eslintcache
+
+# 补丁文件
+*.patch
