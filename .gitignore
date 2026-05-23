@@ -12,3 +12,21 @@ banks/*.bak
 gclx/
 _*.py
 reviews/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# 测试覆盖率
+coverage/
+
+# 构建缓存
+.vite/

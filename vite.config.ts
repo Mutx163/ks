@@ -1,6 +1,9 @@
-import path from 'path';
 import { defineConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
     server: {
@@ -18,16 +21,16 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                main: path.resolve(__dirname, 'index.html'),
-                quiz: path.resolve(__dirname, 'quiz.html'),
-                trend: path.resolve(__dirname, 'trend.html'),
-                analysis: path.resolve(__dirname, 'analysis.html')
+                main: resolve(__dirname, 'index.html'),
+                quiz: resolve(__dirname, 'quiz.html'),
+                trend: resolve(__dirname, 'trend.html'),
+                analysis: resolve(__dirname, 'analysis.html')
             }
         }
     },
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, '.'),
+            '@': resolve(__dirname, '.'),
         }
     }
 });
