@@ -22,10 +22,17 @@ const Utils = {
         if (typeof lucide === 'undefined') return;
         lucide.createIcons();
 
-        // 设置 MutationObserver 自动转换新图标
+        // 设置 MutationObserver 自动转换新图标（防抖避免无限循环）
         if (!this._iconObserver) {
+            let iconTimer = null;
             this._iconObserver = new MutationObserver(() => {
-                lucide.createIcons();
+                if (iconTimer) clearTimeout(iconTimer);
+                iconTimer = setTimeout(() => {
+                    const pending = document.querySelectorAll('i[data-lucide]');
+                    if (pending.length > 0) {
+                        lucide.createIcons();
+                    }
+                }, 50);
             });
             this._iconObserver.observe(document.body, {
                 childList: true,
