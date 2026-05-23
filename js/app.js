@@ -615,7 +615,8 @@ const App = {
                                 }
                             }
                         ],
-                        size: 'sm'
+                        size: 'sm',
+                        onClose: () => resolve(false)
                     });
                 });
                 if (!confirmed) return;

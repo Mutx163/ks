@@ -115,8 +115,6 @@ const Quiz = {
 
         this.autoSaveInterval = setInterval(() => this.saveSession(), 30000);
         this.timerInterval = setInterval(() => this.updateTimerDisplay(), 1000);
-
-        console.log('Quiz initialized', this.state);
     },
 
     updateTimerDisplay() {
@@ -204,10 +202,11 @@ const Quiz = {
         }
 
         switch (this.state.mode) {
-            case 'wrong':
+            case 'wrong': {
                 const wrongIds = Storage.getWrongQuestions(this.state.bankId);
                 questions = questions.filter((q) => wrongIds.includes(q.id));
                 break;
+            }
             case 'random':
             case 'shuffle_options':
                 questions = Utils.shuffleArray(questions);
@@ -215,14 +214,16 @@ const Quiz = {
             case 'review':
                 this.state.isReviewMode = true;
                 break;
-            case 'spaced':
+            case 'spaced': {
                 const dueQuestions = Storage.getDueQuestions(this.state.bankId);
                 questions = dueQuestions;
                 break;
-            case 'bookmark':
+            }
+            case 'bookmark': {
                 const bookmarkIds = Storage.getBankBookmarks(this.state.bankId);
                 questions = questions.filter((q) => bookmarkIds.includes(q.id));
                 break;
+            }
             case 'exam':
             case 'all':
             default:
@@ -390,16 +391,6 @@ const Quiz = {
 
     renderHeader() {
         document.getElementById('quiz-title').textContent = this.state.bank.name;
-
-        const modeNames = {
-            all: '顺序刷题',
-            random: '随机刷题',
-            wrong: '错题重做',
-            review: '背题模式',
-            spaced: '智能复习',
-            bookmark: '收藏题目',
-            exam: '模拟考试'
-        };
 
         const timerEl = document.getElementById('exam-timer');
         if (timerEl) {
@@ -1060,12 +1051,13 @@ const Quiz = {
         switch (question.type) {
             case 'single':
                 return userAnswer === question.answer;
-            case 'multiple':
+            case 'multiple': {
                 const userSet = new Set(userAnswer || []);
                 const correctSet = new Set(question.answer || []);
                 return (
                     userSet.size === correctSet.size && [...userSet].every((a) => correctSet.has(a))
                 );
+            }
             case 'judge':
                 return userAnswer === question.answer;
             case 'fill':
@@ -1075,9 +1067,10 @@ const Quiz = {
             case 'code':
                 return true;
             case 'essay':
-            case '简答题':
+            case '简答题': {
                 const eAns = this.state.answers[question.id];
                 return eAns && eAns.selfCorrect === true;
+            }
             default:
                 return false;
         }
@@ -1239,7 +1232,6 @@ const Quiz = {
     },
 
     renderResult() {
-        const stats = Storage.getBankStats(this.state.bankId);
         const duration = Math.round((Date.now() - this.state.startTime) / 1000);
         const minutes = Math.floor(duration / 60);
         const seconds = duration % 60;

@@ -42,7 +42,7 @@ const Utils = {
         if (obj === null || typeof obj !== 'object') return obj;
         try {
             return JSON.parse(JSON.stringify(obj));
-        } catch (e) {
+        } catch (_e) {
             return obj;
         }
     },
@@ -264,7 +264,7 @@ const Utils = {
             await navigator.clipboard.writeText(text);
             this.showToast('已复制到剪贴板', 'success');
             return true;
-        } catch (e) {
+        } catch (_e) {
             // 降级方案
             const textarea = document.createElement('textarea');
             textarea.value = text;
@@ -319,7 +319,7 @@ const Utils = {
                 try {
                     const data = JSON.parse(e.target.result);
                     resolve(data);
-                } catch (err) {
+                } catch (_err) {
                     reject(new Error('文件格式错误，请确保是有效的JSON文件'));
                 }
             };
@@ -417,7 +417,7 @@ const Utils = {
      * @param {string} [options.size] - 尺寸：'sm' | 'md' | 'lg'
      * @returns {HTMLElement} 模态框元素
      */
-    showModal({ title, content, buttons = [], size = 'md' }) {
+    showModal({ title, content, buttons = [], size = 'md', onClose }) {
         const id = 'modal-' + this.generateId();
         const sizeClass = size === 'sm' ? 'modal-sm' : size === 'lg' ? 'modal-lg' : '';
 
@@ -432,8 +432,8 @@ const Utils = {
             <div class="modal-overlay show" id="${id}">
                 <div class="modal-content ${sizeClass}">
                     <div class="modal-header">
-                        <h3 class="modal-title">${title}</h3>
-                        <button class="modal-close" data-modal-close>×</button>
+                        <h3 class="modal-title">${this.escapeHtml(title)}</h3>
+                        <button class="modal-close" data-modal-close aria-label="关闭">×</button>
                     </div>
                     <div class="modal-body">${content}</div>
                     <div class="modal-footer">${buttonsHtml}</div>
@@ -446,6 +446,12 @@ const Utils = {
         const overlay = div.firstElementChild;
         document.body.appendChild(overlay);
 
+        // 关闭处理
+        const close = () => {
+            overlay.remove();
+            if (onClose) onClose();
+        };
+
         // 绑定按钮事件
         buttons.forEach((btn, i) => {
             const btnEl = overlay.querySelector(`[data-modal-btn="${i}"]`);
@@ -457,13 +463,22 @@ const Utils = {
         // 关闭按钮
         const closeBtn = overlay.querySelector('[data-modal-close]');
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => overlay.remove());
+            closeBtn.addEventListener('click', close);
         }
 
         // 点击遮罩关闭
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) overlay.remove();
+            if (e.target === overlay) close();
         });
+
+        // Escape 键关闭
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                document.removeEventListener('keydown', handleEscape);
+                close();
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
 
         return overlay;
     }
