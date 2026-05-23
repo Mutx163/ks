@@ -125,7 +125,7 @@ const App = {
 
         if (dueCount > 0) {
             // 有待复习
-            icon = '🧠';
+            icon = 'brain';
             title = '今日待复习';
             desc = `有 ${dueCount} 道题需要复习，间隔重复有助于长期记忆`;
             btn = `<button class="btn btn-primary btn-sm" onclick="App.startSmartReview()">开始复习</button>`;
@@ -133,23 +133,23 @@ const App = {
             const date = new Date(lastSession.timestamp);
             const isToday = new Date().toDateString() === date.toDateString();
             if (isToday) {
-                icon = '🎉';
+                icon = 'party-popper';
                 title = '今日已无待复习';
                 desc = `上次答题：${lastSession.correct}/${lastSession.total} 正确`;
                 btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">继续刷题</button>`;
             } else {
-                icon = '👋';
+                icon = 'hand-metal';
                 title = '欢迎回来';
                 desc = `上次答题：${Utils.formatDate(lastSession.timestamp, 'MM月DD日 HH:mm')}，正确率 ${Math.round((lastSession.correct / lastSession.total) * 100)}%`;
                 btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">开始刷题</button>`;
             }
         } else if (stats.totalQuestions > 0) {
-            icon = '👋';
+            icon = 'rocket';
             title = '欢迎使用智能刷题系统';
             desc = `共 ${stats.totalQuestions} 道题，选择一个题库开始学习吧`;
             btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">查看题库</button>`;
         } else {
-            icon = '📥';
+            icon = 'download';
             title = '还没有题库';
             desc = '点击导入按钮或等待内置题库加载';
             btn = `<button class="btn btn-primary btn-sm" onclick="App.importBank()">导入题库</button>`;
@@ -157,7 +157,7 @@ const App = {
 
         el.innerHTML = `
             <div class="smart-banner">
-                <div class="smart-banner-icon">${icon}</div>
+                <div class="smart-banner-icon">${Utils.icon(icon, 'icon-xl')}</div>
                 <div class="smart-banner-info">
                     <div class="smart-banner-title">${title}</div>
                     <div class="smart-banner-desc">${desc}</div>
@@ -640,8 +640,9 @@ const App = {
 
         Storage.updateSettings({ theme });
 
-        const themeIcons = { auto: '🌓 跟随系统', light: '☀️ 浅色', dark: '🌙 深色' };
-        Utils.showToast(`主题：${themeIcons[theme]}`, 'success', 1500);
+        const themeLabels = { auto: '跟随系统', light: '浅色模式', dark: '深色模式' };
+        const themeIconNames = { auto: 'monitor', light: 'sun', dark: 'moon' };
+        Utils.showToast(`${Utils.icon(themeIconNames[theme] || 'monitor')} 主题：${themeLabels[theme]}`, 'success', 1500);
     },
 
     /**
@@ -831,7 +832,7 @@ const App = {
         // 首次访问显示快捷键提示
         if (!localStorage.getItem('quiz_shortcuts_shown')) {
             setTimeout(() => {
-                Utils.showToast('💡 按 Enter 提交 · Alt+←→ 切换 · A-D 选答案', 'info', 4000);
+                Utils.showToast(`${Utils.icon('lightbulb')} 按 Enter 提交 · Alt+←→ 切换 · A-D 选答案`, 'info', 4000);
                 localStorage.setItem('quiz_shortcuts_shown', '1');
             }, 2000);
         }

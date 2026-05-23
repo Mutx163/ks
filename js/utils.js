@@ -416,7 +416,9 @@ const Utils = {
      * 获取难度星级
      */
     getDifficultyStars(level) {
-        return '★'.repeat(level) + '☆'.repeat(5 - level);
+        const filled = '<i data-lucide="star" class="icon filled"></i>'.repeat(level);
+        const empty = '<i data-lucide="star" class="icon"></i>'.repeat(5 - level);
+        return filled + empty;
     },
 
     /**
