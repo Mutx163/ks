@@ -95,10 +95,12 @@ const BankLoader = {
             return existing;
         }
 
-        // 在内置题库中查找对应文件
-        const filename = builtinBanks.find((f) => f.replace('.json', '') === bankId);
-        if (filename) {
-            return await this.loadBank(filename);
+        // 遍历内置题库文件，加载后匹配 ID
+        for (const filename of builtinBanks) {
+            const bank = await this.loadBank(filename);
+            if (bank && bank.id === bankId) {
+                return bank;
+            }
         }
 
         console.error(`Bank not found: ${bankId}`);
