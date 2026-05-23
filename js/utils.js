@@ -3,8 +3,6 @@
  */
 
 const Utils = {
-    _iconObserver: null,
-
     /**
      * 创建 Lucide 图标 HTML
      * @param {string} name - 图标名称
@@ -12,32 +10,19 @@ const Utils = {
      * @returns {string} 图标 HTML
      */
     icon(name, extraClass = '') {
+        if (typeof lucide === 'undefined') {
+            // Lucide 未加载时返回空字符串
+            return '';
+        }
         return `<i data-lucide="${name}" class="icon ${extraClass}"></i>`;
     },
 
     /**
-     * 初始化页面上的 Lucide 图标（含自动监听）
+     * 初始化页面上的 Lucide 图标
      */
     initIcons() {
-        if (typeof lucide === 'undefined') return;
-        lucide.createIcons();
-
-        // 设置 MutationObserver 自动转换新图标（防抖避免无限循环）
-        if (!this._iconObserver) {
-            let iconTimer = null;
-            this._iconObserver = new MutationObserver(() => {
-                if (iconTimer) clearTimeout(iconTimer);
-                iconTimer = setTimeout(() => {
-                    const pending = document.querySelectorAll('i[data-lucide]');
-                    if (pending.length > 0) {
-                        lucide.createIcons();
-                    }
-                }, 50);
-            });
-            this._iconObserver.observe(document.body, {
-                childList: true,
-                subtree: true
-            });
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
         }
     },
     /**
