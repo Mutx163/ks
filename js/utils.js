@@ -263,8 +263,9 @@ const Utils = {
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.textContent = message;
+        toast.innerHTML = message;
         document.body.appendChild(toast);
+        this.initIcons();
 
         // 自动移除
         setTimeout(() => {
