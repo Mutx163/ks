@@ -265,7 +265,7 @@ const App = {
         if (banks.length === 0) {
             container.innerHTML = `
                 <div class="bank-empty">
-                    <div class="bank-empty-icon">📚</div>
+                    <div class="bank-empty-icon">${Utils.icon('book-open', 'icon-xl')}</div>
                     <div class="bank-empty-title">加载题库中...</div>
                     <div class="bank-empty-desc">请稍候，题库正在加载</div>
                 </div>
@@ -305,7 +305,7 @@ const App = {
                             .slice(0, 3)
                             .map((cat) => `<span class="tag">${Utils.escapeHtml(cat)}</span>`)
                             .join('')}
-                        ${dueCount > 0 ? `<span class="tag tag-warning">🧠 ${dueCount} 待复习</span>` : ''}
+                        ${dueCount > 0 ? `<span class="tag tag-warning">${Utils.icon('brain')} ${dueCount} 待复习</span>` : ''}
                         <span class="tag">${bankTypes
                             .filter((t) => t !== 'all')
                             .map((t) => this.getTypeLabel(t))
@@ -342,7 +342,7 @@ const App = {
                                 const isActive =
                                     (this.state.selectedTypes[bank.id] || 'all') === type;
                                 return `<button class="bank-type-btn ${isActive ? 'active' : ''}" onclick="App.selectType('${bank.id}', '${type}')">
-                                ${type === 'all' ? '📚 全部' : this.getTypeLabel(type)}
+                                ${type === 'all' ? Utils.icon('layers') + ' 全部' : this.getTypeLabel(type)}
                             </button>`;
                             })
                             .join('')}
@@ -350,17 +350,17 @@ const App = {
 
                     <!-- 刷题模式按钮网格 -->
                     <div class="bank-card-modes">
-                        <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')">🚀 顺序刷题</button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'random')">🎲 随机</button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'shuffle_options')">🎲 选项乱序</button>
+                        <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')">${Utils.icon('list')} 顺序刷题</button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'random')">${Utils.icon('shuffle')} 随机</button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'shuffle_options')">${Utils.icon('refresh-cw')} 选项乱序</button>
                         <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>
-                            🔄 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
+                            ${Utils.icon('alert-circle')} 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
                         </button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'review')">📖 背题</button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'review')">${Utils.icon('book-open')} 背题</button>
                         ${
                             dueCount > 0
                                 ? `
-                            <button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bank.id}', 'spaced')">🧠 复习(${dueCount})</button>
+                            <button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bank.id}', 'spaced')">${Utils.icon('brain')} 复习(${dueCount})</button>
                         `
                                 : ''
                         }
@@ -371,12 +371,12 @@ const App = {
                         `
                                 : ''
                         }
-                        <button class="btn btn-secondary btn-sm" onclick="App.startExam('${bank.id}')">📝 考试</button>
+                        <button class="btn btn-secondary btn-sm" onclick="App.startExam('${bank.id}')">${Utils.icon('file-text')} 考试</button>
                     </div>
 
                     <div class="bank-card-footer">
                         <button class="btn btn-ghost btn-sm" onclick="App.resetProgress('${bank.id}')" title="重置进度">
-                            <span>🔄 重置</span>
+                            <span>${Utils.icon('rotate-ccw')} 重置</span>
                         </button>
                         <button class="btn btn-ghost btn-sm" onclick="App.exportBank('${bank.id}')" title="导出题库">
                             <span>${Utils.icon('download')} 导出</span>
