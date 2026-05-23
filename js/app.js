@@ -436,17 +436,37 @@ const App = {
         if (!bank) return;
 
         const totalQuestions = bank.questions?.length || 0;
-        const timeStr = prompt(`模拟考试设置\n\n题库：${bank.name}（${totalQuestions}题）\n\n请输入考试限时（分钟，0表示不限时）：`, '60');
-        if (timeStr === null) return;
 
-        const timeMinutes = parseInt(timeStr) || 0;
-        const passStr = prompt('请输入及格线（百分比，如 60）：', '60');
-        if (passStr === null) return;
+        const content = `
+            <p style="margin-bottom: var(--space-3); color: var(--text-secondary);">题库：${bank.name}（${totalQuestions}题）</p>
+            <label>考试限时（分钟，0表示不限时）</label>
+            <input type="number" id="exam-time" value="60" min="0" max="300">
+            <label>及格线（百分比）</label>
+            <input type="number" id="exam-pass" value="60" min="0" max="100">
+        `;
 
-        const passRate = parseInt(passStr) || 60;
-        const timeParam = timeMinutes > 0 ? `&time=${timeMinutes * 60}` : '';
-
-        window.location.href = `quiz.html?bank=${bankId}&mode=exam${timeParam}&pass=${passRate}`;
+        Utils.showModal({
+            title: '📝 模拟考试设置',
+            content,
+            buttons: [
+                {
+                    label: '开始考试',
+                    class: 'btn-primary',
+                    onClick: (modal) => {
+                        const timeMinutes = parseInt(modal.querySelector('#exam-time').value) || 0;
+                        const passRate = parseInt(modal.querySelector('#exam-pass').value) || 60;
+                        const timeParam = timeMinutes > 0 ? `&time=${timeMinutes * 60}` : '';
+                        window.location.href = `quiz.html?bank=${bankId}&mode=exam${timeParam}&pass=${passRate}`;
+                    }
+                },
+                {
+                    label: '取消',
+                    class: 'btn-secondary',
+                    onClick: (modal) => modal.remove()
+                }
+            ],
+            size: 'sm'
+        });
     },
 
     /**
@@ -547,19 +567,49 @@ const App = {
     showThemePicker() {
         const current = document.documentElement.getAttribute('data-theme') || 'auto';
         const themeNames = { auto: '跟随系统', light: '浅色模式', dark: '深色模式' };
-        const choice = prompt(`选择主题：\n1. 跟随系统 (auto)\n2. 浅色模式 (light)\n3. 深色模式 (dark)\n\n当前：${themeNames[current]}`);
-        if (!choice) return;
 
-        const map = { '1': 'auto', '2': 'light', '3': 'dark', 'auto': 'auto', 'light': 'light', 'dark': 'dark' };
-        const theme = map[choice.trim()];
-        if (theme) {
-            document.documentElement.setAttribute('data-theme', theme === 'auto' ? '' : theme);
-            if (theme === 'auto') {
-                document.documentElement.removeAttribute('data-theme');
-            }
-            Storage.updateSettings({ theme });
-            Utils.showToast(`已切换为 ${themeNames[theme]}`, 'success');
-        }
+        const themes = [
+            { value: 'auto', icon: '💻', label: '跟随系统' },
+            { value: 'light', icon: '☀️', label: '浅色模式' },
+            { value: 'dark', icon: '🌙', label: '深色模式' }
+        ];
+
+        const content = themes.map(t => `
+            <label style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; cursor: pointer;">
+                <input type="radio" name="theme" value="${t.value}" ${t.value === current ? 'checked' : ''}>
+                <span>${t.icon} ${t.label}</span>
+            </label>
+        `).join('');
+
+        Utils.showModal({
+            title: '🎨 选择主题',
+            content,
+            buttons: [
+                {
+                    label: '确定',
+                    class: 'btn-primary',
+                    onClick: (modal) => {
+                        const selected = modal.querySelector('input[name="theme"]:checked');
+                        if (!selected) return;
+                        const theme = selected.value;
+                        if (theme === 'auto') {
+                            document.documentElement.removeAttribute('data-theme');
+                        } else {
+                            document.documentElement.setAttribute('data-theme', theme);
+                        }
+                        Storage.updateSettings({ theme });
+                        Utils.showToast(`已切换为 ${themeNames[theme]}`, 'success');
+                        modal.remove();
+                    }
+                },
+                {
+                    label: '取消',
+                    class: 'btn-secondary',
+                    onClick: (modal) => modal.remove()
+                }
+            ],
+            size: 'sm'
+        });
     },
 
     /**
@@ -570,30 +620,53 @@ const App = {
         const fontSize = settings.fontSize || 16;
         const autoNext = settings.autoNext || false;
 
-        const result = prompt(
-            `设置\n\n` +
-            `字体大小（当前 ${fontSize}px）：\n` +
-            `输入 14、16、18、20 调整字体大小\n\n` +
-            `自动下一题（当前 ${autoNext ? '开' : '关'}）：\n` +
-            `输入 "auto" 切换`,
-            fontSize.toString()
-        );
+        const content = `
+            <label>字体大小</label>
+            <select id="setting-font-size">
+                <option value="14" ${fontSize === 14 ? 'selected' : ''}>14px - 较小</option>
+                <option value="16" ${fontSize === 16 ? 'selected' : ''}>16px - 标准</option>
+                <option value="18" ${fontSize === 18 ? 'selected' : ''}>18px - 较大</option>
+                <option value="20" ${fontSize === 20 ? 'selected' : ''}>20px - 大</option>
+                <option value="24" ${fontSize === 24 ? 'selected' : ''}>24px - 超大</option>
+            </select>
+            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; margin-top: var(--space-2);">
+                <input type="checkbox" id="setting-auto-next" ${autoNext ? 'checked' : ''}>
+                <span>答对自动跳到下一题</span>
+            </label>
+        `;
 
-        if (!result) return;
+        Utils.showModal({
+            title: '⚙️ 设置',
+            content,
+            buttons: [
+                {
+                    label: '保存',
+                    class: 'btn-primary',
+                    onClick: (modal) => {
+                        const size = parseInt(modal.querySelector('#setting-font-size').value);
+                        const newAutoNext = modal.querySelector('#setting-auto-next').checked;
 
-        if (result === 'auto') {
-            Storage.updateSettings({ autoNext: !autoNext });
-            Utils.showToast(`自动下一题 ${!autoNext ? '已开启' : '已关闭'}`, 'success');
-        } else {
-            const size = parseInt(result);
-            if (size >= 12 && size <= 24) {
-                Storage.updateSettings({ fontSize: size });
-                document.documentElement.style.setProperty('--font-size-base', size + 'px');
-                Utils.showToast(`字体大小已设为 ${size}px`, 'success');
-            } else {
-                Utils.showToast('字体大小范围为 12-24px', 'error');
-            }
-        }
+                        if (size >= 12 && size <= 24) {
+                            Storage.updateSettings({ fontSize: size });
+                            document.documentElement.style.setProperty('--font-size-base', size + 'px');
+                        }
+
+                        if (newAutoNext !== autoNext) {
+                            Storage.updateSettings({ autoNext: newAutoNext });
+                        }
+
+                        Utils.showToast('设置已保存', 'success');
+                        modal.remove();
+                    }
+                },
+                {
+                    label: '取消',
+                    class: 'btn-secondary',
+                    onClick: (modal) => modal.remove()
+                }
+            ],
+            size: 'sm'
+        });
     },
 
     /**

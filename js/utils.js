@@ -410,6 +410,71 @@ const Utils = {
      */
     getStorageKey(...parts) {
         return ['quiz_app', ...parts].join('_');
+    },
+
+    /**
+     * 通用模态框
+     * @param {object} options
+     * @param {string} options.title - 标题
+     * @param {string} options.content - HTML 内容
+     * @param {Array<{label: string, class?: string, onClick: Function}>} options.buttons - 按钮配置
+     * @param {string} [options.size] - 尺寸：'sm' | 'md' | 'lg'
+     * @returns {HTMLElement} 模态框元素
+     */
+    showModal({ title, content, buttons = [], size = 'md' }) {
+        const id = 'modal-' + this.generateId();
+        const sizeClass = size === 'sm' ? 'modal-sm' : size === 'lg' ? 'modal-lg' : '';
+
+        const buttonsHtml = buttons.map((btn, i) => {
+            const cls = btn.class || (i === 0 ? 'btn-primary' : 'btn-secondary');
+            return `<button class="btn ${cls}" data-modal-btn="${i}">${btn.label}</button>`;
+        }).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay show" id="${id}">
+                <div class="modal-content ${sizeClass}">
+                    <div class="modal-header">
+                        <h3 class="modal-title">${title}</h3>
+                        <button class="modal-close" data-modal-close>×</button>
+                    </div>
+                    <div class="modal-body">${content}</div>
+                    <div class="modal-footer">${buttonsHtml}</div>
+                </div>
+            </div>
+        `;
+
+        const div = document.createElement('div');
+        div.innerHTML = modalHtml;
+        const overlay = div.firstElementChild;
+        document.body.appendChild(overlay);
+
+        // 绑定按钮事件
+        buttons.forEach((btn, i) => {
+            const btnEl = overlay.querySelector(`[data-modal-btn="${i}"]`);
+            if (btnEl && btn.onClick) {
+                btnEl.addEventListener('click', () => btn.onClick(overlay));
+            }
+        });
+
+        // 关闭按钮
+        const closeBtn = overlay.querySelector('[data-modal-close]');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => overlay.remove());
+        }
+
+        // 点击遮罩关闭
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+
+        return overlay;
+    },
+
+    /**
+     * 关闭指定模态框
+     */
+    closeModal(modal) {
+        if (modal) modal.remove();
     }
 };
 
