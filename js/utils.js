@@ -465,6 +465,7 @@ const Utils = {
         div.innerHTML = modalHtml;
         const overlay = div.firstElementChild;
         document.body.appendChild(overlay);
+        this.initIcons();
 
         // 关闭处理
         const close = () => {

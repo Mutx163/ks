@@ -514,6 +514,7 @@ const Quiz = {
         container.innerHTML = html;
         Utils.renderMath(container);
         Utils.highlightCode(container);
+        Utils.initIcons();
         this.bindOptionEvents(question);
     },
 
@@ -1199,6 +1200,7 @@ const Quiz = {
         const div = document.createElement('div');
         div.innerHTML = modalHtml;
         document.body.appendChild(div);
+        Utils.initIcons();
     },
 
     closeFinishModal() {

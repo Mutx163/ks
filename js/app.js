@@ -68,12 +68,13 @@ const App = {
                         .join('')}
                 </div>
                 <div class="wrong-book-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="App.clearAllWrong()">🗑️ 清空错题本</button>
-                    <button class="btn btn-primary btn-sm" onclick="App.startWrongPractice()">🚀 错题重做</button>
+                    <button class="btn btn-secondary btn-sm" onclick="App.clearAllWrong()">${Utils.icon('trash-2')} 清空错题本</button>
+                    <button class="btn btn-primary btn-sm" onclick="App.startWrongPractice()">${Utils.icon('repeat')} 错题重做</button>
                 </div>
             </div>
         `;
         el.style.display = '';
+        Utils.initIcons();
     },
 
     clearAllWrong() {
@@ -166,6 +167,7 @@ const App = {
             </div>
         `;
         el.style.display = '';
+        Utils.initIcons();
     },
 
     scrollToBankGrid() {
@@ -222,6 +224,7 @@ const App = {
                 </div>
             </div>
         `;
+        Utils.initIcons();
     },
 
     /**
@@ -376,13 +379,14 @@ const App = {
                             <span>🔄 重置</span>
                         </button>
                         <button class="btn btn-ghost btn-sm" onclick="App.exportBank('${bank.id}')" title="导出题库">
-                            <span>📥 导出</span>
+                            <span>${Utils.icon('download')} 导出</span>
                         </button>
                     </div>
                 </div>
             `;
             })
             .join('');
+        Utils.initIcons();
     },
 
     /**
