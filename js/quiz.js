@@ -363,7 +363,7 @@ const Quiz = {
             setHint(this.getSubmittedHint(question));
         } else if (isLightning && !isLightningMultiple) {
             setSubmitHidden(true);
-            setHint('⚡ 闪电模式 - 点击选项直接判对错');
+            setHint(`${Utils.icon('zap')} 闪电模式 - 点击选项直接判对错`);
         } else {
             setSubmitHidden(false);
             if (submitBtn) {
@@ -372,7 +372,7 @@ const Quiz = {
             }
             setHint(
                 isLightningMultiple
-                    ? '⚡ 闪电模式 · 多选题请选择完整答案后提交'
+                    ? `${Utils.icon('zap')} 闪电模式 · 多选题请选择完整答案后提交`
                     : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换'
             );
         }
@@ -493,7 +493,7 @@ const Quiz = {
                     </div>
                     <div class="question-actions">
                         ${question.category ? `<span class="question-category">${Utils.escapeHtml(question.category)}</span>` : ''}
-                        ${!isReviewMode ? `<button class="btn-bookmark ${Storage.isBookmarked(this.state.bankId, question.id) ? 'active' : ''}" onclick="Quiz.toggleBookmark(${question.id})" title="收藏" aria-label="收藏此题">${Storage.isBookmarked(this.state.bankId, question.id) ? '⭐' : '☆'}</button>` : ''}
+                        ${!isReviewMode ? `<button class="btn-bookmark ${Storage.isBookmarked(this.state.bankId, question.id) ? 'active' : ''}" onclick="Quiz.toggleBookmark(${question.id})" title="收藏" aria-label="收藏此题">${Storage.isBookmarked(this.state.bankId, question.id) ? Utils.icon('star', 'filled') : Utils.icon('star')}</button>` : ''}
                     </div>
                 </div>
 
@@ -644,7 +644,7 @@ const Quiz = {
                     <span>正确</span>
                 </div>
                 <div class="judge-option ${isSubmitted && question.answer === false ? 'correct' : ''} ${isSubmitted && userAnswer === false && question.answer !== false ? 'wrong' : ''} ${!isSubmitted && userAnswer === false ? 'selected' : ''} ${isSubmitted ? 'disabled' : ''}" data-answer="false" role="radio" aria-checked="${userAnswer === false}" tabindex="0">
-                    <span class="judge-option-icon">❌</span>
+                    <span class="judge-option-icon">${Utils.icon('x')}</span>
                     <span>错误</span>
                 </div>
             </div>
@@ -713,8 +713,8 @@ const Quiz = {
             return `
                 <div style="margin-top:var(--space-4)">
                     <div style="margin-bottom:12px">
-                        <button class="btn btn-success btn-sm" onclick="Quiz.selfMarkEssay(${question.id}, true)">✅ 我答对了</button>
-                        <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="Quiz.selfMarkEssay(${question.id}, false)">❌ 我答错了</button>
+                        <button class="btn btn-success btn-sm" onclick="Quiz.selfMarkEssay(${question.id}, true)">${Utils.icon('check-circle')} 我答对了</button>
+                        <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="Quiz.selfMarkEssay(${question.id}, false)">${Utils.icon('x-circle')} 我答错了</button>
                     </div>
                 </div>
             `;
@@ -1187,9 +1187,9 @@ const Quiz = {
                         </div>
                     </div>
                     <div class="finish-modal-actions">
-                        ${unanswered > 0 ? `<button class="btn btn-primary" onclick="Quiz.closeFinishModal()">📖 继续答题</button>` : ''}
-                        <button class="btn ${unanswered > 0 ? 'btn-secondary' : 'btn-primary'}" onclick="Quiz.confirmFinish()">✅ 确认结束</button>
-                        <button class="btn btn-ghost" onclick="Quiz.saveAndQuit()">💾 保存进度退出</button>
+                        ${unanswered > 0 ? `<button class="btn btn-primary" onclick="Quiz.closeFinishModal()">${Utils.icon('book-open')} 继续答题</button>` : ''}
+                        <button class="btn ${unanswered > 0 ? 'btn-secondary' : 'btn-primary'}" onclick="Quiz.confirmFinish()">${Utils.icon('check-circle')} 确认结束</button>
+                        <button class="btn btn-ghost" onclick="Quiz.saveAndQuit()">${Utils.icon('save')} 保存进度退出</button>
                     </div>
                 </div>
             </div>

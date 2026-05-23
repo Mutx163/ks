@@ -4,6 +4,24 @@
 
 const Utils = {
     /**
+     * 创建 Lucide 图标 HTML
+     * @param {string} name - 图标名称
+     * @param {string} [extraClass] - 额外 CSS 类
+     * @returns {string} 图标 HTML
+     */
+    icon(name, extraClass = '') {
+        return `<i data-lucide="${name}" class="icon ${extraClass}"></i>`;
+    },
+
+    /**
+     * 初始化页面上的 Lucide 图标
+     */
+    initIcons() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    },
+    /**
      * 生成唯一ID
      */
     generateId() {

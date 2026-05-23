@@ -24,6 +24,9 @@
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
 
+        <!-- Lucide 图标 -->
+        <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+
         <link rel="stylesheet" href="css/base.css" />
         <link rel="stylesheet" href="css/quiz.css" />
     </head>
@@ -153,5 +156,11 @@
         </div>
 
         <script type="module" src="js/quiz.js"></script>
+        <script>
+            // 初始化 Lucide 图标
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        </script>
     </body>
 </html>

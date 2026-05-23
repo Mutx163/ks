@@ -51,7 +51,7 @@ const App = {
         el.innerHTML = `
             <div class="wrong-book">
                 <div class="wrong-book-header">
-                    <span class="wrong-book-icon">❌</span>
+                    <span class="wrong-book-icon">${Utils.icon('x-circle')}</span>
                     <span class="wrong-book-title">错题本</span>
                     <span class="wrong-book-count">${stats.totalWrong} 题</span>
                 </div>
@@ -78,7 +78,7 @@ const App = {
 
     clearAllWrong() {
         Utils.showModal({
-            title: '⚠️ 清空错题本',
+            title: `${Utils.icon('alert-triangle')} 清空错题本`,
             content: '<p>确定清空全部错题本？此操作不可恢复。</p>',
             buttons: [
                 {
@@ -215,8 +215,8 @@ const App = {
                             <div class="stat-ring-center">${accuracy}%</div>
                         </div>
                         <div class="stat-ring-labels">
-                            <div class="stat-ring-label">✅ 正确 <span>${Utils.formatNumber(stats.totalCorrect)}</span></div>
-                            <div class="stat-ring-label">❌ 错误 <span>${Utils.formatNumber(stats.totalWrong)}</span></div>
+                            <div class="stat-ring-label">${Utils.icon('check-circle', 'text-success')} 正确 <span>${Utils.formatNumber(stats.totalCorrect)}</span></div>
+                            <div class="stat-ring-label">${Utils.icon('x-circle', 'text-danger')} 错误 <span>${Utils.formatNumber(stats.totalWrong)}</span></div>
                         </div>
                     </div>
                 </div>
@@ -364,7 +364,7 @@ const App = {
                         ${
                             bookmarkCount > 0
                                 ? `
-                            <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'bookmark')">⭐ 收藏(${bookmarkCount})</button>
+                            <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'bookmark')">${Utils.icon('star')} 收藏(${bookmarkCount})</button>
                         `
                                 : ''
                         }
@@ -534,7 +534,7 @@ const App = {
         if (!bank) return;
 
         Utils.showModal({
-            title: '⚠️ 重置进度',
+            title: `${Utils.icon('alert-triangle')} 重置进度`,
             content: `<p>确定要重置「${Utils.escapeHtml(bank.name)}」的所有进度吗？</p>`,
             buttons: [
                 {
@@ -587,7 +587,7 @@ const App = {
             if (Storage.bankExists(data.id)) {
                 const confirmed = await new Promise((resolve) => {
                     Utils.showModal({
-                        title: '⚠️ 覆盖题库',
+                        title: `${Utils.icon('alert-triangle')} 覆盖题库`,
                         content: `<p>题库「${Utils.escapeHtml(data.name)}」已存在，是否覆盖？</p>`,
                         buttons: [
                             {
@@ -652,9 +652,9 @@ const App = {
         const themeNames = { auto: '跟随系统', light: '浅色模式', dark: '深色模式' };
 
         const themes = [
-            { value: 'auto', icon: '💻', label: '跟随系统' },
-            { value: 'light', icon: '☀️', label: '浅色模式' },
-            { value: 'dark', icon: '🌙', label: '深色模式' }
+            { value: 'auto', icon: 'monitor', label: '跟随系统' },
+            { value: 'light', icon: 'sun', label: '浅色模式' },
+            { value: 'dark', icon: 'moon', label: '深色模式' }
         ];
 
         const content = themes
@@ -662,14 +662,14 @@ const App = {
                 (t) => `
             <label style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; cursor: pointer;">
                 <input type="radio" name="theme" value="${t.value}" ${t.value === current ? 'checked' : ''}>
-                <span>${t.icon} ${t.label}</span>
+                <span>${Utils.icon(t.icon)} ${t.label}</span>
             </label>
         `
             )
             .join('');
 
         Utils.showModal({
-            title: '🎨 选择主题',
+            title: `${Utils.icon('palette')} 选择主题`,
             content,
             buttons: [
                 {
@@ -725,7 +725,7 @@ const App = {
         `;
 
         Utils.showModal({
-            title: '⚙️ 设置',
+            title: `${Utils.icon('settings')} 设置`,
             content,
             buttons: [
                 {

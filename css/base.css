@@ -613,6 +613,98 @@ pre code {
     }
 }
 
+/* ================= Lucide 图标 ================= */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.125em;
+    stroke-width: 2;
+}
+
+.icon-sm {
+    width: 0.875em;
+    height: 0.875em;
+}
+
+.icon-lg {
+    width: 1.25em;
+    height: 1.25em;
+}
+
+.icon-xl {
+    width: 1.5em;
+    height: 1.5em;
+}
+
+/* 图标颜色变体 */
+.text-success {
+    color: var(--success);
+}
+
+.text-danger {
+    color: var(--danger);
+}
+
+.text-warning {
+    color: var(--warning);
+}
+
+.text-primary {
+    color: var(--primary);
+}
+
+/* 填充星星 */
+.icon.filled {
+    fill: currentColor;
+    stroke: none;
+}
+
+/* 按钮中的图标 */
+.btn .icon {
+    margin-right: var(--space-1);
+}
+
+.btn-sm .icon {
+    margin-right: var(--space-1);
+}
+
+/* 搜索图标 */
+.search-icon {
+    position: absolute;
+    left: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+
+/* 洞察入口图标 */
+.insight-entry-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-light);
+    border-radius: var(--radius);
+    color: var(--primary);
+}
+
+/* 错题本图标 */
+.wrong-book-icon {
+    font-size: 20px;
+    color: var(--danger);
+}
+
+/* 统计环标签图标 */
+.stat-ring-label .icon {
+    margin-right: var(--space-1);
+}
+
 /* ================= 响应式 ================= */
 @media (max-width: 768px) {
     .container {
