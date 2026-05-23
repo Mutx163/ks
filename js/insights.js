@@ -27,7 +27,10 @@ const Insights = {
     applySettings() {
         const settings = Storage.getSettings();
         if (settings.fontSize && settings.fontSize !== 16) {
-            document.documentElement.style.setProperty('--font-size-base', settings.fontSize + 'px');
+            document.documentElement.style.setProperty(
+                '--font-size-base',
+                settings.fontSize + 'px'
+            );
         }
         if (settings.theme && settings.theme !== 'auto') {
             document.documentElement.setAttribute('data-theme', settings.theme);
@@ -82,7 +85,7 @@ const Insights = {
         if (!container) return;
 
         const series = this.getDailySeries(14);
-        const activeDays = series.filter(d => d.total > 0);
+        const activeDays = series.filter((d) => d.total > 0);
         if (range && series.length > 0) {
             range.textContent = `${series[0].label} - ${series[series.length - 1].label}`;
         }
@@ -92,13 +95,17 @@ const Insights = {
             return;
         }
 
-        const maxTotal = Math.max(1, ...series.map(d => d.total));
+        const maxTotal = Math.max(1, ...series.map((d) => d.total));
         container.innerHTML = `
             <div class="daily-chart">
-                ${series.map(day => {
-                    const height = day.total > 0 ? Math.max(8, Math.round(day.total / maxTotal * 100)) : 0;
-                    const tone = day.total === 0 ? 'empty' : this.getAccuracyTone(day.accuracy);
-                    return `
+                ${series
+                    .map((day) => {
+                        const height =
+                            day.total > 0
+                                ? Math.max(8, Math.round((day.total / maxTotal) * 100))
+                                : 0;
+                        const tone = day.total === 0 ? 'empty' : this.getAccuracyTone(day.accuracy);
+                        return `
                         <div class="daily-item" title="${day.fullLabel} ${day.total}题 ${day.accuracy}%">
                             <div class="daily-value">${day.total > 0 ? day.accuracy + '%' : ''}</div>
                             <div class="daily-track">
@@ -107,7 +114,8 @@ const Insights = {
                             <div class="daily-label">${day.shortLabel}</div>
                         </div>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </div>
         `;
     },
@@ -117,7 +125,7 @@ const Insights = {
         if (!el) return;
 
         const rows = this.state.banks
-            .map(bank => {
+            .map((bank) => {
                 const stats = Storage.getBankStats(bank.id);
                 const history = this.getHistoryForBank(bank.id);
                 return { bank, stats, historyCount: history.length };
@@ -131,7 +139,9 @@ const Insights = {
 
         el.innerHTML = `
             <div class="insight-list">
-                ${rows.map(row => `
+                ${rows
+                    .map(
+                        (row) => `
                     <div class="insight-row">
                         <div class="insight-row-main">
                             <div class="insight-row-title">${Utils.escapeHtml(row.bank.name)}</div>
@@ -142,7 +152,9 @@ const Insights = {
                         </div>
                         <div class="insight-row-value">${row.stats.accuracy}%</div>
                     </div>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
         `;
     },
@@ -159,9 +171,13 @@ const Insights = {
 
         el.innerHTML = `
             <div class="insight-list">
-                ${history.map(record => {
-                    const accuracy = record.total > 0 ? Math.round((record.correct || 0) / record.total * 100) : 0;
-                    return `
+                ${history
+                    .map((record) => {
+                        const accuracy =
+                            record.total > 0
+                                ? Math.round(((record.correct || 0) / record.total) * 100)
+                                : 0;
+                        return `
                         <div class="history-line">
                             <div>
                                 <div class="history-title">${Utils.escapeHtml(record.bankName || '未知题库')}</div>
@@ -170,7 +186,8 @@ const Insights = {
                             <div class="history-score">${accuracy}%</div>
                         </div>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </div>
         `;
     },
@@ -182,7 +199,9 @@ const Insights = {
         const stats = this.state.stats;
         const wrongStats = Storage.getGlobalWrongStats();
         const dueCount = Storage.getTodayDueCount();
-        const weakCount = this.getAllCategoryRows().filter(row => row.answered > 0 && row.accuracy < 70).length;
+        const weakCount = this.getAllCategoryRows().filter(
+            (row) => row.answered > 0 && row.accuracy < 70
+        ).length;
 
         el.innerHTML = `
             ${this.renderStatCard('待复习', Utils.formatNumber(dueCount), '今日到期', dueCount > 0 ? 'warning' : 'success')}
@@ -197,7 +216,7 @@ const Insights = {
         if (!el) return;
 
         const rows = this.getAllCategoryRows()
-            .filter(row => row.answered > 0)
+            .filter((row) => row.answered > 0)
             .sort((a, b) => a.accuracy - b.accuracy || b.answered - a.answered)
             .slice(0, 12);
 
@@ -208,7 +227,9 @@ const Insights = {
 
         el.innerHTML = `
             <div class="insight-list">
-                ${rows.map(row => `
+                ${rows
+                    .map(
+                        (row) => `
                     <div class="insight-row">
                         <div class="insight-row-main">
                             <div class="insight-row-title">${Utils.escapeHtml(row.name)}</div>
@@ -219,7 +240,9 @@ const Insights = {
                         </div>
                         <div class="insight-row-value">${row.accuracy}%</div>
                     </div>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
         `;
     },
@@ -236,10 +259,13 @@ const Insights = {
 
         el.innerHTML = `
             <div class="insight-list">
-                ${rows.map(row => {
-                    const accuracy = row.answered > 0 ? Math.round(row.correct / row.answered * 100) : 0;
-                    const progress = row.total > 0 ? Math.round(row.answered / row.total * 100) : 0;
-                    return `
+                ${rows
+                    .map((row) => {
+                        const accuracy =
+                            row.answered > 0 ? Math.round((row.correct / row.answered) * 100) : 0;
+                        const progress =
+                            row.total > 0 ? Math.round((row.answered / row.total) * 100) : 0;
+                        return `
                         <div class="insight-row">
                             <div class="insight-row-main">
                                 <div class="insight-row-title">${this.getTypeLabel(row.type)}</div>
@@ -251,7 +277,8 @@ const Insights = {
                             <div class="insight-row-value">${row.answered > 0 ? accuracy + '%' : '-'}</div>
                         </div>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </div>
         `;
     },
@@ -267,16 +294,17 @@ const Insights = {
 
         el.innerHTML = `
             <div class="bank-analysis-grid">
-                ${this.state.banks.map(bank => {
-                    const stats = Storage.getBankStats(bank.id);
-                    const wrongCount = Storage.getWrongQuestions(bank.id).length;
-                    const dueCount = Storage.getDueQuestions(bank.id).length;
-                    const categories = Object.entries(Storage.getCategoryStats(bank.id))
-                        .filter(([_, stat]) => stat.answered > 0)
-                        .sort((a, b) => a[1].accuracy - b[1].accuracy)
-                        .slice(0, 4);
+                ${this.state.banks
+                    .map((bank) => {
+                        const stats = Storage.getBankStats(bank.id);
+                        const wrongCount = Storage.getWrongQuestions(bank.id).length;
+                        const dueCount = Storage.getDueQuestions(bank.id).length;
+                        const categories = Object.entries(Storage.getCategoryStats(bank.id))
+                            .filter(([_, stat]) => stat.answered > 0)
+                            .sort((a, b) => a[1].accuracy - b[1].accuracy)
+                            .slice(0, 4);
 
-                    return `
+                        return `
                         <div class="bank-analysis-card">
                             <div class="bank-analysis-head">
                                 <div>
@@ -289,12 +317,20 @@ const Insights = {
                                 <div class="mini-progress-fill ${this.getAccuracyTone(stats.accuracy)}" style="width:${stats.progress}%"></div>
                             </div>
                             <div class="category-stack">
-                                ${categories.length > 0 ? categories.map(([name, stat]) => `
+                                ${
+                                    categories.length > 0
+                                        ? categories
+                                              .map(
+                                                  ([name, stat]) => `
                                     <div class="category-line">
                                         <div class="category-name">${Utils.escapeHtml(name)}</div>
                                         <div class="category-accuracy">${stat.accuracy}%</div>
                                     </div>
-                                `).join('') : '<div class="insight-subtle">暂无分类记录</div>'}
+                                `
+                                              )
+                                              .join('')
+                                        : '<div class="insight-subtle">暂无分类记录</div>'
+                                }
                             </div>
                             <div class="bank-analysis-actions">
                                 <a class="btn btn-primary btn-sm" href="quiz.html?bank=${encodeURIComponent(bank.id)}&mode=all">顺序刷题</a>
@@ -303,7 +339,8 @@ const Insights = {
                             </div>
                         </div>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </div>
         `;
     },
@@ -335,7 +372,8 @@ const Insights = {
                 key,
                 date,
                 label: `${date.getMonth() + 1}/${date.getDate()}`,
-                shortLabel: days > 7 ? `${date.getDate()}` : `${date.getMonth() + 1}/${date.getDate()}`,
+                shortLabel:
+                    days > 7 ? `${date.getDate()}` : `${date.getMonth() + 1}/${date.getDate()}`,
                 fullLabel: `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`,
                 total: 0,
                 correct: 0,
@@ -343,7 +381,7 @@ const Insights = {
             });
         }
 
-        this.state.questionActivity.forEach(record => {
+        this.state.questionActivity.forEach((record) => {
             const key = this.getDateKey(new Date(record.timestamp));
             const day = map.get(key);
             if (!day) return;
@@ -351,14 +389,16 @@ const Insights = {
             if (record.correct) day.correct++;
         });
 
-        return [...map.values()].map(day => ({
+        return [...map.values()].map((day) => ({
             ...day,
-            accuracy: day.total > 0 ? Math.round(day.correct / day.total * 100) : 0
+            accuracy: day.total > 0 ? Math.round((day.correct / day.total) * 100) : 0
         }));
     },
 
     getStudyStreak() {
-        const activeDays = new Set(this.state.questionActivity.map(record => this.getDateKey(new Date(record.timestamp))));
+        const activeDays = new Set(
+            this.state.questionActivity.map((record) => this.getDateKey(new Date(record.timestamp)))
+        );
         let streak = 0;
         const date = new Date();
         date.setHours(0, 0, 0, 0);
@@ -379,12 +419,12 @@ const Insights = {
     },
 
     getHistoryForBank(bankId) {
-        return this.state.history.filter(record => record.bankId === bankId);
+        return this.state.history.filter((record) => record.bankId === bankId);
     },
 
     getQuestionActivity() {
         const rows = [];
-        this.state.banks.forEach(bank => {
+        this.state.banks.forEach((bank) => {
             const progress = Storage.getBankProgress(bank.id);
             Object.entries(progress.questions || {}).forEach(([questionId, questionProgress]) => {
                 if (!questionProgress.answeredAt) return;
@@ -402,7 +442,7 @@ const Insights = {
 
     getAllCategoryRows() {
         const rows = [];
-        this.state.banks.forEach(bank => {
+        this.state.banks.forEach((bank) => {
             const stats = Storage.getCategoryStats(bank.id);
             Object.entries(stats).forEach(([name, stat]) => {
                 rows.push({
@@ -418,9 +458,9 @@ const Insights = {
 
     getTypeRows() {
         const map = new Map();
-        this.state.banks.forEach(bank => {
+        this.state.banks.forEach((bank) => {
             const progress = Storage.getBankProgress(bank.id);
-            (bank.questions || []).forEach(question => {
+            (bank.questions || []).forEach((question) => {
                 const type = question.type || 'unknown';
                 if (!map.has(type)) {
                     map.set(type, { type, total: 0, answered: 0, correct: 0 });

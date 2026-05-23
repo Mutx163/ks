@@ -54,7 +54,8 @@ const BankLoader = {
 
             // 检查是否需要更新：无此题库、版本不同、或内存中没有完整题目
             const localBank = Storage.getBank(bank.id);
-            const needsUpdate = !localBank || localBank.version !== bank.version || !localBank.questions;
+            const needsUpdate =
+                !localBank || localBank.version !== bank.version || !localBank.questions;
 
             if (needsUpdate) {
                 Storage.addBank(bank);
@@ -95,7 +96,7 @@ const BankLoader = {
         }
 
         // 在内置题库中查找对应文件
-        const filename = builtinBanks.find(f => f.replace('.json', '') === bankId);
+        const filename = builtinBanks.find((f) => f.replace('.json', '') === bankId);
         if (filename) {
             return await this.loadBank(filename);
         }
@@ -110,17 +111,17 @@ const BankLoader = {
      */
     removeDeprecatedBanks(deprecatedIds) {
         // 清除 Storage 中的题库数据
-        Storage.getBanks().forEach(bank => {
+        Storage.getBanks().forEach((bank) => {
             if (deprecatedIds.has(bank.id) || deprecatedIds.has(bank.name)) {
                 deprecatedIds.add(bank.id);
             }
         });
 
-        deprecatedIds.forEach(bankId => Storage.removeBank(bankId));
+        deprecatedIds.forEach((bankId) => Storage.removeBank(bankId));
 
         // 清除历史记录
-        const history = Storage.getHistory().filter(record =>
-            !deprecatedIds.has(record.bankId) && !deprecatedIds.has(record.bankName)
+        const history = Storage.getHistory().filter(
+            (record) => !deprecatedIds.has(record.bankId) && !deprecatedIds.has(record.bankName)
         );
         Storage.set(Storage.KEYS.HISTORY, history);
 
@@ -136,7 +137,7 @@ const BankLoader = {
 
         // 清除版本缓存
         const cacheVersions = this._getCacheVersions();
-        deprecatedIds.forEach(bankId => {
+        deprecatedIds.forEach((bankId) => {
             delete cacheVersions[bankId];
         });
         this._saveCacheVersions(cacheVersions);

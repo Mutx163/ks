@@ -56,12 +56,16 @@ const App = {
                     <span class="wrong-book-count">${stats.totalWrong} 题</span>
                 </div>
                 <div class="wrong-book-body">
-                    ${stats.details.map(d => `
+                    ${stats.details
+                        .map(
+                            (d) => `
                         <div class="wrong-book-bank">
                             <span class="wrong-book-bank-name">${Utils.escapeHtml(d.bankName)}</span>
                             <span class="wrong-book-bank-count">${d.count} 题</span>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
                 <div class="wrong-book-actions">
                     <button class="btn btn-secondary btn-sm" onclick="App.clearAllWrong()">🗑️ 清空错题本</button>
@@ -136,7 +140,7 @@ const App = {
             } else {
                 icon = '👋';
                 title = '欢迎回来';
-                desc = `上次答题：${Utils.formatDate(lastSession.timestamp, 'MM月DD日 HH:mm')}，正确率 ${Math.round(lastSession.correct / lastSession.total * 100)}%`;
+                desc = `上次答题：${Utils.formatDate(lastSession.timestamp, 'MM月DD日 HH:mm')}，正确率 ${Math.round((lastSession.correct / lastSession.total) * 100)}%`;
                 btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">开始刷题</button>`;
             }
         } else if (stats.totalQuestions > 0) {
@@ -226,7 +230,7 @@ const App = {
     getBankTypes(bank) {
         if (!bank || !bank.questions) return [];
         const typeSet = new Set();
-        bank.questions.forEach(q => {
+        bank.questions.forEach((q) => {
             if (q.type) typeSet.add(q.type);
         });
         return ['all', ...typeSet].filter(Boolean);
@@ -270,19 +274,20 @@ const App = {
         const countEl = document.getElementById('bank-count');
         if (countEl) countEl.textContent = banks.length + ' 个题库';
 
-        container.innerHTML = banks.map(bank => {
-            const stats = Storage.getBankStats(bank.id);
-            const wrongCount = Storage.getWrongQuestions(bank.id).length;
-            const dueCount = Storage.getDueQuestions(bank.id).length;
-            const bookmarkCount = Storage.getBookmarkCount(bank.id);
+        container.innerHTML = banks
+            .map((bank) => {
+                const stats = Storage.getBankStats(bank.id);
+                const wrongCount = Storage.getWrongQuestions(bank.id).length;
+                const dueCount = Storage.getDueQuestions(bank.id).length;
+                const bookmarkCount = Storage.getBookmarkCount(bank.id);
 
-            const questions = bank.questions || [];
-            const bankTypes = this.getBankTypes(bank);
+                const questions = bank.questions || [];
+                const bankTypes = this.getBankTypes(bank);
 
-            const iconClass = bank.id.includes('c-language') ? 'c-lang' : 'default';
-            const iconText = bank.id.includes('c-language') ? 'C' : 'Q';
+                const iconClass = bank.id.includes('c-language') ? 'c-lang' : 'default';
+                const iconText = bank.id.includes('c-language') ? 'C' : 'Q';
 
-            return `
+                return `
                 <div class="bank-card" data-id="${bank.id}">
                     <div class="bank-card-header">
                         <div class="bank-card-icon ${iconClass}">${iconText}</div>
@@ -293,11 +298,15 @@ const App = {
                     </div>
 
                     <div class="bank-card-meta">
-                        ${(bank.categories || []).slice(0, 3).map(cat => 
-                            `<span class="tag">${Utils.escapeHtml(cat)}</span>`
-                        ).join('')}
+                        ${(bank.categories || [])
+                            .slice(0, 3)
+                            .map((cat) => `<span class="tag">${Utils.escapeHtml(cat)}</span>`)
+                            .join('')}
                         ${dueCount > 0 ? `<span class="tag tag-warning">🧠 ${dueCount} 待复习</span>` : ''}
-                        <span class="tag">${bankTypes.filter(t => t !== 'all').map(t => this.getTypeLabel(t)).join(' · ')}</span>
+                        <span class="tag">${bankTypes
+                            .filter((t) => t !== 'all')
+                            .map((t) => this.getTypeLabel(t))
+                            .join(' · ')}</span>
                     </div>
 
                     <div class="bank-card-progress">
@@ -325,12 +334,15 @@ const App = {
 
                     <!-- 题型筛选行（选择题型后，刷题按钮自动使用所选题型） -->
                     <div class="bank-card-types">
-                        ${bankTypes.map(type => {
-                            const isActive = (this.state.selectedTypes[bank.id] || 'all') === type;
-                            return `<button class="bank-type-btn ${isActive ? 'active' : ''}" onclick="App.selectType('${bank.id}', '${type}')">
+                        ${bankTypes
+                            .map((type) => {
+                                const isActive =
+                                    (this.state.selectedTypes[bank.id] || 'all') === type;
+                                return `<button class="bank-type-btn ${isActive ? 'active' : ''}" onclick="App.selectType('${bank.id}', '${type}')">
                                 ${type === 'all' ? '📚 全部' : this.getTypeLabel(type)}
                             </button>`;
-                        }).join('')}
+                            })
+                            .join('')}
                     </div>
 
                     <!-- 刷题模式按钮网格 -->
@@ -342,12 +354,20 @@ const App = {
                             🔄 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
                         </button>
                         <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'review')">📖 背题</button>
-                        ${dueCount > 0 ? `
+                        ${
+                            dueCount > 0
+                                ? `
                             <button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bank.id}', 'spaced')">🧠 复习(${dueCount})</button>
-                        ` : ''}
-                        ${bookmarkCount > 0 ? `
+                        `
+                                : ''
+                        }
+                        ${
+                            bookmarkCount > 0
+                                ? `
                             <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'bookmark')">⭐ 收藏(${bookmarkCount})</button>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                         <button class="btn btn-secondary btn-sm" onclick="App.startExam('${bank.id}')">📝 考试</button>
                     </div>
 
@@ -361,7 +381,8 @@ const App = {
                     </div>
                 </div>
             `;
-        }).join('');
+            })
+            .join('');
     },
 
     /**
@@ -376,8 +397,14 @@ const App = {
         const banks = this.state.banks;
         for (const bank of banks) {
             if (!bank.questions) continue;
-            const matched = bank.questions.filter(q => {
-                const searchText = [q.question, q.explanation, q.category, ...(q.options || []), q.answer].join(' ');
+            const matched = bank.questions.filter((q) => {
+                const searchText = [
+                    q.question,
+                    q.explanation,
+                    q.category,
+                    ...(q.options || []),
+                    q.answer
+                ].join(' ');
                 return searchText.toLowerCase().includes(keyword.toLowerCase());
             });
             if (matched.length > 0) {
@@ -392,18 +419,23 @@ const App = {
 
         const searchData = {
             keyword,
-            banks: results.map(r => ({
+            banks: results.map((r) => ({
                 bankId: r.bank.id,
-                questionIds: r.matched.map(q => q.id),
+                questionIds: r.matched.map((q) => q.id),
                 count: r.count
             }))
         };
         sessionStorage.setItem('quiz_search_results', JSON.stringify(searchData));
 
         const firstBank = results[0].bank;
-        Utils.showToast('找到 ' + results.reduce((s, r) => s + r.count, 0) + ' 道匹配题目', 'success', 2000);
+        Utils.showToast(
+            '找到 ' + results.reduce((s, r) => s + r.count, 0) + ' 道匹配题目',
+            'success',
+            2000
+        );
         setTimeout(() => {
-            window.location.href = 'quiz.html?bank=' + firstBank.id + '&mode=search&q=' + encodeURIComponent(keyword);
+            window.location.href =
+                'quiz.html?bank=' + firstBank.id + '&mode=search&q=' + encodeURIComponent(keyword);
         }, 300);
     },
 
@@ -561,20 +593,26 @@ const App = {
             }
 
             if (Storage.bankExists(data.id)) {
-                const confirmed = await new Promise(resolve => {
+                const confirmed = await new Promise((resolve) => {
                     Utils.showModal({
                         title: '⚠️ 覆盖题库',
                         content: `<p>题库「${Utils.escapeHtml(data.name)}」已存在，是否覆盖？</p>`,
                         buttons: [
                             {
-                                                                label: '确定覆盖',
+                                label: '确定覆盖',
                                 class: 'btn-danger',
-                                onClick: (modal) => { modal.remove(); resolve(true); }
+                                onClick: (modal) => {
+                                    modal.remove();
+                                    resolve(true);
+                                }
                             },
                             {
                                 label: '取消',
                                 class: 'btn-secondary',
-                                onClick: (modal) => { modal.remove(); resolve(false); }
+                                onClick: (modal) => {
+                                    modal.remove();
+                                    resolve(false);
+                                }
                             }
                         ],
                         size: 'sm'
@@ -600,15 +638,15 @@ const App = {
         const themeOrder = ['auto', 'light', 'dark'];
         const nextIndex = (themeOrder.indexOf(current) + 1) % themeOrder.length;
         const theme = themeOrder[nextIndex];
-        
+
         if (theme === 'auto') {
             document.documentElement.removeAttribute('data-theme');
         } else {
             document.documentElement.setAttribute('data-theme', theme);
         }
-        
+
         Storage.updateSettings({ theme });
-        
+
         const themeIcons = { auto: '🌓 跟随系统', light: '☀️ 浅色', dark: '🌙 深色' };
         Utils.showToast(`主题：${themeIcons[theme]}`, 'success', 1500);
     },
@@ -626,12 +664,16 @@ const App = {
             { value: 'dark', icon: '🌙', label: '深色模式' }
         ];
 
-        const content = themes.map(t => `
+        const content = themes
+            .map(
+                (t) => `
             <label style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; cursor: pointer;">
                 <input type="radio" name="theme" value="${t.value}" ${t.value === current ? 'checked' : ''}>
                 <span>${t.icon} ${t.label}</span>
             </label>
-        `).join('');
+        `
+            )
+            .join('');
 
         Utils.showModal({
             title: '🎨 选择主题',
@@ -700,7 +742,10 @@ const App = {
 
                         if (size >= 12 && size <= 24) {
                             Storage.updateSettings({ fontSize: size });
-                            document.documentElement.style.setProperty('--font-size-base', size + 'px');
+                            document.documentElement.style.setProperty(
+                                '--font-size-base',
+                                size + 'px'
+                            );
                         }
 
                         if (newAutoNext !== autoNext) {
@@ -726,10 +771,7 @@ const App = {
      */
     showShortcuts() {
         const shown = localStorage.getItem('quiz_shortcuts_shown');
-        Utils.showToast(
-            '快捷键：Enter 提交 · A-D 选答案 · Alt+←→ 切换 · 1/0 判断',
-            'info', 5000
-        );
+        Utils.showToast('快捷键：Enter 提交 · A-D 选答案 · Alt+←→ 切换 · 1/0 判断', 'info', 5000);
         localStorage.setItem('quiz_shortcuts_shown', '1');
     },
 
@@ -782,7 +824,10 @@ const App = {
         // 应用字体大小
         const settings = Storage.getSettings();
         if (settings.fontSize && settings.fontSize !== 16) {
-            document.documentElement.style.setProperty('--font-size-base', settings.fontSize + 'px');
+            document.documentElement.style.setProperty(
+                '--font-size-base',
+                settings.fontSize + 'px'
+            );
         }
 
         // 应用主题

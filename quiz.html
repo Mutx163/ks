@@ -1,96 +1,157 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>刷题 - 智能刷题系统</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>刷题 - 智能刷题系统</title>
 
-    <!-- KaTeX -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+        <!-- KaTeX -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-    <!-- Prism.js -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+        <!-- Prism.js -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
 
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/quiz.css">
-</head>
-<body>
-    <!-- 头部 -->
-    <header class="quiz-header">
-        <div class="container">
-            <div class="quiz-nav">
-                <button class="quiz-back" onclick="Quiz.goHome()" aria-label="返回首页">&#8592;</button>
-                <span class="quiz-title" id="quiz-title">加载中...</span>
-                <span class="exam-timer" id="exam-timer" style="display:none;" aria-label="考试倒计时">00:00</span>
-                <!-- 进度指示器（可点击打开导航面板，参考 gclx） -->
-                <button class="quiz-nav-btn" id="btn-nav" onclick="Quiz.toggleNav()" title="点击打开题目列表" aria-label="打开题目导航">
-                    <span id="quiz-progress-text">0 / 0</span>
+        <link rel="stylesheet" href="css/base.css" />
+        <link rel="stylesheet" href="css/quiz.css" />
+    </head>
+    <body>
+        <!-- 头部 -->
+        <header class="quiz-header">
+            <div class="container">
+                <div class="quiz-nav">
+                    <button class="quiz-back" onclick="Quiz.goHome()" aria-label="返回首页">
+                        &#8592;
+                    </button>
+                    <span class="quiz-title" id="quiz-title">加载中...</span>
+                    <span
+                        class="exam-timer"
+                        id="exam-timer"
+                        style="display: none"
+                        aria-label="考试倒计时"
+                        >00:00</span
+                    >
+                    <!-- 进度指示器（可点击打开导航面板，参考 gclx） -->
+                    <button
+                        class="quiz-nav-btn"
+                        id="btn-nav"
+                        onclick="Quiz.toggleNav()"
+                        title="点击打开题目列表"
+                        aria-label="打开题目导航"
+                    >
+                        <span id="quiz-progress-text">0 / 0</span>
+                    </button>
+                    <button
+                        class="btn btn-ghost btn-sm"
+                        onclick="Quiz.finish()"
+                        aria-label="完成答题"
+                        id="btn-finish"
+                    >
+                        完成
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主布局（双栏） -->
+        <div class="quiz-layout">
+            <!-- 左侧：题目区域 -->
+            <main class="quiz-main-col">
+                <div class="quiz-content-wrap">
+                    <div class="container">
+                        <div class="quiz-container">
+                            <div id="question-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部栏 -->
+                <footer class="quiz-footer">
+                    <div class="container">
+                        <div class="quiz-footer-hint" id="footer-hint">
+                            按 Enter 提交 · A-D 选答案 · Alt+←→ 切换
+                        </div>
+                        <div class="quiz-footer-actions">
+                            <button
+                                class="btn btn-secondary btn-sm"
+                                onclick="Quiz.prevQuestion()"
+                                aria-label="上一题"
+                            >
+                                上一题
+                            </button>
+                            <button
+                                class="btn btn-secondary btn-sm"
+                                onclick="Quiz.nextQuestion()"
+                                aria-label="下一题"
+                            >
+                                下一题
+                            </button>
+                            <button
+                                class="btn btn-primary btn-sm"
+                                id="btn-submit"
+                                onclick="Quiz.submitCurrent()"
+                                aria-label="提交答案"
+                            >
+                                提交
+                            </button>
+                        </div>
+                    </div>
+                </footer>
+            </main>
+
+            <!-- 右侧：题号面板（桌面端） -->
+            <aside class="quiz-sidebar desktop-only" id="quiz-sidebar">
+                <div class="sidebar-header">
+                    <span class="sidebar-title">📋 题目列表</span>
+                    <span class="sidebar-count" id="sidebar-count">0 题</span>
+                </div>
+                <div class="sidebar-legend">
+                    <span class="legend-item"><span class="legend-dot current"></span> 当前</span>
+                    <span class="legend-item"><span class="legend-dot correct"></span> 正确</span>
+                    <span class="legend-item"><span class="legend-dot wrong"></span> 错误</span>
+                    <span class="legend-item"
+                        ><span class="legend-dot unanswered"></span> 未答</span
+                    >
+                </div>
+                <div class="sidebar-grid" id="sidebar-grid"></div>
+                <div class="sidebar-footer">
+                    <button
+                        class="btn btn-ghost btn-sm"
+                        onclick="Quiz.toggleNav()"
+                        title="展开全部"
+                    >
+                        🔲 展开
+                    </button>
+                </div>
+            </aside>
+
+            <!-- 移动端：浮动导航面板 -->
+            <div class="question-nav-overlay" id="nav-overlay" onclick="Quiz.toggleNav()"></div>
+            <div class="question-nav-panel" id="nav-panel">
+                <div class="panel-header">点击题号跳转</div>
+                <div class="question-nav-grid" id="question-nav-grid"></div>
+                <button
+                    class="btn btn-secondary btn-sm"
+                    style="width: 100%; margin-top: 12px"
+                    onclick="Quiz.toggleNav()"
+                >
+                    关闭
                 </button>
-                <button class="btn btn-ghost btn-sm" onclick="Quiz.finish()" aria-label="完成答题" id="btn-finish">完成</button>
             </div>
         </div>
-    </header>
 
-    <!-- 主布局（双栏） -->
-    <div class="quiz-layout">
-
-        <!-- 左侧：题目区域 -->
-        <main class="quiz-main-col">
-            <div class="quiz-content-wrap">
-                <div class="container">
-                    <div class="quiz-container">
-                        <div id="question-container"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 底部栏 -->
-            <footer class="quiz-footer">
-                <div class="container">
-                    <div class="quiz-footer-hint" id="footer-hint">按 Enter 提交 · A-D 选答案 · Alt+←→ 切换</div>
-                    <div class="quiz-footer-actions">
-                        <button class="btn btn-secondary btn-sm" onclick="Quiz.prevQuestion()" aria-label="上一题">上一题</button>
-                        <button class="btn btn-secondary btn-sm" onclick="Quiz.nextQuestion()" aria-label="下一题">下一题</button>
-                        <button class="btn btn-primary btn-sm" id="btn-submit" onclick="Quiz.submitCurrent()" aria-label="提交答案">提交</button>
-                    </div>
-                </div>
-            </footer>
-        </main>
-
-        <!-- 右侧：题号面板（桌面端） -->
-        <aside class="quiz-sidebar desktop-only" id="quiz-sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">📋 题目列表</span>
-                <span class="sidebar-count" id="sidebar-count">0 题</span>
-            </div>
-            <div class="sidebar-legend">
-                <span class="legend-item"><span class="legend-dot current"></span> 当前</span>
-                <span class="legend-item"><span class="legend-dot correct"></span> 正确</span>
-                <span class="legend-item"><span class="legend-dot wrong"></span> 错误</span>
-                <span class="legend-item"><span class="legend-dot unanswered"></span> 未答</span>
-            </div>
-            <div class="sidebar-grid" id="sidebar-grid"></div>
-            <div class="sidebar-footer">
-                <button class="btn btn-ghost btn-sm" onclick="Quiz.toggleNav()" title="展开全部">🔲 展开</button>
-            </div>
-        </aside>
-
-        <!-- 移动端：浮动导航面板 -->
-        <div class="question-nav-overlay" id="nav-overlay" onclick="Quiz.toggleNav()"></div>
-        <div class="question-nav-panel" id="nav-panel">
-            <div class="panel-header">点击题号跳转</div>
-            <div class="question-nav-grid" id="question-nav-grid"></div>
-            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:12px" onclick="Quiz.toggleNav()">关闭</button>
-        </div>
-    </div>
-
-    <script type="module" src="js/quiz.js"></script>
-</body>
+        <script type="module" src="js/quiz.js"></script>
+    </body>
 </html>

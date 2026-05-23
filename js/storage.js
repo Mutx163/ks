@@ -1,7 +1,7 @@
 /**
  * 本地存储管理模块
  * 管理题库数据、用户进度、设置等
- * 
+ *
  * 架构说明：
  * - 题库完整数据（含 questions）仅缓存在内存中，不存入 localStorage
  * - localStorage 只存储：元数据、进度、设置、历史、收藏
@@ -16,12 +16,12 @@ const Storage = {
 
     // 存储键名
     KEYS: {
-        BANKS_META: 'quiz_banks_meta',   // 题库元数据（不含 questions）
+        BANKS_META: 'quiz_banks_meta', // 题库元数据（不含 questions）
         PROGRESS: 'quiz_progress',
         SETTINGS: 'quiz_settings',
         HISTORY: 'quiz_history',
         BOOKMARKS: 'quiz_bookmarks',
-        SESSION: 'quiz_session'          // 刷题会话状态（进度、答案等）
+        SESSION: 'quiz_session' // 刷题会话状态（进度、答案等）
     },
 
     /**
@@ -37,11 +37,11 @@ const Storage = {
         }
         if (!this.get(this.KEYS.SETTINGS)) {
             this.set(this.KEYS.SETTINGS, {
-                showAnswer: true,      // 答题后显示答案
-                autoNext: false,       // 自动下一题
-                randomOrder: false,    // 随机顺序
-                fontSize: 16,          // 字体大小
-                theme: 'auto'          // 主题：auto|light|dark
+                showAnswer: true, // 答题后显示答案
+                autoNext: false, // 自动下一题
+                randomOrder: false, // 随机顺序
+                fontSize: 16, // 字体大小
+                theme: 'auto' // 主题：auto|light|dark
             });
         }
         if (!this.get(this.KEYS.HISTORY)) {
@@ -117,7 +117,11 @@ const Storage = {
     _notifyQuotaExceeded() {
         try {
             if (typeof Utils !== 'undefined' && Utils.showToast) {
-                Utils.showToast('存储空间不足，部分数据可能无法保存。建议清理浏览器数据。', 'error', 5000);
+                Utils.showToast(
+                    '存储空间不足，部分数据可能无法保存。建议清理浏览器数据。',
+                    'error',
+                    5000
+                );
             }
         } catch (e) {
             console.error('Failed to notify quota exceeded:', e);
@@ -144,7 +148,7 @@ const Storage = {
      */
     getBanks() {
         const meta = this.get(this.KEYS.BANKS_META) || [];
-        return meta.map(m => {
+        return meta.map((m) => {
             const fullData = this._bankData.get(m.id);
             return fullData || m; // 内存有完整数据就返回完整数据，否则返回元数据
         });
@@ -160,7 +164,7 @@ const Storage = {
         }
         // 回退到元数据
         const meta = this.get(this.KEYS.BANKS_META) || [];
-        return meta.find(b => b.id === bankId) || null;
+        return meta.find((b) => b.id === bankId) || null;
     },
 
     /**
@@ -175,7 +179,7 @@ const Storage = {
 
         // 只存储元数据到 localStorage
         const metaList = this.get(this.KEYS.BANKS_META) || [];
-        const existingIndex = metaList.findIndex(b => b.id === bank.id);
+        const existingIndex = metaList.findIndex((b) => b.id === bank.id);
 
         const metaData = {
             id: bank.id,
@@ -215,7 +219,7 @@ const Storage = {
 
         // 从元数据中移除
         const metaList = this.get(this.KEYS.BANKS_META) || [];
-        const filtered = metaList.filter(b => b.id !== bankId);
+        const filtered = metaList.filter((b) => b.id !== bankId);
 
         if (filtered.length < metaList.length) {
             this.set(this.KEYS.BANKS_META, filtered);
@@ -239,7 +243,7 @@ const Storage = {
      */
     bankExists(bankId) {
         const metaList = this.get(this.KEYS.BANKS_META) || [];
-        return metaList.some(b => b.id === bankId) || this._bankData.has(bankId);
+        return metaList.some((b) => b.id === bankId) || this._bankData.has(bankId);
     },
 
     // ==================== 进度管理 ====================
@@ -256,12 +260,14 @@ const Storage = {
      */
     getBankProgress(bankId) {
         const progress = this.getProgress();
-        return progress[bankId] || {
-            answered: 0,
-            correct: 0,
-            wrong: 0,
-            questions: {}
-        };
+        return (
+            progress[bankId] || {
+                answered: 0,
+                correct: 0,
+                wrong: 0,
+                questions: {}
+            }
+        );
     },
 
     /**
@@ -357,7 +363,7 @@ const Storage = {
         const progress = this.getBankProgress(bankId);
         const now = new Date();
 
-        return bank.questions.filter(q => {
+        return bank.questions.filter((q) => {
             const qProgress = progress.questions[q.id];
             if (!qProgress) return false; // 未答过的不算
             if (!qProgress.nextReviewAt) return true; // 旧数据没有调度的，视为需复习
@@ -420,7 +426,12 @@ const Storage = {
             const wrongIds = this.getWrongQuestions(bank.id);
             if (wrongIds.length > 0) {
                 totalWrong += wrongIds.length;
-                details.push({ bankId: bank.id, bankName: bank.name, wrongIds, count: wrongIds.length });
+                details.push({
+                    bankId: bank.id,
+                    bankName: bank.name,
+                    wrongIds,
+                    count: wrongIds.length
+                });
             }
         }
 
@@ -541,12 +552,14 @@ const Storage = {
      * 获取设置
      */
     getSettings() {
-        return this.get(this.KEYS.SETTINGS) || {
-            showAnswer: true,
-            autoNext: false,
-            randomOrder: false,
-            fontSize: 16
-        };
+        return (
+            this.get(this.KEYS.SETTINGS) || {
+                showAnswer: true,
+                autoNext: false,
+                randomOrder: false,
+                fontSize: 16
+            }
+        );
     },
 
     /**
@@ -571,7 +584,7 @@ const Storage = {
         let totalCorrect = 0;
         let totalWrong = 0;
 
-        banks.forEach(bank => {
+        banks.forEach((bank) => {
             totalQuestions += bank.questions?.length || bank.questionCount || 0;
             const bankProgress = progress[bank.id] || {};
             totalAnswered += bankProgress.answered || 0;
@@ -605,8 +618,14 @@ const Storage = {
             correct: progress.correct || 0,
             wrong: progress.wrong || 0,
             unanswered: totalQuestions - (progress.answered || 0),
-            accuracy: progress.answered > 0 ? Math.round((progress.correct / progress.answered) * 100) : 0,
-            progress: totalQuestions > 0 ? Math.round(((progress.answered || 0) / totalQuestions) * 100) : 0
+            accuracy:
+                progress.answered > 0
+                    ? Math.round((progress.correct / progress.answered) * 100)
+                    : 0,
+            progress:
+                totalQuestions > 0
+                    ? Math.round(((progress.answered || 0) / totalQuestions) * 100)
+                    : 0
         };
     },
 
@@ -620,7 +639,7 @@ const Storage = {
         const progress = this.getBankProgress(bankId);
         const categoryMap = {};
 
-        bank.questions.forEach(q => {
+        bank.questions.forEach((q) => {
             const cat = q.category || '未分类';
             if (!categoryMap[cat]) {
                 categoryMap[cat] = { total: 0, answered: 0, correct: 0, wrong: 0 };
@@ -685,7 +704,7 @@ const Storage = {
      */
     importData(data) {
         if (data.banks) {
-            data.banks.forEach(bank => this.addBank(bank));
+            data.banks.forEach((bank) => this.addBank(bank));
         }
         if (data.progress) this.set(this.KEYS.PROGRESS, data.progress);
         if (data.settings) this.set(this.KEYS.SETTINGS, data.settings);
@@ -739,7 +758,7 @@ const Storage = {
      * 清除所有数据
      */
     clearAll() {
-        Object.values(this.KEYS).forEach(key => {
+        Object.values(this.KEYS).forEach((key) => {
             this.remove(key);
         });
         this._bankData.clear();

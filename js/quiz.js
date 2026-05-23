@@ -60,7 +60,7 @@ const Quiz = {
 
         if (!this.state.bankId) {
             Utils.showToast('缺少题库参数', 'error');
-            setTimeout(() => window.location.href = 'index.html', 1000);
+            setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
@@ -70,14 +70,14 @@ const Quiz = {
         }
         if (!this.state.bank || !Array.isArray(this.state.bank.questions)) {
             Utils.showToast('题库加载失败', 'error');
-            setTimeout(() => window.location.href = 'index.html', 1000);
+            setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
         this.prepareQuestions();
 
         if (this.state.mode === 'review') {
-            this.state.questions.forEach(q => {
+            this.state.questions.forEach((q) => {
                 this.state.submitted[q.id] = true;
                 this.state.showExplanation[q.id] = true;
                 this.state.answers[q.id] = q.answer;
@@ -86,19 +86,19 @@ const Quiz = {
 
         if (this.state.mode === 'wrong' && this.state.questions.length === 0) {
             Utils.showToast('没有错题，真棒！', 'success');
-            setTimeout(() => window.location.href = 'index.html', 1000);
+            setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
         if (this.state.mode === 'spaced' && this.state.questions.length === 0) {
             Utils.showToast('没有需要复习的题目', 'info');
-            setTimeout(() => window.location.href = 'index.html', 1000);
+            setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
         if (this.state.mode === 'bookmark' && this.state.questions.length === 0) {
             Utils.showToast('没有收藏的题目', 'info');
-            setTimeout(() => window.location.href = 'index.html', 1000);
+            setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
@@ -148,9 +148,10 @@ const Quiz = {
         if (this.state.mode === 'exam') return;
 
         // 保存乱序/随机的题目顺序
-        const questionOrderIds = (this.state.mode === 'random' || this.state.mode === 'shuffle_options')
-            ? this.state.questions.map(q => q.id)
-            : undefined;
+        const questionOrderIds =
+            this.state.mode === 'random' || this.state.mode === 'shuffle_options'
+                ? this.state.questions.map((q) => q.id)
+                : undefined;
 
         Storage.saveSession(this.state.bankId, this.state.mode, {
             currentIndex: this.state.currentIndex,
@@ -180,8 +181,14 @@ const Quiz = {
         if (this.state.mode === 'search' && this.state.searchKeyword) {
             const keyword = this.state.searchKeyword.toLowerCase();
             const allQuestions = [...(this.state.bank.questions || [])];
-            const matched = allQuestions.filter(q => {
-                const searchText = [q.question, q.explanation, q.category, ...(q.options || []), q.answer].join(' ');
+            const matched = allQuestions.filter((q) => {
+                const searchText = [
+                    q.question,
+                    q.explanation,
+                    q.category,
+                    ...(q.options || []),
+                    q.answer
+                ].join(' ');
                 return searchText.toLowerCase().includes(keyword);
             });
             if (matched.length === 0) {
@@ -193,13 +200,13 @@ const Quiz = {
         let questions = [...(this.state.bank.questions || [])];
 
         if (this.state.filterType && this.state.filterType !== 'all') {
-            questions = questions.filter(q => q.type === this.state.filterType);
+            questions = questions.filter((q) => q.type === this.state.filterType);
         }
 
         switch (this.state.mode) {
             case 'wrong':
                 const wrongIds = Storage.getWrongQuestions(this.state.bankId);
-                questions = questions.filter(q => wrongIds.includes(q.id));
+                questions = questions.filter((q) => wrongIds.includes(q.id));
                 break;
             case 'random':
             case 'shuffle_options':
@@ -214,7 +221,7 @@ const Quiz = {
                 break;
             case 'bookmark':
                 const bookmarkIds = Storage.getBankBookmarks(this.state.bankId);
-                questions = questions.filter(q => bookmarkIds.includes(q.id));
+                questions = questions.filter((q) => bookmarkIds.includes(q.id));
                 break;
             case 'exam':
             case 'all':
@@ -243,17 +250,19 @@ const Quiz = {
         const countEl = document.getElementById('sidebar-count');
         if (countEl) countEl.textContent = questions.length + ' 题';
 
-        grid.innerHTML = questions.map((q, i) => {
-            let cls = 'sidebar-grid-item';
-            if (i === this.state.currentIndex) cls += ' current';
-            else if (this.state.submitted[q.id]) {
-                cls += this.checkAnswer(q) ? ' correct' : ' wrong';
-            }
-            return `<div class="${cls}" data-index="${i}">${i + 1}</div>`;
-        }).join('');
+        grid.innerHTML = questions
+            .map((q, i) => {
+                let cls = 'sidebar-grid-item';
+                if (i === this.state.currentIndex) cls += ' current';
+                else if (this.state.submitted[q.id]) {
+                    cls += this.checkAnswer(q) ? ' correct' : ' wrong';
+                }
+                return `<div class="${cls}" data-index="${i}">${i + 1}</div>`;
+            })
+            .join('');
 
         // 绑定点击跳转
-        grid.querySelectorAll('.sidebar-grid-item').forEach(item => {
+        grid.querySelectorAll('.sidebar-grid-item').forEach((item) => {
             item.addEventListener('click', () => {
                 const index = parseInt(item.dataset.index);
                 if (!isNaN(index)) this.goToQuestion(index);
@@ -284,7 +293,9 @@ const Quiz = {
         if (!question) return '';
 
         const saved = this.state.questionTimes[question.id] || 0;
-        const current = this.state.questionStartTime ? Math.round((Date.now() - this.state.questionStartTime) / 1000) : 0;
+        const current = this.state.questionStartTime
+            ? Math.round((Date.now() - this.state.questionStartTime) / 1000)
+            : 0;
         const total = saved + current;
 
         if (total < 60) return `${total}秒`;
@@ -359,9 +370,11 @@ const Quiz = {
                 submitBtn.disabled = !hasAns;
                 submitBtn.title = hasAns ? '' : '请先作答';
             }
-            setHint(isLightningMultiple
-                ? '⚡ 闪电模式 · 多选题请选择完整答案后提交'
-                : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换');
+            setHint(
+                isLightningMultiple
+                    ? '⚡ 闪电模式 · 多选题请选择完整答案后提交'
+                    : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换'
+            );
         }
     },
 
@@ -372,17 +385,20 @@ const Quiz = {
             return '已显示参考答案，请完成自评';
         }
 
-        return this.checkAnswer(question)
-            ? '回答正确，可进入下一题'
-            : '回答错误，查看解析后继续';
+        return this.checkAnswer(question) ? '回答正确，可进入下一题' : '回答错误，查看解析后继续';
     },
 
     renderHeader() {
         document.getElementById('quiz-title').textContent = this.state.bank.name;
 
         const modeNames = {
-            'all': '顺序刷题', 'random': '随机刷题', 'wrong': '错题重做',
-            'review': '背题模式', 'spaced': '智能复习', 'bookmark': '收藏题目', 'exam': '模拟考试'
+            all: '顺序刷题',
+            random: '随机刷题',
+            wrong: '错题重做',
+            review: '背题模式',
+            spaced: '智能复习',
+            bookmark: '收藏题目',
+            exam: '模拟考试'
         };
 
         const timerEl = document.getElementById('exam-timer');
@@ -431,17 +447,19 @@ const Quiz = {
         const container = document.getElementById('question-nav-grid');
         const questions = this.state.questions;
 
-        container.innerHTML = questions.map((q, index) => {
-            let cls = 'question-nav-item';
-            if (index === this.state.currentIndex) {
-                cls += ' current';
-            } else if (this.state.submitted[q.id]) {
-                cls += this.checkAnswer(q) ? ' correct' : ' wrong';
-            }
-            return `<div class="${cls}" data-index="${index}">${index + 1}</div>`;
-        }).join('');
+        container.innerHTML = questions
+            .map((q, index) => {
+                let cls = 'question-nav-item';
+                if (index === this.state.currentIndex) {
+                    cls += ' current';
+                } else if (this.state.submitted[q.id]) {
+                    cls += this.checkAnswer(q) ? ' correct' : ' wrong';
+                }
+                return `<div class="${cls}" data-index="${index}">${index + 1}</div>`;
+            })
+            .join('');
 
-        container.querySelectorAll('.question-nav-item').forEach(item => {
+        container.querySelectorAll('.question-nav-item').forEach((item) => {
             item.addEventListener('click', () => {
                 const index = parseInt(item.dataset.index);
                 this.goToQuestion(index);
@@ -459,7 +477,7 @@ const Quiz = {
         const isReviewMode = this.state.isReviewMode;
         const isSubmitted = isReviewMode || this.state.submitted[question.id];
         const userAnswer = isReviewMode ? question.answer : this.state.answers[question.id];
-        const isCorrect = isReviewMode ? true : (isSubmitted ? this.checkAnswer(question) : null);
+        const isCorrect = isReviewMode ? true : isSubmitted ? this.checkAnswer(question) : null;
         const showExplanation = isReviewMode || this.state.showExplanation[question.id];
 
         let html = `
@@ -469,13 +487,19 @@ const Quiz = {
                         <span class="question-number">第 ${this.state.currentIndex + 1} 题</span>
                         <span class="question-type ${question.type}">${Utils.getTypeName(question.type)}</span>
                         <span class="question-timer" id="question-timer">${this.getQuestionTimeDisplay()}</span>
-                        ${question.difficulty ? `
+                        ${
+                            question.difficulty
+                                ? `
                             <div class="question-difficulty" aria-label="难度 ${question.difficulty}/5">
-                                ${Array.from({length: 5}, (_, i) => 
-                                    `<div class="question-difficulty-dot ${i < question.difficulty ? 'active' : ''}"></div>`
+                                ${Array.from(
+                                    { length: 5 },
+                                    (_, i) =>
+                                        `<div class="question-difficulty-dot ${i < question.difficulty ? 'active' : ''}"></div>`
                                 ).join('')}
                             </div>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     </div>
                     <div class="question-actions">
                         ${question.category ? `<span class="question-category">${Utils.escapeHtml(question.category)}</span>` : ''}
@@ -505,14 +529,21 @@ const Quiz = {
 
     renderOptions(question, isSubmitted, userAnswer) {
         switch (question.type) {
-            case 'single': return this.renderSingleOptions(question, isSubmitted, userAnswer);
-            case 'multiple': return this.renderMultipleOptions(question, isSubmitted, userAnswer);
-            case 'judge': return this.renderJudgeOptions(question, isSubmitted, userAnswer);
-            case 'fill': return this.renderFillInput(question, isSubmitted, userAnswer);
-            case 'code': return this.renderCodeInput(question, isSubmitted, userAnswer);
+            case 'single':
+                return this.renderSingleOptions(question, isSubmitted, userAnswer);
+            case 'multiple':
+                return this.renderMultipleOptions(question, isSubmitted, userAnswer);
+            case 'judge':
+                return this.renderJudgeOptions(question, isSubmitted, userAnswer);
+            case 'fill':
+                return this.renderFillInput(question, isSubmitted, userAnswer);
+            case 'code':
+                return this.renderCodeInput(question, isSubmitted, userAnswer);
             case 'essay':
-            case '简答题': return this.renderEssayInput(question, isSubmitted, userAnswer);
-            default: return '';
+            case '简答题':
+                return this.renderEssayInput(question, isSubmitted, userAnswer);
+            default:
+                return '';
         }
     },
 
@@ -548,30 +579,32 @@ const Quiz = {
         const displayOpts = this.getDisplayOptions(question);
         return `
             <div class="options-list" role="radiogroup" aria-label="选项">
-                ${displayOpts.map(opt => {
-                    const letter = opt.displayLetter;
-                    const origLetter = opt.originalLetter;
-                    const isCorrect = origLetter === question.answer;
-                    const isUserSel = origLetter === userAnswer;
-                    let cls = 'option-item';
-                    if (isSubmitted) {
-                        if (isCorrect) {
-                            cls += ' correct disabled';
-                        } else if (isUserSel && !isCorrect) {
-                            cls += ' wrong disabled';
-                        } else {
-                            cls += ' disabled';
+                ${displayOpts
+                    .map((opt) => {
+                        const letter = opt.displayLetter;
+                        const origLetter = opt.originalLetter;
+                        const isCorrect = origLetter === question.answer;
+                        const isUserSel = origLetter === userAnswer;
+                        let cls = 'option-item';
+                        if (isSubmitted) {
+                            if (isCorrect) {
+                                cls += ' correct disabled';
+                            } else if (isUserSel && !isCorrect) {
+                                cls += ' wrong disabled';
+                            } else {
+                                cls += ' disabled';
+                            }
+                        } else if (isUserSel) {
+                            cls += ' selected';
                         }
-                    } else if (isUserSel) {
-                        cls += ' selected';
-                    }
-                    return `
+                        return `
                         <div class="${cls}" data-answer="${origLetter}" role="radio" aria-checked="${isUserSel}" tabindex="0">
                             <div class="option-marker">${letter}</div>
                             <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
                         </div>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </div>
         `;
     },
@@ -582,30 +615,32 @@ const Quiz = {
         const correctAnswers = question.answer || [];
         return `
             <div class="options-list" role="group" aria-label="选项">
-                ${displayOpts.map(opt => {
-                    const letter = opt.displayLetter;
-                    const origLetter = opt.originalLetter;
-                    let cls = 'option-item';
-                    if (isSubmitted) {
-                        const isCorrectOption = correctAnswers.includes(origLetter);
-                        const isUserSelected = userAnswers.includes(origLetter);
-                        if (isCorrectOption) {
-                            cls += ' correct disabled';
-                        } else if (isUserSelected) {
-                            cls += ' wrong disabled';
-                        } else {
-                            cls += ' disabled';
+                ${displayOpts
+                    .map((opt) => {
+                        const letter = opt.displayLetter;
+                        const origLetter = opt.originalLetter;
+                        let cls = 'option-item';
+                        if (isSubmitted) {
+                            const isCorrectOption = correctAnswers.includes(origLetter);
+                            const isUserSelected = userAnswers.includes(origLetter);
+                            if (isCorrectOption) {
+                                cls += ' correct disabled';
+                            } else if (isUserSelected) {
+                                cls += ' wrong disabled';
+                            } else {
+                                cls += ' disabled';
+                            }
+                        } else if (userAnswers.includes(origLetter)) {
+                            cls += ' selected';
                         }
-                    } else if (userAnswers.includes(origLetter)) {
-                        cls += ' selected';
-                    }
-                    return `
+                        return `
                         <div class="${cls}" data-answer="${origLetter}" role="checkbox" aria-checked="${userAnswers.includes(origLetter)}" tabindex="0">
                             <div class="option-marker">${letter}</div>
                             <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
                         </div>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </div>
             ${!isSubmitted ? '<div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">💡 多选题，可选择多个选项</div>' : ''}
         `;
@@ -631,13 +666,14 @@ const Quiz = {
         const correctAnswers = question.answer || [];
         return `
             <div class="fill-inputs">
-                ${correctAnswers.map((correct, index) => {
-                    let inputClass = 'fill-input';
-                    if (isSubmitted) {
-                        const isCorrect = this.checkFillAnswer(answers[index], correct);
-                        inputClass += isCorrect ? ' correct' : ' wrong';
-                    }
-                    return `
+                ${correctAnswers
+                    .map((correct, index) => {
+                        let inputClass = 'fill-input';
+                        if (isSubmitted) {
+                            const isCorrect = this.checkFillAnswer(answers[index], correct);
+                            inputClass += isCorrect ? ' correct' : ' wrong';
+                        }
+                        return `
                         <div class="fill-input-group">
                             <span class="fill-input-label">空${index + 1}</span>
                             <input type="text" class="${inputClass}" 
@@ -648,7 +684,8 @@ const Quiz = {
                                    aria-label="填空 ${index + 1}">
                         </div>
                     `;
-                }).join('')}
+                    })
+                    .join('')}
             </div>
             ${!isSubmitted ? '<div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">💡 填空题，输入后按 Enter 跳到下一空</div>' : ''}
         `;
@@ -708,21 +745,29 @@ const Quiz = {
     renderExplanation(question, isCorrect) {
         const isReviewMode = this.state.isReviewMode;
         const isEssay = question.type === 'essay' || question.type === '简答题';
-        const essaySelfMarked = !isEssay || this.state.answers[question.id]?.selfCorrect !== undefined;
+        const essaySelfMarked =
+            !isEssay || this.state.answers[question.id]?.selfCorrect !== undefined;
         const showResultBanner = !isReviewMode && essaySelfMarked;
-        const essayAnswer = isEssay && question.answer ? `
+        const essayAnswer =
+            isEssay && question.answer
+                ? `
             <div style="margin-bottom:var(--space-4)">
                 <strong>参考答案：</strong>
                 <div style="margin-top:8px">${Utils.parseMarkdown(question.answer)}</div>
             </div>
-        ` : '';
+        `
+                : '';
         return `
-            ${showResultBanner ? `
+            ${
+                showResultBanner
+                    ? `
             <div class="result-banner ${isCorrect ? 'correct' : 'wrong'}">
                 <span class="result-banner-icon">${isCorrect ? '🎉' : '😔'}</span>
                 <span class="result-banner-text">${isCorrect ? '回答正确！' : '回答错误'}</span>
             </div>
-            ` : ''}
+            `
+                    : ''
+            }
 
             <div class="explanation">
                 <div class="explanation-header">
@@ -733,18 +778,26 @@ const Quiz = {
                     ${essayAnswer}
                     ${Utils.parseMarkdown(question.explanation || '暂无解析')}
                 </div>
-                ${question.memoryAid ? `
+                ${
+                    question.memoryAid
+                        ? `
                     <div class="memory-aid">
                         <span class="memory-aid-icon">🧠</span>
                         <span class="memory-aid-text">${Utils.escapeHtml(question.memoryAid)}</span>
                     </div>
-                ` : ''}
-                ${question.code ? `
+                `
+                        : ''
+                }
+                ${
+                    question.code
+                        ? `
                     <div style="margin-top:var(--space-4)">
                         <strong>参考代码：</strong>
                         <pre><code class="language-${question.codeLanguage || 'c'}">${Utils.escapeHtml(question.code)}</code></pre>
                     </div>
-                ` : ''}
+                `
+                        : ''
+                }
             </div>
         `;
     },
@@ -757,7 +810,7 @@ const Quiz = {
         const card = this.getQuestionCard();
         if (!card) return;
 
-        card.querySelectorAll('.option-item, .judge-option').forEach(item => {
+        card.querySelectorAll('.option-item, .judge-option').forEach((item) => {
             const selected = item.dataset.answer === String(answer);
             item.classList.toggle('selected', selected);
             item.setAttribute('aria-checked', String(selected));
@@ -768,7 +821,7 @@ const Quiz = {
         const card = this.getQuestionCard();
         if (!card) return;
 
-        card.querySelectorAll('.option-item').forEach(item => {
+        card.querySelectorAll('.option-item').forEach((item) => {
             const selected = answers.includes(item.dataset.answer);
             item.classList.toggle('selected', selected);
             item.setAttribute('aria-checked', String(selected));
@@ -783,7 +836,7 @@ const Quiz = {
         if (!card) return;
 
         if (question.type === 'single') {
-            card.querySelectorAll('.option-item').forEach(item => {
+            card.querySelectorAll('.option-item').forEach((item) => {
                 item.addEventListener('click', () => {
                     const answer = item.dataset.answer;
                     this.selectAnswer(question.id, answer);
@@ -792,7 +845,7 @@ const Quiz = {
         }
 
         if (question.type === 'multiple') {
-            card.querySelectorAll('.option-item').forEach(item => {
+            card.querySelectorAll('.option-item').forEach((item) => {
                 item.addEventListener('click', () => {
                     const answer = item.dataset.answer;
                     this.toggleAnswer(question.id, answer);
@@ -801,7 +854,7 @@ const Quiz = {
         }
 
         if (question.type === 'judge') {
-            card.querySelectorAll('.judge-option').forEach(item => {
+            card.querySelectorAll('.judge-option').forEach((item) => {
                 item.addEventListener('click', () => {
                     const answer = item.dataset.answer === 'true';
                     this.selectAnswer(question.id, answer);
@@ -810,10 +863,13 @@ const Quiz = {
         }
 
         if (question.type === 'fill') {
-            card.querySelectorAll('.fill-input').forEach(input => {
-                input.addEventListener('input', Utils.debounce(() => {
-                    this.updateFillAnswer(question.id);
-                }, INPUT_SAVE_DEBOUNCE_MS));
+            card.querySelectorAll('.fill-input').forEach((input) => {
+                input.addEventListener(
+                    'input',
+                    Utils.debounce(() => {
+                        this.updateFillAnswer(question.id);
+                    }, INPUT_SAVE_DEBOUNCE_MS)
+                );
                 // Enter 跳到下一空
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
@@ -836,9 +892,12 @@ const Quiz = {
         if (question.type === 'code') {
             const editor = card.querySelector('#code-editor');
             if (editor) {
-                editor.addEventListener('input', Utils.debounce(() => {
-                    this.state.answers[question.id] = editor.value;
-                }, INPUT_SAVE_DEBOUNCE_MS));
+                editor.addEventListener(
+                    'input',
+                    Utils.debounce(() => {
+                        this.state.answers[question.id] = editor.value;
+                    }, INPUT_SAVE_DEBOUNCE_MS)
+                );
             }
         }
     },
@@ -885,14 +944,16 @@ const Quiz = {
         const card = this.getQuestionCard();
         const inputs = card ? card.querySelectorAll('.fill-input') : [];
         const answers = [];
-        inputs.forEach(input => { answers.push(input.value.trim()); });
+        inputs.forEach((input) => {
+            answers.push(input.value.trim());
+        });
         this.state.answers[questionId] = answers;
         this.saveSession();
         this.renderFooter();
     },
 
     submitEssay(questionId) {
-        const question = this.state.questions.find(q => q.id === questionId);
+        const question = this.state.questions.find((q) => q.id === questionId);
         if (!question) return;
 
         const editor = document.getElementById('essay-input');
@@ -908,7 +969,7 @@ const Quiz = {
     },
 
     selfMarkEssay(questionId, isCorrect) {
-        const question = this.state.questions.find(q => q.id === questionId);
+        const question = this.state.questions.find((q) => q.id === questionId);
         if (!question) return;
 
         const previous = this.state.answers[questionId] || {};
@@ -946,7 +1007,12 @@ const Quiz = {
         this.state.showExplanation[question.id] = true;
 
         const isCorrect = this.checkAnswer(question);
-        Storage.updateQuestionProgress(this.state.bankId, question.id, isCorrect, this.state.answers[question.id]);
+        Storage.updateQuestionProgress(
+            this.state.bankId,
+            question.id,
+            isCorrect,
+            this.state.answers[question.id]
+        );
         this.saveSession();
 
         this.renderQuestion();
@@ -957,7 +1023,10 @@ const Quiz = {
             const questionCard = this.getQuestionCard();
             if (questionCard) {
                 questionCard.classList.add('correct-flash');
-                setTimeout(() => questionCard.classList.remove('correct-flash'), LIGHTNING_NEXT_DELAY_MS);
+                setTimeout(
+                    () => questionCard.classList.remove('correct-flash'),
+                    LIGHTNING_NEXT_DELAY_MS
+                );
             }
             setTimeout(() => this.nextQuestion(), LIGHTNING_NEXT_DELAY_MS);
             return;
@@ -975,7 +1044,7 @@ const Quiz = {
             case 'multiple':
                 return Array.isArray(answer) && answer.length > 0;
             case 'fill':
-                return Array.isArray(answer) && answer.some(a => a.trim() !== '');
+                return Array.isArray(answer) && answer.some((a) => a.trim() !== '');
             case 'code':
                 return answer && (typeof answer === 'string' ? answer.trim() !== '' : true);
             case 'essay':
@@ -994,7 +1063,9 @@ const Quiz = {
             case 'multiple':
                 const userSet = new Set(userAnswer || []);
                 const correctSet = new Set(question.answer || []);
-                return userSet.size === correctSet.size && [...userSet].every(a => correctSet.has(a));
+                return (
+                    userSet.size === correctSet.size && [...userSet].every((a) => correctSet.has(a))
+                );
             case 'judge':
                 return userAnswer === question.answer;
             case 'fill':
@@ -1027,7 +1098,9 @@ const Quiz = {
             this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => { this.state.isNavigating = false; }, NAV_UNLOCK_DELAY_MS);
+            setTimeout(() => {
+                this.state.isNavigating = false;
+            }, NAV_UNLOCK_DELAY_MS);
         }
     },
 
@@ -1047,7 +1120,9 @@ const Quiz = {
             this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => { this.state.isNavigating = false; }, NAV_UNLOCK_DELAY_MS);
+            setTimeout(() => {
+                this.state.isNavigating = false;
+            }, NAV_UNLOCK_DELAY_MS);
         }
     },
 
@@ -1061,7 +1136,9 @@ const Quiz = {
             this.saveSession();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => { this.state.isNavigating = false; }, NAV_UNLOCK_DELAY_MS);
+            setTimeout(() => {
+                this.state.isNavigating = false;
+            }, NAV_UNLOCK_DELAY_MS);
         }
     },
 
@@ -1077,8 +1154,8 @@ const Quiz = {
         // 计算正确数
         let correctCount = 0;
         const submittedIds = Object.keys(this.state.submitted);
-        submittedIds.forEach(qId => {
-            const q = this.state.questions.find(q => q.id == qId);
+        submittedIds.forEach((qId) => {
+            const q = this.state.questions.find((q) => q.id == qId);
             if (q && this.checkAnswer(q)) correctCount++;
         });
 
@@ -1133,7 +1210,7 @@ const Quiz = {
         this.closeFinishModal();
         this.saveSession();
         Utils.showToast('进度已保存', 'success');
-        setTimeout(() => window.location.href = 'index.html', SAVE_AND_QUIT_DELAY_MS);
+        setTimeout(() => (window.location.href = 'index.html'), SAVE_AND_QUIT_DELAY_MS);
     },
 
     /**
@@ -1168,11 +1245,12 @@ const Quiz = {
         const seconds = duration % 60;
 
         const submittedIds = Object.keys(this.state.submitted);
-        const correctCount = submittedIds.filter(qId => {
-            const q = this.state.questions.find(q => q.id == qId);
+        const correctCount = submittedIds.filter((qId) => {
+            const q = this.state.questions.find((q) => q.id == qId);
             return q && this.checkAnswer(q);
         }).length;
-        const thisAccuracy = submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0;
+        const thisAccuracy =
+            submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0;
 
         const isExam = this.state.mode === 'exam';
         const passed = isExam ? thisAccuracy >= this.state.examPassRate : null;
@@ -1230,7 +1308,6 @@ const Quiz = {
         `;
 
         document.querySelector('.quiz-footer').style.display = 'none';
-        
     },
 
     restart() {
@@ -1250,7 +1327,7 @@ const Quiz = {
         }
 
         if (this.state.mode === 'review') {
-            this.state.questions.forEach(q => {
+            this.state.questions.forEach((q) => {
                 this.state.submitted[q.id] = true;
                 this.state.showExplanation[q.id] = true;
                 this.state.answers[q.id] = q.answer;
@@ -1258,7 +1335,7 @@ const Quiz = {
         }
 
         document.querySelector('.quiz-footer').style.display = '';
-        
+
         this.render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
@@ -1276,13 +1353,12 @@ const Quiz = {
         this.state.isFinished = false;
 
         // 确保所有已答题都显示解析
-        Object.keys(this.state.submitted).forEach(qId => {
+        Object.keys(this.state.submitted).forEach((qId) => {
             this.state.showExplanation[qId] = true;
         });
 
         // 恢复底部栏
         document.querySelector('.quiz-footer').style.display = '';
-        
 
         this.render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1299,34 +1375,42 @@ const Quiz = {
         let touchStartX = 0;
         let touchStartY = 0;
 
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].clientX;
-            touchStartY = e.changedTouches[0].clientY;
-        }, { passive: true });
+        document.addEventListener(
+            'touchstart',
+            (e) => {
+                touchStartX = e.changedTouches[0].clientX;
+                touchStartY = e.changedTouches[0].clientY;
+            },
+            { passive: true }
+        );
 
-        document.addEventListener('touchend', (e) => {
-            // 模态框打开时不处理
-            if (document.getElementById('finish-modal')) return;
-            // 导航面板打开时不处理
-            const navPanel = document.getElementById('nav-panel');
-            if (navPanel && navPanel.classList.contains('show')) return;
+        document.addEventListener(
+            'touchend',
+            (e) => {
+                // 模态框打开时不处理
+                if (document.getElementById('finish-modal')) return;
+                // 导航面板打开时不处理
+                const navPanel = document.getElementById('nav-panel');
+                if (navPanel && navPanel.classList.contains('show')) return;
 
-            const deltaX = e.changedTouches[0].clientX - touchStartX;
-            const deltaY = e.changedTouches[0].clientY - touchStartY;
+                const deltaX = e.changedTouches[0].clientX - touchStartX;
+                const deltaY = e.changedTouches[0].clientY - touchStartY;
 
-            // 忽略垂直滑动（用户在滚动页面）
-            if (Math.abs(deltaY) > Math.abs(deltaX)) return;
-            // 未达到阈值
-            if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
+                // 忽略垂直滑动（用户在滚动页面）
+                if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+                // 未达到阈值
+                if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX) return;
 
-            if (deltaX < 0) {
-                // 左滑 → 下一题
-                this.nextQuestion();
-            } else {
-                // 右滑 → 上一题
-                this.prevQuestion();
-            }
-        }, { passive: true });
+                if (deltaX < 0) {
+                    // 左滑 → 下一题
+                    this.nextQuestion();
+                } else {
+                    // 右滑 → 上一题
+                    this.prevQuestion();
+                }
+            },
+            { passive: true }
+        );
 
         document.addEventListener('keydown', (e) => {
             // 如果模态框开着不处理快捷键

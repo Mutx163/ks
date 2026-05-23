@@ -111,7 +111,9 @@ const Utils = {
             const language = lang || 'plaintext';
             const escapedCode = this.escapeHtml(code.trim());
             const id = placeholders.length;
-            placeholders.push(`<pre><code class="language-${language}">${escapedCode}</code></pre>`);
+            placeholders.push(
+                `<pre><code class="language-${language}">${escapedCode}</code></pre>`
+            );
             return `%%PH${id}%%`;
         });
 
@@ -125,14 +127,18 @@ const Utils = {
         // 提取数学公式块 ($$...$$)
         html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
             const id = placeholders.length;
-            placeholders.push(`<div class="math-block" data-formula="${this.escapeHtml(formula.trim())}"></div>`);
+            placeholders.push(
+                `<div class="math-block" data-formula="${this.escapeHtml(formula.trim())}"></div>`
+            );
             return `%%PH${id}%%`;
         });
 
         // 提取行内数学公式 ($...$)
         html = html.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
             const id = placeholders.length;
-            placeholders.push(`<span class="math-inline" data-formula="${this.escapeHtml(formula.trim())}"></span>`);
+            placeholders.push(
+                `<span class="math-inline" data-formula="${this.escapeHtml(formula.trim())}"></span>`
+            );
             return `%%PH${id}%%`;
         });
 
@@ -162,7 +168,7 @@ const Utils = {
     escapeHtml(text) {
         if (!text) return '';
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-        return String(text).replace(/[&<>"']/g, c => map[c]);
+        return String(text).replace(/[&<>"']/g, (c) => map[c]);
     },
 
     /**
@@ -173,7 +179,7 @@ const Utils = {
         try {
             if (typeof window.katex === 'undefined' || !window.katex) return;
 
-            container.querySelectorAll('.math-inline').forEach(el => {
+            container.querySelectorAll('.math-inline').forEach((el) => {
                 const formula = el.dataset.formula;
                 if (formula) {
                     try {
@@ -188,7 +194,7 @@ const Utils = {
                 }
             });
 
-            container.querySelectorAll('.math-block').forEach(el => {
+            container.querySelectorAll('.math-block').forEach((el) => {
                 const formula = el.dataset.formula;
                 if (formula) {
                     try {
@@ -215,7 +221,7 @@ const Utils = {
         try {
             if (typeof window.Prism === 'undefined' || !window.Prism) return;
 
-            container.querySelectorAll('pre code').forEach(el => {
+            container.querySelectorAll('pre code').forEach((el) => {
                 try {
                     Prism.highlightElement(el);
                 } catch (e) {
@@ -280,7 +286,7 @@ const Utils = {
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        
+
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
@@ -415,10 +421,12 @@ const Utils = {
         const id = 'modal-' + this.generateId();
         const sizeClass = size === 'sm' ? 'modal-sm' : size === 'lg' ? 'modal-lg' : '';
 
-        const buttonsHtml = buttons.map((btn, i) => {
-            const cls = btn.class || (i === 0 ? 'btn-primary' : 'btn-secondary');
-            return `<button class="btn ${cls}" data-modal-btn="${i}">${btn.label}</button>`;
-        }).join('');
+        const buttonsHtml = buttons
+            .map((btn, i) => {
+                const cls = btn.class || (i === 0 ? 'btn-primary' : 'btn-secondary');
+                return `<button class="btn ${cls}" data-modal-btn="${i}">${btn.label}</button>`;
+            })
+            .join('');
 
         const modalHtml = `
             <div class="modal-overlay show" id="${id}">
@@ -458,8 +466,7 @@ const Utils = {
         });
 
         return overlay;
-    },
-
+    }
 };
 
 // 导出
