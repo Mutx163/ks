@@ -457,7 +457,7 @@ const Utils = {
             <div class="modal-overlay show" id="${id}">
                 <div class="modal-content ${sizeClass}">
                     <div class="modal-header">
-                        <h3 class="modal-title">${this.escapeHtml(title)}</h3>
+                        <h3 class="modal-title">${title}</h3>
                         <button class="modal-close" data-modal-close aria-label="关闭">×</button>
                     </div>
                     <div class="modal-body">${content}</div>
