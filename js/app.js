@@ -451,13 +451,6 @@ const App = {
     },
 
     /**
-     * 切换闪电模式
-     */
-    toggleLightning(checked) {
-        this.state.lightningMode = checked;
-    },
-
-    /**
      * 开始刷题
      * @param {string} bankId - 题库 ID
      */
@@ -474,8 +467,7 @@ const App = {
     startQuiz(bankId, mode) {
         const selectedType = this.state.selectedTypes[bankId] || 'all';
         const typeParam = selectedType !== 'all' ? `&type=${selectedType}` : '';
-        const lightningParam = this.state.lightningMode ? '&lightning=1' : '';
-        window.location.href = `quiz.html?bank=${bankId}&mode=${mode}${typeParam}${lightningParam}`;
+        window.location.href = `quiz.html?bank=${bankId}&mode=${mode}${typeParam}`;
     },
 
     /**
@@ -713,7 +705,7 @@ const App = {
     showSettings() {
         const settings = Storage.getSettings();
         const fontSize = settings.fontSize || 16;
-        const autoNext = settings.autoNext || false;
+        const answerMode = settings.answerMode || 'normal';
 
         const content = `
             <label>字体大小</label>
@@ -724,10 +716,12 @@ const App = {
                 <option value="20" ${fontSize === 20 ? 'selected' : ''}>20px - 大</option>
                 <option value="24" ${fontSize === 24 ? 'selected' : ''}>24px - 超大</option>
             </select>
-            <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer; margin-top: var(--space-2);">
-                <input type="checkbox" id="setting-auto-next" ${autoNext ? 'checked' : ''}>
-                <span>答对自动跳到下一题</span>
-            </label>
+            <label>答题模式</label>
+            <select id="setting-answer-mode">
+                <option value="normal" ${answerMode === 'normal' ? 'selected' : ''}>普通模式 - 手动提交手动跳题</option>
+                <option value="autoNext" ${answerMode === 'autoNext' ? 'selected' : ''}>自动跳题 - 手动提交答对自动跳</option>
+                <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
+            </select>
         `;
 
         Utils.showModal({
@@ -739,7 +733,7 @@ const App = {
                     class: 'btn-primary',
                     onClick: (modal) => {
                         const size = parseInt(modal.querySelector('#setting-font-size').value);
-                        const newAutoNext = modal.querySelector('#setting-auto-next').checked;
+                        const newAnswerMode = modal.querySelector('#setting-answer-mode').value;
 
                         if (size >= 12 && size <= 24) {
                             Storage.updateSettings({ fontSize: size });
@@ -749,9 +743,7 @@ const App = {
                             );
                         }
 
-                        if (newAutoNext !== autoNext) {
-                            Storage.updateSettings({ autoNext: newAutoNext });
-                        }
+                        Storage.updateSettings({ answerMode: newAnswerMode });
 
                         Utils.showToast('设置已保存', 'success');
                         modal.remove();

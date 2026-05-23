@@ -32,9 +32,8 @@ const Quiz = {
         examPassRate: 60,
         examTimeRemaining: 0,
         examTimer: null,
-        autoNext: false,
+        answerMode: 'normal',
         filterType: 'all',
-        lightningMode: false,
         isReviewMode: false,
         isNavigating: false,
         optionOrderCache: {}
@@ -45,7 +44,6 @@ const Quiz = {
         this.state.bankId = params.get('bank');
         this.state.mode = params.get('mode') || 'all';
         this.state.filterType = params.get('type') || 'all';
-        this.state.lightningMode = params.get('lightning') === '1';
         this.state.examTimeLimit = parseInt(params.get('time')) || 0;
         this.state.examPassRate = parseInt(params.get('pass')) || 60;
 
@@ -54,9 +52,9 @@ const Quiz = {
             this.state.searchKeyword = params.get('q') || '';
         }
 
-        // 从设置读取 autoNext
+        // 从设置读取答题模式
         const settings = Storage.getSettings();
-        this.state.autoNext = settings.autoNext || false;
+        this.state.answerMode = settings.answerMode || 'normal';
 
         if (!this.state.bankId) {
             Utils.showToast('缺少题库参数', 'error');
@@ -130,7 +128,7 @@ const Quiz = {
         const session = Storage.getSession(this.state.bankId, this.state.mode);
         if (session && session.currentIndex < this.state.questions.length) {
             this.state.currentIndex = session.currentIndex || 0;
-            this.state.autoNext = session.autoNext || this.state.autoNext;
+            this.state.answerMode = session.answerMode || this.state.answerMode;
             if (this.state.mode !== 'review') {
                 this.state.answers = session.answers || {};
                 this.state.submitted = session.submitted || {};
@@ -154,7 +152,7 @@ const Quiz = {
         Storage.saveSession(this.state.bankId, this.state.mode, {
             currentIndex: this.state.currentIndex,
             filterType: this.state.filterType || 'all',
-            autoNext: this.state.autoNext,
+            answerMode: this.state.answerMode,
             answers: this.state.answers,
             submitted: this.state.submitted,
             showExplanation: this.state.showExplanation,
@@ -338,7 +336,8 @@ const Quiz = {
         const hint = document.getElementById('footer-hint');
         const footerActions = document.querySelector('.quiz-footer-actions');
         const question = this.state.questions[this.state.currentIndex];
-        const isLightningMultiple = this.state.lightningMode && question?.type === 'multiple';
+        const isLightning = this.state.answerMode === 'lightning';
+        const isLightningMultiple = isLightning && question?.type === 'multiple';
         const isSubmitted = question && this.state.submitted[question.id];
         const hasAns = question && this.hasAnswer(question);
 
@@ -362,7 +361,7 @@ const Quiz = {
         } else if (isSubmitted) {
             setSubmitHidden(true);
             setHint(this.getSubmittedHint(question));
-        } else if (this.state.lightningMode && !isLightningMultiple) {
+        } else if (isLightning && !isLightningMultiple) {
             setSubmitHidden(true);
             setHint('⚡ 闪电模式 - 点击选项直接判对错');
         } else {
@@ -894,12 +893,13 @@ const Quiz = {
     },
 
     selectAnswer(questionId, answer) {
-        if (this.state.lightningMode && this.state.submitted[questionId]) {
+        const isLightning = this.state.answerMode === 'lightning';
+        if (isLightning && this.state.submitted[questionId]) {
             this.nextQuestion();
             return;
         }
         this.state.answers[questionId] = answer;
-        if (this.state.lightningMode) {
+        if (isLightning) {
             this.submitCurrent();
             return;
         }
@@ -910,7 +910,8 @@ const Quiz = {
     },
 
     toggleAnswer(questionId, answer) {
-        if (this.state.lightningMode && this.state.submitted[questionId]) {
+        const isLightning = this.state.answerMode === 'lightning';
+        if (isLightning && this.state.submitted[questionId]) {
             this.nextQuestion();
             return;
         }
@@ -987,7 +988,7 @@ const Quiz = {
         }
 
         if (!this.hasAnswer(question)) {
-            if (!this.state.lightningMode) {
+            if (this.state.answerMode !== 'lightning') {
                 Utils.showToast('请先作答', 'info');
             }
             return;
@@ -1009,7 +1010,10 @@ const Quiz = {
         this.renderQuestion();
         this.renderFooter();
 
-        if (this.state.lightningMode && isCorrect) {
+        const isLightning = this.state.answerMode === 'lightning';
+        const isAutoNext = this.state.answerMode === 'autoNext';
+
+        if (isLightning && isCorrect) {
             // 答对时添加闪烁动画
             const questionCard = this.getQuestionCard();
             if (questionCard) {
@@ -1020,6 +1024,12 @@ const Quiz = {
                 );
             }
             setTimeout(() => this.nextQuestion(), LIGHTNING_NEXT_DELAY_MS);
+            return;
+        }
+
+        // 自动跳题模式：答对后自动跳到下一题
+        if (isAutoNext && isCorrect) {
+            setTimeout(() => this.nextQuestion(), 500);
             return;
         }
 
