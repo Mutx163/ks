@@ -3,6 +3,8 @@
  */
 
 const Utils = {
+    _iconObserver: null,
+
     /**
      * 创建 Lucide 图标 HTML
      * @param {string} name - 图标名称
@@ -14,11 +16,21 @@ const Utils = {
     },
 
     /**
-     * 初始化页面上的 Lucide 图标
+     * 初始化页面上的 Lucide 图标（含自动监听）
      */
     initIcons() {
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
+        if (typeof lucide === 'undefined') return;
+        lucide.createIcons();
+
+        // 设置 MutationObserver 自动转换新图标
+        if (!this._iconObserver) {
+            this._iconObserver = new MutationObserver(() => {
+                lucide.createIcons();
+            });
+            this._iconObserver.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
         }
     },
     /**
