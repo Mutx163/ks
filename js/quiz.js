@@ -921,7 +921,8 @@ const Quiz = {
 
     toggleAnswer(questionId, answer) {
         const isLightning = this.state.answerMode === 'lightning';
-        if (isLightning && this.state.submitted[questionId]) {
+        const isInstant = this.state.answerMode === 'instant';
+        if ((isLightning || isInstant) && this.state.submitted[questionId]) {
             this.nextQuestion();
             return;
         }
