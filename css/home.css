@@ -258,6 +258,8 @@
     border-radius: var(--radius);
     color: var(--text);
     transition: var(--transition-bounce);
+    animation: cardSlideIn 0.4s ease backwards;
+    animation-delay: 0.2s;
 }
 
 .insight-entry-btn:hover {
@@ -317,6 +319,8 @@
     padding: var(--space-5);
     border: 1px solid var(--border);
     transition: var(--transition);
+    animation: cardSlideIn 0.4s ease backwards;
+    animation-delay: 0.15s;
 }
 
 .stat-card:hover {
@@ -635,6 +639,24 @@
     transition: var(--transition-bounce);
     min-width: 0;
     max-width: 100%;
+    /* 入场动画 */
+    animation: cardSlideIn 0.4s ease backwards;
+}
+
+.bank-card:nth-child(1) { animation-delay: 0.05s; }
+.bank-card:nth-child(2) { animation-delay: 0.1s; }
+.bank-card:nth-child(3) { animation-delay: 0.15s; }
+.bank-card:nth-child(4) { animation-delay: 0.2s; }
+
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .bank-card:hover {
