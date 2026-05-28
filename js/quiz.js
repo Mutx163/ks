@@ -1437,6 +1437,12 @@ const Quiz = {
         document.addEventListener('keydown', (e) => {
             // 如果模态框开着不处理快捷键
             if (document.getElementById('finish-modal')) return;
+            
+            // 如果焦点在输入框中，不处理方向键
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+                return;
+            }
 
             if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
                 const question = this.state.questions[this.state.currentIndex];
@@ -1447,11 +1453,12 @@ const Quiz = {
                 }
             }
 
-            if (e.key === 'ArrowLeft' && e.altKey) {
+            // 方向键切换题目（上/左 = 上一题，下/右 = 下一题）
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
                 e.preventDefault();
                 this.prevQuestion();
             }
-            if (e.key === 'ArrowRight' && e.altKey) {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
                 e.preventDefault();
                 this.nextQuestion();
             }
@@ -1460,11 +1467,14 @@ const Quiz = {
             if (question && !this.state.submitted[question.id]) {
                 if (question.type === 'single' || question.type === 'multiple') {
                     const key = e.key.toUpperCase();
-                    if (['A', 'B', 'C', 'D', 'E', 'F'].includes(key)) {
+                    // 字母键 A-F 或数字键 1-6 选择选项
+                    const numToLetter = { '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E', '6': 'F' };
+                    const selectedKey = numToLetter[e.key] || key;
+                    if (['A', 'B', 'C', 'D', 'E', 'F'].includes(selectedKey)) {
                         if (question.type === 'single') {
-                            this.selectAnswer(question.id, key);
+                            this.selectAnswer(question.id, selectedKey);
                         } else {
-                            this.toggleAnswer(question.id, key);
+                            this.toggleAnswer(question.id, selectedKey);
                         }
                     }
                 }

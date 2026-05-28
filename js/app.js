@@ -146,7 +146,7 @@ const App = {
             }
         } else if (stats.totalQuestions > 0) {
             icon = 'rocket';
-            title = '欢迎使用智能刷题系统';
+            title = '欢迎使用城科卷王';
             desc = `共 ${stats.totalQuestions} 道题，选择一个题库开始学习吧`;
             btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">查看题库</button>`;
         } else {
