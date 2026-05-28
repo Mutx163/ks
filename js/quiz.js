@@ -128,7 +128,7 @@ const Quiz = {
         const session = Storage.getSession(this.state.bankId, this.state.mode);
         if (session && session.currentIndex < this.state.questions.length) {
             this.state.currentIndex = session.currentIndex || 0;
-            this.state.answerMode = session.answerMode || this.state.answerMode;
+            // answerMode 不从 session 恢复，始终使用设置中的最新值
             if (this.state.mode !== 'review') {
                 this.state.answers = session.answers || {};
                 this.state.submitted = session.submitted || {};
@@ -1396,6 +1396,14 @@ const Quiz = {
                 // 导航面板打开时不处理
                 const navPanel = document.getElementById('nav-panel');
                 if (navPanel && navPanel.classList.contains('show')) return;
+
+                // 检查触摸目标是否在可滚动的代码块或水平滚动容器内
+                const touchTarget = e.target;
+                const scrollableParent = touchTarget.closest('pre, code, .code-block, .code-wrapper, .explanation-content, [style*="overflow-x"]');
+                if (scrollableParent && scrollableParent.scrollWidth > scrollableParent.clientWidth) {
+                    // 元素有水平滚动，不触发题目切换
+                    return;
+                }
 
                 const deltaX = e.changedTouches[0].clientX - touchStartX;
                 const deltaY = e.changedTouches[0].clientY - touchStartY;
