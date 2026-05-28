@@ -337,7 +337,9 @@ const Quiz = {
         const footerActions = document.querySelector('.quiz-footer-actions');
         const question = this.state.questions[this.state.currentIndex];
         const isLightning = this.state.answerMode === 'lightning';
-        const isLightningMultiple = isLightning && question?.type === 'multiple';
+        const isInstant = this.state.answerMode === 'instant';
+        const isAutoSubmit = isLightning || isInstant; // 闪电模式或即时模式
+        const isAutoSubmitMultiple = isAutoSubmit && question?.type === 'multiple';
         const isSubmitted = question && this.state.submitted[question.id];
         const hasAns = question && this.hasAnswer(question);
 
@@ -361,18 +363,24 @@ const Quiz = {
         } else if (isSubmitted) {
             setSubmitHidden(true);
             setHint(this.getSubmittedHint(question));
-        } else if (isLightning && !isLightningMultiple) {
+        } else if (isAutoSubmit && !isAutoSubmitMultiple) {
+            // 单选/判断题：隐藏提交按钮，点击即判
             setSubmitHidden(true);
-            setHint(`${Utils.icon('zap')} 闪电模式 - 点击选项直接判对错`);
+            setHint(isLightning 
+                ? `闪电模式 - 点击选项直接判对错，答对自动跳题`
+                : `即时判断 - 点击选项直接判对错，不自动跳题`);
         } else {
+            // 普通模式、或闪电/即时模式的多选题
             setSubmitHidden(false);
             if (submitBtn) {
                 submitBtn.disabled = !hasAns;
                 submitBtn.title = hasAns ? '' : '请先作答';
             }
             setHint(
-                isLightningMultiple
-                    ? `${Utils.icon('zap')} 闪电模式 · 多选题请选择完整答案后提交`
+                isAutoSubmitMultiple
+                    ? (isLightning 
+                        ? `闪电模式 · 多选题请选择完整答案后提交，答对自动跳题`
+                        : `即时判断 · 多选题请选择完整答案后提交，不自动跳题`)
                     : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换'
             );
         }
@@ -895,12 +903,13 @@ const Quiz = {
 
     selectAnswer(questionId, answer) {
         const isLightning = this.state.answerMode === 'lightning';
-        if (isLightning && this.state.submitted[questionId]) {
+        const isInstant = this.state.answerMode === 'instant';
+        if ((isLightning || isInstant) && this.state.submitted[questionId]) {
             this.nextQuestion();
             return;
         }
         this.state.answers[questionId] = answer;
-        if (isLightning) {
+        if (isLightning || isInstant) {
             this.submitCurrent();
             return;
         }
