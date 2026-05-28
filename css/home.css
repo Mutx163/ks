@@ -538,13 +538,26 @@
     font-size: var(--font-size-base);
     flex-shrink: 0;
     opacity: 0.5;
+    /* 确保 Lucide SVG 图标正确显示 */
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* 覆盖 base.css 的绝对定位 */
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    pointer-events: auto;
+    margin: 0;
 }
 
 /* Lucide SVG 图标样式 */
 .search-icon.lucide {
     width: 18px;
     height: 18px;
-    display: inline-block;
+    display: inline-flex;
     vertical-align: middle;
 }
 
