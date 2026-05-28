@@ -540,6 +540,14 @@
     opacity: 0.5;
 }
 
+/* Lucide SVG 图标样式 */
+.search-icon.lucide {
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .search-input {
     flex: 1;
     border: none;
