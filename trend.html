@@ -61,9 +61,14 @@
         <script type="module" src="js/insights.js"></script>
         <script>
             // 初始化 Lucide 图标
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
+            function initLucide() {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                } else {
+                    setTimeout(initLucide, 100);
+                }
             }
+            initLucide();
         </script>
         <!-- 51.la 统计 -->
         <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
