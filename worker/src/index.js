@@ -166,6 +166,56 @@ export default {
                 return await handleAdminEditAnnouncement(request, env, origin);
             }
 
+            // POST /api/admin/import-bank
+            if (method === 'POST' && path === '/api/admin/import-bank') {
+                return await handleAdminImportBank(request, env, origin);
+            }
+
+            // GET /api/admin/bank/:id
+            if (method === 'GET' && path.startsWith('/api/admin/bank/')) {
+                const bankId = path.split('/api/admin/bank/')[1];
+                return await handleAdminGetBank(bankId, url, env, origin);
+            }
+
+            // POST /api/admin/bank/:id/question
+            if (method === 'POST' && path.match(/\/api\/admin\/bank\/[^/]+\/question$/)) {
+                const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
+                return await handleAdminAddQuestion(bankId, request, env, origin);
+            }
+
+            // PUT /api/admin/bank/:id/question/:qid
+            if (method === 'PUT' && path.match(/\/api\/admin\/bank\/[^/]+\/question\/\d+$/)) {
+                const parts = path.split('/');
+                const bankId = parts[4];
+                const qid = parseInt(parts[6]);
+                return await handleAdminEditQuestion(bankId, qid, request, env, origin);
+            }
+
+            // DELETE /api/admin/bank/:id/question/:qid
+            if (method === 'DELETE' && path.match(/\/api\/admin\/bank\/[^/]+\/question\/\d+$/)) {
+                const parts = path.split('/');
+                const bankId = parts[4];
+                const qid = parseInt(parts[6]);
+                return await handleAdminDeleteQuestion(bankId, qid, request, env, origin);
+            }
+
+            // GET /api/admin/bank/:id/history
+            if (method === 'GET' && path.match(/\/api\/admin\/bank\/[^/]+\/history$/)) {
+                const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
+                return await handleAdminBankHistory(bankId, url, env, origin);
+            }
+
+            // GET /api/banks（前端获取题库列表）
+            if (method === 'GET' && path === '/api/banks') {
+                return await handleGetBanks(env, origin);
+            }
+
+            // GET /api/bank/:id（前端获取题库数据）
+            if (method === 'GET' && path.startsWith('/api/bank/')) {
+                const bankId = path.split('/api/bank/')[1];
+                return await handleGetBank(bankId, env, origin);
+            }
+
             // POST /api/admin/adjust-stats
             if (method === 'POST' && path === '/api/admin/adjust-stats') {
                 return await handleAdminAdjustStats(request, env, origin);
@@ -880,4 +930,182 @@ async function handleAdminUserCloudData(userId, url, env, origin) {
     try { progress = JSON.parse(user.progress || '{}'); } catch {}
 
     return json({ ok: true, user: { id: user.id, initials: user.initials, lastSyncAt: user.last_sync_at }, settings, progress }, 200, origin);
+}
+
+// ==================== 题库管理 API ====================
+
+// 前端：获取题库列表（不含题目详情）
+async function handleGetBanks(env, origin) {
+    const rows = await env.DB.prepare(
+        'SELECT id, name, description, category, version, question_count, updated_at FROM banks ORDER BY name'
+    ).all();
+    return json({ ok: true, banks: rows.results || [] }, 200, origin);
+}
+
+// 前端：获取题库完整数据（含题目）
+async function handleGetBank(bankId, env, origin) {
+    const bank = await env.DB.prepare(
+        'SELECT * FROM banks WHERE id = ?'
+    ).bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    let questions = [];
+    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+
+    return json({
+        ok: true,
+        bank: {
+            id: bank.id,
+            name: bank.name,
+            description: bank.description,
+            category: bank.category,
+            version: bank.version,
+            questions
+        }
+    }, 200, origin);
+}
+
+// 管理员：导入/替换题库
+async function handleAdminImportBank(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, id, name, description, category, questions } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!id || !name || !questions) return error('缺少参数', 400, origin);
+
+    const now = new Date().toISOString();
+    const existing = await env.DB.prepare('SELECT version FROM banks WHERE id = ?').bind(id).first();
+    const version = existing ? (existing.version || 0) + 1 : 1;
+
+    await env.DB.prepare(`
+        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(id, name, description || '', category || '', version, questions.length, JSON.stringify(questions), now, now).run();
+
+    // 记录历史
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(id, existing ? 'upload' : 'create', `${questions.length}道题`, admin.id, now).run();
+
+    return json({ ok: true, version, count: questions.length }, 200, origin);
+}
+
+// 管理员：获取单个题库详情
+async function handleAdminGetBank(bankId, url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId');
+    const password = url.searchParams.get('password');
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const bank = await env.DB.prepare('SELECT * FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    let questions = [];
+    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+
+    return json({ ok: true, bank: { ...bank, questions, questions_json: undefined } }, 200, origin);
+}
+
+// 管理员：添加单题
+async function handleAdminAddQuestion(bankId, request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, question } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!question || !question.question) return error('缺少题目内容', 400, origin);
+
+    const bank = await env.DB.prepare('SELECT questions_json, version FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    let questions = [];
+    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+
+    const maxId = questions.reduce((max, q) => Math.max(max, q.id || 0), 0);
+    question.id = maxId + 1;
+    questions.push(question);
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+        'UPDATE banks SET questions_json = ?, question_count = ?, version = version + 1, updated_at = ? WHERE id = ?'
+    ).bind(JSON.stringify(questions), questions.length, now, bankId).run();
+
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(bankId, 'add_question', `添加: ${question.question.slice(0, 50)}`, admin.id, now).run();
+
+    return json({ ok: true, id: question.id, count: questions.length }, 200, origin);
+}
+
+// 管理员：编辑单题
+async function handleAdminEditQuestion(bankId, qid, request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, question } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const bank = await env.DB.prepare('SELECT questions_json FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    let questions = [];
+    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+
+    const idx = questions.findIndex(q => q.id === qid);
+    if (idx === -1) return error('题目不存在', 404, origin);
+
+    questions[idx] = { ...questions[idx], ...question, id: qid };
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+        'UPDATE banks SET questions_json = ?, version = version + 1, updated_at = ? WHERE id = ?'
+    ).bind(JSON.stringify(questions), now, bankId).run();
+
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(bankId, 'edit_question', `编辑 #${qid}: ${(question.question || '').slice(0, 50)}`, admin.id, now).run();
+
+    return json({ ok: true }, 200, origin);
+}
+
+// 管理员：删除单题
+async function handleAdminDeleteQuestion(bankId, qid, request, env, origin) {
+    const body = await request.json().catch(() => ({}));
+    const { deviceId, password } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const bank = await env.DB.prepare('SELECT questions_json FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    let questions = [];
+    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+
+    const idx = questions.findIndex(q => q.id === qid);
+    if (idx === -1) return error('题目不存在', 404, origin);
+
+    const removed = questions.splice(idx, 1)[0];
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+        'UPDATE banks SET questions_json = ?, question_count = ?, version = version + 1, updated_at = ? WHERE id = ?'
+    ).bind(JSON.stringify(questions), questions.length, now, bankId).run();
+
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(bankId, 'delete_question', `删除 #${qid}: ${(removed.question || '').slice(0, 50)}`, admin.id, now).run();
+
+    return json({ ok: true, count: questions.length }, 200, origin);
+}
+
+// 管理员：题库修改历史
+async function handleAdminBankHistory(bankId, url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId');
+    const password = url.searchParams.get('password');
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const rows = await env.DB.prepare(
+        'SELECT * FROM bank_history WHERE bank_id = ? ORDER BY created_at DESC LIMIT 50'
+    ).bind(bankId).all();
+
+    return json({ ok: true, history: rows.results || [] }, 200, origin);
 }

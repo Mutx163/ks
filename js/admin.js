@@ -358,25 +358,323 @@ const Admin = {
         try {
             const d = await this.get('/api/admin/banks');
             if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
-            el.innerHTML = d.banks.length === 0 ? '<div class="empty-state">暂无数据</div>' : `
+            el.innerHTML = `
+                <div id="bank-detail-panel"></div>
                 <div class="card">
-                    <div class="card-header"><h3>题库统计</h3><span class="count">${d.banks.length}个</span></div>
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <h3>题库列表</h3>
+                        <div style="display:flex;gap:6px">
+                            <button class="abtn primary" style="padding:4px 12px" onclick="Admin.uploadBank()">上传题库</button>
+                            <button class="abtn primary" style="padding:4px 12px" onclick="Admin.createBank()">新建题库</button>
+                        </div>
+                    </div>
                     <div class="card-body" style="overflow-x:auto"><table>
-                        <thead><tr><th>题库</th><th>用户</th><th>答题</th><th>正确率</th><th>时长</th></tr></thead>
-                        <tbody>${d.banks.map(b => {
-                            const a = b.total_answered > 0 ? Math.round(b.total_correct / b.total_answered * 100) : 0;
-                            return `<tr><td><b>${Utils.escapeHtml(b.bank_name||b.bank_id)}</b></td><td>${b.user_count}</td><td>${b.total_answered}</td><td>${a}%</td><td>${this.fmtDur(b.total_duration)}</td></tr>`;
-                        }).join('')}</tbody>
+                        <thead><tr><th>题库</th><th>题数</th><th>分类</th><th>版本</th><th>更新时间</th><th>操作</th></tr></thead>
+                        <tbody>${d.banks.map(b => `
+                            <tr>
+                                <td><b>${Utils.escapeHtml(b.name)}</b><br><span style="font-size:10px;color:var(--text-tertiary)">${b.id}</span></td>
+                                <td>${b.question_count}</td>
+                                <td>${Utils.escapeHtml(b.category||'-')}</td>
+                                <td>v${b.version}</td>
+                                <td style="font-size:11px">${b.updated_at?.slice(0,16)||'-'}</td>
+                                <td>
+                                    <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.viewBank('${b.id}')">管理</button>
+                                    <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.uploadBank('${b.id}')">替换</button>
+                                </td>
+                            </tr>
+                        `).join('')}</tbody>
                     </table></div>
                 </div>`;
         } catch (e) { el.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
     },
 
-    // ==================== 活跃 ====================
+    // 查看/编辑题库详情
+    async viewBank(bankId) {
+        const p = document.getElementById('bank-detail-panel');
+        p.innerHTML = '<div class="loading">加载中...</div>';
+        p.scrollIntoView({ behavior: 'smooth' });
+        try {
+            const d = await this.get(`/api/admin/bank/${bankId}`);
+            if (!d?.ok) { p.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+            const b = d.bank;
+            const qs = b.questions || [];
+            p.innerHTML = `
+                <div class="card" style="margin-bottom:12px">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <h3>${Utils.escapeHtml(b.name)} <span style="font-size:11px;color:var(--text-tertiary)">${qs.length}题 · v${b.version}</span></h3>
+                        <div style="display:flex;gap:6px">
+                            <button class="abtn primary" style="padding:4px 12px" onclick="Admin.addQuestion('${bankId}')">添加题目</button>
+                            <button class="abtn" style="padding:4px 12px" onclick="Admin.viewBankHistory('${bankId}')">修改历史</button>
+                            <button class="abtn" style="padding:4px 12px" onclick="document.getElementById('bank-detail-panel').innerHTML=''">收起</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
+                            <input type="text" id="bank-search" placeholder="搜索题目..." style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--bg-card);color:var(--text)" oninput="Admin.filterBankQuestions('${bankId}')">
+                            <select id="bank-type-filter" style="padding:4px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;background:var(--bg-card);color:var(--text)" onchange="Admin.filterBankQuestions('${bankId}')">
+                                <option value="">全部题型</option>
+                                <option value="single">单选</option>
+                                <option value="multi">多选</option>
+                                <option value="judge">判断</option>
+                                <option value="essay">简答</option>
+                            </select>
+                        </div>
+                        <div id="bank-questions-list" style="max-height:500px;overflow-y:auto">
+                            ${this._renderQuestionList(bankId, qs)}
+                        </div>
+                    </div>
+                </div>`;
+        } catch (e) { p.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
+    },
 
-    async renderActivity() {
-        const el = document.getElementById('sec-activity');
-        el.innerHTML = '<div class="loading">加载中...</div>';
+    _renderQuestionList(bankId, qs) {
+        return qs.map((q, i) => `
+            <div class="q-item" data-id="${q.id}" data-type="${q.type||''}" style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer" onclick="Admin.editQuestion('${bankId}',${q.id})">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                    <div style="flex:1;min-width:0">
+                        <span style="color:var(--text-tertiary);font-size:10px">#${q.id}</span>
+                        <span style="background:var(--bg-hover);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">${q.type==='single'?'单选':q.type==='multi'?'多选':q.type==='judge'?'判断':q.type==='essay'?'简答':q.type||'?'}</span>
+                        <span style="margin-left:4px">${Utils.escapeHtml((q.question||'').slice(0,80))}${(q.question||'').length>80?'...':''}</span>
+                    </div>
+                    <button class="abtn danger" style="padding:1px 6px;font-size:10px;flex-shrink:0" onclick="event.stopPropagation();Admin.deleteQuestion('${bankId}',${q.id})">删除</button>
+                </div>
+            </div>
+        `).join('');
+    },
+
+    async filterBankQuestions(bankId) {
+        const search = (document.getElementById('bank-search')?.value || '').toLowerCase();
+        const type = document.getElementById('bank-type-filter')?.value || '';
+        const d = await this.get(`/api/admin/bank/${bankId}`);
+        if (!d?.ok) return;
+        let qs = d.bank.questions || [];
+        if (type) qs = qs.filter(q => q.type === type);
+        if (search) qs = qs.filter(q => (q.question||'').toLowerCase().includes(search));
+        document.getElementById('bank-questions-list').innerHTML = this._renderQuestionList(bankId, qs);
+    },
+
+    // 添加单题
+    addQuestion(bankId) {
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:600px;max-height:80vh;overflow-y:auto">
+                    <h3>添加题目到 ${bankId}</h3>
+                    <label>题型</label><select id="aq-type"><option value="single">单选</option><option value="multi">多选</option><option value="judge">判断</option><option value="essay">简答</option></select>
+                    <label>分类</label><input id="aq-category" placeholder="如: 编程指令">
+                    <label>难度(1-3)</label><input id="aq-difficulty" type="number" value="1" min="1" max="3">
+                    <label>题目内容</label><textarea id="aq-question" rows="3" placeholder="题目文本"></textarea>
+                    <label>选项（每行一个，A. xxx 格式）</label><textarea id="aq-options" rows="4" placeholder="A. 选项1\nB. 选项2\nC. 选项3\nD. 选项4"></textarea>
+                    <label>答案</label><input id="aq-answer" placeholder="单选填A/B/C/D，判断填true/false">
+                    <label>解析</label><textarea id="aq-explanation" rows="2" placeholder="答案解析"></textarea>
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveNewQuestion('${bankId}')">添加</button></div>
+                </div>
+            </div>`;
+    },
+
+    async saveNewQuestion(bankId) {
+        const type = document.getElementById('aq-type').value;
+        const optionsRaw = document.getElementById('aq-options').value.trim();
+        const options = optionsRaw ? optionsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+        let answer = document.getElementById('aq-answer').value.trim();
+        if (type === 'judge') answer = answer === 'true';
+
+        const question = {
+            type,
+            category: document.getElementById('aq-category').value.trim(),
+            difficulty: parseInt(document.getElementById('aq-difficulty').value) || 1,
+            question: document.getElementById('aq-question').value.trim(),
+            options,
+            answer,
+            explanation: document.getElementById('aq-explanation').value.trim()
+        };
+
+        const r = await this.post(`/api/admin/bank/${bankId}/question`, { question });
+        if (r?.ok) {
+            Utils.showToast('已添加', 'success');
+            document.querySelector('.modal-mask')?.remove();
+            this.viewBank(bankId);
+        } else {
+            Utils.showToast(r?.error || '添加失败', 'error');
+        }
+    },
+
+    // 编辑单题
+    async editQuestion(bankId, qid) {
+        const d = await this.get(`/api/admin/bank/${bankId}`);
+        if (!d?.ok) return;
+        const q = (d.bank.questions || []).find(x => x.id === qid);
+        if (!q) { Utils.showToast('题目不存在', 'error'); return; }
+
+        const opts = (q.options || []).join('\n');
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:600px;max-height:80vh;overflow-y:auto">
+                    <h3>编辑题目 #${qid}</h3>
+                    <label>题型</label><select id="eq-type"><option value="single" ${q.type==='single'?'selected':''}>单选</option><option value="multi" ${q.type==='multi'?'selected':''}>多选</option><option value="judge" ${q.type==='judge'?'selected':''}>判断</option><option value="essay" ${q.type==='essay'?'selected':''}>简答</option></select>
+                    <label>分类</label><input id="eq-category" value="${Utils.escapeHtml(q.category||'')}">
+                    <label>难度(1-3)</label><input id="eq-difficulty" type="number" value="${q.difficulty||1}" min="1" max="3">
+                    <label>题目内容</label><textarea id="eq-question" rows="3">${Utils.escapeHtml(q.question||'')}</textarea>
+                    <label>选项（每行一个）</label><textarea id="eq-options" rows="4">${Utils.escapeHtml(opts)}</textarea>
+                    <label>答案</label><input id="eq-answer" value="${Utils.escapeHtml(String(q.answer||''))}">
+                    <label>解析</label><textarea id="eq-explanation" rows="2">${Utils.escapeHtml(q.explanation||'')}</textarea>
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveEditQuestion('${bankId}',${qid})">保存</button></div>
+                </div>
+            </div>`;
+    },
+
+    async saveEditQuestion(bankId, qid) {
+        const type = document.getElementById('eq-type').value;
+        const optionsRaw = document.getElementById('eq-options').value.trim();
+        const options = optionsRaw ? optionsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+        let answer = document.getElementById('eq-answer').value.trim();
+        if (type === 'judge') answer = answer === 'true';
+
+        const question = {
+            type,
+            category: document.getElementById('eq-category').value.trim(),
+            difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
+            question: document.getElementById('eq-question').value.trim(),
+            options,
+            answer,
+            explanation: document.getElementById('eq-explanation').value.trim()
+        };
+
+        const r = await this.put(`/api/admin/bank/${bankId}/question/${qid}`, { question });
+        if (r?.ok) {
+            Utils.showToast('已保存', 'success');
+            document.querySelector('.modal-mask')?.remove();
+            this.viewBank(bankId);
+        } else {
+            Utils.showToast(r?.error || '保存失败', 'error');
+        }
+    },
+
+    // 删除单题
+    async deleteQuestion(bankId, qid) {
+        if (!confirm(`确定删除题目 #${qid}？`)) return;
+        const r = await this.post(`/api/admin/bank/${bankId}/question/${qid}`, {});
+        if (r?.ok) { Utils.showToast('已删除', 'success'); this.viewBank(bankId); }
+    },
+
+    // 上传/替换题库
+    uploadBank(existingId) {
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:500px">
+                    <h3>${existingId ? '替换题库 ' + existingId : '上传题库'}</h3>
+                    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">JSON格式，含 id, name, questions 字段</p>
+                    <input type="file" id="upload-bank-file" accept=".json" style="margin:12px 0">
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.doUploadBank('${existingId||''}')">上传</button></div>
+                </div>
+            </div>`;
+    },
+
+    async doUploadBank(existingId) {
+        const file = document.getElementById('upload-bank-file').files[0];
+        if (!file) { Utils.showToast('请选择文件', 'error'); return; }
+
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            if (!data.id || !data.name || !data.questions) {
+                Utils.showToast('JSON格式错误，需要 id, name, questions', 'error'); return;
+            }
+
+            const r = await this.post('/api/admin/import-bank', {
+                id: existingId || data.id,
+                name: data.name,
+                description: data.description || '',
+                category: data.category || '',
+                questions: data.questions
+            });
+
+            if (r?.ok) {
+                Utils.showToast(`已导入 ${r.count} 题，版本 v${r.version}`, 'success', 3000);
+                document.querySelector('.modal-mask')?.remove();
+                this.renderBanks();
+            } else {
+                Utils.showToast(r?.error || '导入失败', 'error');
+            }
+        } catch (e) {
+            Utils.showToast('文件解析失败: ' + e.message, 'error');
+        }
+    },
+
+    // 新建题库
+    createBank() {
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box">
+                    <h3>新建题库</h3>
+                    <label>题库ID（英文，如 math-basic）</label><input id="cb-id" placeholder="c-language">
+                    <label>题库名称</label><input id="cb-name" placeholder="C语言基础">
+                    <label>描述</label><input id="cb-desc" placeholder="题库描述（可选）">
+                    <label>分类</label><input id="cb-cat" placeholder="如: 计算机">
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.doCreateBank()">创建</button></div>
+                </div>
+            </div>`;
+    },
+
+    async doCreateBank() {
+        const id = document.getElementById('cb-id').value.trim();
+        const name = document.getElementById('cb-name').value.trim();
+        if (!id || !name) { Utils.showToast('ID和名称必填', 'error'); return; }
+
+        const r = await this.post('/api/admin/import-bank', {
+            id, name,
+            description: document.getElementById('cb-desc').value.trim(),
+            category: document.getElementById('cb-cat').value.trim(),
+            questions: []
+        });
+
+        if (r?.ok) {
+            Utils.showToast('题库已创建', 'success');
+            document.querySelector('.modal-mask')?.remove();
+            this.renderBanks();
+        }
+    },
+
+    // 查看修改历史
+    async viewBankHistory(bankId) {
+        const d = await this.get(`/api/admin/bank/${bankId}/history`);
+        if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
+
+        const rows = d.history || [];
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:500px;max-height:70vh;overflow-y:auto">
+                    <h3>修改历史 - ${bankId}</h3>
+                    ${rows.length === 0 ? '<div class="empty-state">暂无记录</div>' : rows.map(r => `
+                        <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+                            <div style="display:flex;justify-content:space-between">
+                                <span style="color:var(--text)">${r.action}: ${Utils.escapeHtml(r.detail||'')}</span>
+                                <span style="color:var(--text-tertiary);font-size:10px">${r.created_at?.slice(0,16)||''}</span>
+                            </div>
+                            <div style="font-size:10px;color:var(--text-tertiary)">操作人: ${r.operator||'-'}</div>
+                        </div>
+                    `).join('')}
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
+                </div>
+            </div>`;
+    },
+
+    // ==================== 工具 ====================
+
+    async post(path, body) {
+        try {
+            const r = await fetch(API.BASE_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body }) });
+            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
+            return await r.json();
+        } catch (e) { return { ok: false, error: e.message }; }
+    },
+
+    async put(path, body) {
+        try {
+            const r = await fetch(API.BASE_URL + path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body }) });
+            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
+            return await r.json();
+        } catch (e) { return { ok: false, error: e.message }; }
+    },
         try {
             const d = await this.get('/api/admin/activity');
             if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }

@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     settings TEXT DEFAULT '{}',         -- 用户设置 JSON
     progress TEXT DEFAULT '{}',         -- 答题进度 JSON
     last_sync_at TEXT DEFAULT '',       -- 最后同步时间
-    is_admin INTEGER DEFAULT 0          -- 是否管理员
+    is_admin INTEGER DEFAULT 0,         -- 是否管理员
+    banned INTEGER DEFAULT 0            -- 是否封禁
 );
 
 -- 设备表（一个用户可绑定多设备）
@@ -36,3 +37,37 @@ CREATE TABLE IF NOT EXISTS stats (
 CREATE INDEX IF NOT EXISTS idx_devices_user ON devices (user_id);
 CREATE INDEX IF NOT EXISTS idx_stats_answered ON stats (answered DESC);
 CREATE INDEX IF NOT EXISTS idx_stats_duration ON stats (duration DESC);
+
+-- 公告表
+CREATE TABLE IF NOT EXISTS announcements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+-- 题库表（管理后台可编辑）
+CREATE TABLE IF NOT EXISTS banks (
+    id TEXT PRIMARY KEY,                -- 题库ID（如 c-language）
+    name TEXT NOT NULL,                 -- 题库名称
+    description TEXT DEFAULT '',        -- 题库描述
+    category TEXT DEFAULT '',           -- 分类标签
+    version INTEGER DEFAULT 1,          -- 版本号
+    question_count INTEGER DEFAULT 0,   -- 题目数量
+    questions_json TEXT NOT NULL,       -- 题目JSON数组
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+-- 题库修改历史
+CREATE TABLE IF NOT EXISTS bank_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bank_id TEXT NOT NULL,
+    action TEXT NOT NULL,               -- create/update/add_question/edit_question/delete_question/upload
+    detail TEXT DEFAULT '',             -- 操作描述
+    operator TEXT DEFAULT '',           -- 操作人
+    snapshot TEXT DEFAULT '',           -- 快照（可选）
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (bank_id) REFERENCES banks(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bank_history ON bank_history (bank_id, created_at DESC);
