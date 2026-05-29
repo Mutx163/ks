@@ -5,6 +5,7 @@
 import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
+import Tracker from './tracker.js';
 
 const App = {
     state: {
@@ -87,7 +88,9 @@ const App = {
                     class: 'btn-danger',
                     onClick: (modal) => {
                         modal.remove();
+                        const wrongCount = Storage.getGlobalWrongStats().totalWrong;
                         Storage.clearAllWrong();
+                        Tracker.clearWrongBook(wrongCount);
                         Utils.showToast('错题本已清空', 'success');
                         this.loadData();
                         this.render();
@@ -432,8 +435,10 @@ const App = {
         sessionStorage.setItem('quiz_search_results', JSON.stringify(searchData));
 
         const firstBank = results[0].bank;
+        const totalCount = results.reduce((s, r) => s + r.count, 0);
+        Tracker.searchQuestions(keyword, totalCount);
         Utils.showToast(
-            '找到 ' + results.reduce((s, r) => s + r.count, 0) + ' 道匹配题目',
+            '找到 ' + totalCount + ' 道匹配题目',
             'success',
             2000
         );
@@ -460,6 +465,7 @@ const App = {
      */
     selectType(bankId, type) {
         this.state.selectedTypes[bankId] = type;
+        Tracker.selectType(bankId, type);
         this.renderBankGrid();
     },
 
@@ -547,6 +553,7 @@ const App = {
                     onClick: (modal) => {
                         modal.remove();
                         Storage.resetBankProgress(bankId);
+                        Tracker.resetProgress(bankId, bank.name);
                         Utils.showToast('进度已重置', 'success');
                         this.loadData();
                         this.render();
@@ -568,6 +575,7 @@ const App = {
     exportBank(bankId) {
         const bank = Storage.getBank(bankId);
         if (!bank) return;
+        Tracker.exportBank(bankId, bank.name);
         Utils.downloadJSON(bank, `${bank.name}.json`);
         Utils.showToast('题库已导出', 'success');
     },
@@ -619,6 +627,7 @@ const App = {
             }
 
             Storage.addBank(data);
+            Tracker.importBank(data.name, data.questions?.length || 0);
             Utils.showToast(`题库 "${data.name}" 导入成功！`, 'success');
             this.loadData();
             this.render();

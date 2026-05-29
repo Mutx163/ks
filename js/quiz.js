@@ -6,6 +6,7 @@
 import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
+import Tracker from './tracker.js';
 
 const INPUT_SAVE_DEBOUNCE_MS = 300;
 const FILL_AUTO_FOCUS_DELAY_MS = 100;
@@ -113,6 +114,9 @@ const Quiz = {
 
         this.autoSaveInterval = setInterval(() => this.saveSession(), 30000);
         this.timerInterval = setInterval(() => this.updateTimerDisplay(), 1000);
+
+        // 追踪：开始刷题
+        Tracker.startQuiz(this.state.bankId, this.state.bank?.name || '', this.state.mode, this.state.questions.length);
     },
 
     updateTimerDisplay() {
@@ -1018,6 +1022,9 @@ const Quiz = {
         );
         this.saveSession();
 
+        // 追踪：提交答案
+        Tracker.submitAnswer(this.state.bankId, question.type, isCorrect, question.difficulty);
+
         this.renderQuestion();
         this.renderFooter();
 
@@ -1279,6 +1286,30 @@ const Quiz = {
             correct: correctCount,
             duration: duration
         });
+
+        // 追踪：完成答题
+        const isExam = this.state.mode === 'exam';
+        if (isExam) {
+            Tracker.finishExam(
+                this.state.bankId,
+                this.state.questions.length,
+                correctCount,
+                thisAccuracy,
+                duration,
+                false
+            );
+        } else {
+            Tracker.finishQuiz(
+                this.state.bankId,
+                this.state.bank.name,
+                this.state.mode,
+                this.state.questions.length,
+                correctCount,
+                submittedIds.length - correctCount,
+                thisAccuracy,
+                duration
+            );
+        }
 
         const container = document.getElementById('question-container');
         container.innerHTML = `
