@@ -367,7 +367,7 @@ const Quiz = {
         } else if (isSubmitted) {
             setSubmitHidden(true);
             setHint(this.getSubmittedHint(question));
-        } else if (isAutoSubmit && !isAutoSubmitMultiple) {
+        } else if (isAutoSubmit && !isAutoSubmitMultiple && question.type !== 'fill' && question.type !== 'code' && question.type !== 'essay') {
             // 单选/判断题：隐藏提交按钮，点击即判
             setSubmitHidden(true);
             setHint(isLightning 
