@@ -1,7 +1,7 @@
 /**
  * 管理后台 - 题库管理
  */
-import Utils from '../utils.js';
+import Utils from './utils.js';
 
 export function initBanks(Admin) {
 

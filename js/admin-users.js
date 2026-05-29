@@ -1,8 +1,8 @@
 /**
  * 管理后台 - 用户管理
  */
-import API from '../api.js';
-import Utils from '../utils.js';
+import API from './api.js';
+import Utils from './utils.js';
 
 export function initUsers(Admin) {
 

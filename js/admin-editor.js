@@ -1,7 +1,7 @@
 /**
  * 管理后台 - 题目编辑器
  */
-import Utils from '../utils.js';
+import Utils from './utils.js';
 
 export function initEditor(Admin) {
 

@@ -1,7 +1,7 @@
 /**
  * 管理后台 - 公告管理
  */
-import Utils from '../utils.js';
+import Utils from './utils.js';
 
 export function initAnnounce(Admin) {
 
