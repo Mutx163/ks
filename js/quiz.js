@@ -1155,22 +1155,39 @@ const Quiz = {
 
         // 构建搜索关键词：题目内容 + 选项（如果有）
         let keyword = question.question;
+
+        // 程序题：保留代码块，并补充 code 字段
+        if (question.type === 'code') {
+            // 程序题保留代码块，只清理 markdown 符号
+            keyword = keyword
+                .replace(/```(\w*)\n/g, '') // 移除代码块开始标记
+                .replace(/```/g, '') // 移除代码块结束标记
+                .replace(/\$[^$]*\$/g, '') // 移除 LaTeX 公式
+                .replace(/[#*_~\[\]()]/g, '') // 移除 markdown 符号
+                .replace(/\s+/g, ' ') // 合并空格
+                .trim();
+            // 如果有参考代码，也加入关键词
+            if (question.answer && typeof question.answer === 'string') {
+                keyword += ' ' + question.answer;
+            }
+        } else {
+            // 其他题型：移除代码块，保留文本
+            keyword = keyword
+                .replace(/```[\s\S]*?```/g, '') // 移除代码块
+                .replace(/`[^`]*`/g, '') // 移除行内代码
+                .replace(/\$[^$]*\$/g, '') // 移除 LaTeX 公式
+                .replace(/[#*_~\[\]()]/g, '') // 移除 markdown 符号
+                .replace(/\s+/g, ' ') // 合并空格
+                .trim();
+        }
+
         if (question.options && question.options.length > 0) {
             keyword += ' ' + question.options.join(' ');
         }
 
-        // 清理关键词：移除 markdown 标记、多余空格
-        keyword = keyword
-            .replace(/```[\s\S]*?```/g, '') // 移除代码块
-            .replace(/`[^`]*`/g, '') // 移除行内代码
-            .replace(/\$[^$]*\$/g, '') // 移除 LaTeX 公式
-            .replace(/[#*_~\[\]()]/g, '') // 移除 markdown 符号
-            .replace(/\s+/g, ' ') // 合并空格
-            .trim();
-
-        // 截取前 200 字符避免 URL 过长
-        if (keyword.length > 200) {
-            keyword = keyword.substring(0, 200);
+        // 截取前 300 字符避免 URL 过长
+        if (keyword.length > 300) {
+            keyword = keyword.substring(0, 300);
         }
 
         const url = `https://metaso.cn/?q=${encodeURIComponent(keyword)}`;
