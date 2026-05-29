@@ -407,7 +407,7 @@
     }
 
     .insight-main {
-        padding: var(--space-4) 0;
+        padding: 60px 0 var(--space-4);
     }
 
     .insight-summary {
