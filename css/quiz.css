@@ -24,6 +24,10 @@
     flex: 1;
 }
 
+#btn-finish {
+    margin-left: auto;
+}
+
 .quiz-back {
     width: 36px;
     height: 36px;

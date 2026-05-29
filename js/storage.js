@@ -530,6 +530,22 @@ const Storage = {
         }
 
         this.set(this.KEYS.HISTORY, history);
+
+        // 累加总学习时长（独立于 history 的裁剪）
+        if (record.duration && record.duration > 0) {
+            this.addDuration(record.duration);
+        }
+    },
+
+    /**
+     * 累加总学习时长
+     * @param {number} seconds - 秒数
+     */
+    addDuration(seconds) {
+        const progress = this.getProgress();
+        if (!progress._global) progress._global = {};
+        progress._global.totalDuration = (progress._global.totalDuration || 0) + seconds;
+        this.set(this.KEYS.PROGRESS, progress);
     },
 
     /**
@@ -594,10 +610,8 @@ const Storage = {
             totalWrong += bankProgress.wrong || 0;
         });
 
-        // 计算总学习时长（秒）
-        history.forEach((record) => {
-            totalDuration += record.duration || 0;
-        });
+        // 读取累计学习时长（独立于 history 裁剪）
+        totalDuration = progress._global?.totalDuration || 0;
 
         return {
             bankCount: banks.length,

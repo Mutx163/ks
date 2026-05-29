@@ -26,11 +26,8 @@ const Insights = {
 
     applySettings() {
         const settings = Storage.getSettings();
-        if (settings.fontSize && settings.fontSize !== 16) {
-            document.documentElement.style.setProperty(
-                '--font-size-base',
-                settings.fontSize + 'px'
-            );
+        if (settings.fontSize) {
+            Utils.applyFontSize(settings.fontSize);
         }
         if (settings.theme && settings.theme !== 'auto') {
             document.documentElement.setAttribute('data-theme', settings.theme);

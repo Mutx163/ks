@@ -782,10 +782,7 @@ const App = {
 
                         if (size >= 12 && size <= 24) {
                             Storage.updateSettings({ fontSize: size });
-                            document.documentElement.style.setProperty(
-                                '--font-size-base',
-                                size + 'px'
-                            );
+                            Utils.applyFontSize(size);
                         }
 
                         Storage.updateSettings({
@@ -807,16 +804,14 @@ const App = {
             size: 'sm'
         });
 
-        // 监听 AI 引擎选择变化
-        setTimeout(() => {
-            const engineSelect = document.getElementById('setting-ai-engine');
-            const customWrap = document.getElementById('custom-engine-wrap');
-            if (engineSelect && customWrap) {
-                engineSelect.addEventListener('change', () => {
-                    customWrap.style.display = engineSelect.value === 'custom' ? 'block' : 'none';
-                });
-            }
-        }, 100);
+        // 监听 AI 引擎选择变化（showModal 已同步插入 DOM，元素立即可用）
+        const engineSelect = document.getElementById('setting-ai-engine');
+        const customWrap = document.getElementById('custom-engine-wrap');
+        if (engineSelect && customWrap) {
+            engineSelect.addEventListener('change', () => {
+                customWrap.style.display = engineSelect.value === 'custom' ? 'block' : 'none';
+            });
+        }
     },
 
     /**
@@ -876,11 +871,8 @@ const App = {
 
         // 应用字体大小
         const settings = Storage.getSettings();
-        if (settings.fontSize && settings.fontSize !== 16) {
-            document.documentElement.style.setProperty(
-                '--font-size-base',
-                settings.fontSize + 'px'
-            );
+        if (settings.fontSize) {
+            Utils.applyFontSize(settings.fontSize);
         }
 
         // 应用主题

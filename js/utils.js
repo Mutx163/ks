@@ -194,6 +194,22 @@ const Utils = {
     },
 
     /**
+     * 应用字体大小设置，按比例缩放所有字体变量
+     * @param {number} size - 基础字体大小（px）
+     */
+    applyFontSize(size) {
+        const root = document.documentElement.style;
+        const base = size || 16;
+        root.setProperty('--font-size-base', base + 'px');
+        root.setProperty('--font-size-xs', Math.round(base * 0.75) + 'px');
+        root.setProperty('--font-size-sm', Math.round(base * 0.8125) + 'px');
+        root.setProperty('--font-size-lg', Math.round(base * 0.9375) + 'px');
+        root.setProperty('--font-size-xl', Math.round(base * 1.125) + 'px');
+        root.setProperty('--font-size-2xl', Math.round(base * 1.5) + 'px');
+        root.setProperty('--font-size-3xl', Math.round(base * 1.75) + 'px');
+    },
+
+    /**
      * 渲染数学公式
      */
     renderMath(container) {

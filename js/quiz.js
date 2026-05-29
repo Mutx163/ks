@@ -57,6 +57,11 @@ const Quiz = {
         const settings = Storage.getSettings();
         this.state.answerMode = settings.answerMode || 'normal';
 
+        // 应用字体大小
+        if (settings.fontSize) {
+            Utils.applyFontSize(settings.fontSize);
+        }
+
         if (!this.state.bankId) {
             Utils.showToast('缺少题库参数', 'error');
             setTimeout(() => (window.location.href = 'index.html'), 1000);
@@ -315,8 +320,9 @@ const Quiz = {
 
             if (this.state.examTimeRemaining <= 0) {
                 clearInterval(this.state.examTimer);
+                this.state.examTimer = null;
                 Utils.showToast('考试时间到！', 'error');
-                this.finish();
+                this.showFinishModal(true);
             }
         }, 1000);
     },
@@ -1155,6 +1161,166 @@ const Quiz = {
     },
 
     /**
+     * 打开设置面板
+     */
+    showSettings() {
+        const settings = Storage.getSettings();
+        const fontSize = settings.fontSize || 16;
+        const answerMode = settings.answerMode || 'normal';
+        const aiEngine = settings.aiEngine || 'metaso';
+        const customAiEngine = settings.customAiEngine || '';
+
+        const content = `
+            <label>字体大小</label>
+            <select id="setting-font-size">
+                <option value="14" ${fontSize === 14 ? 'selected' : ''}>14px - 较小</option>
+                <option value="16" ${fontSize === 16 ? 'selected' : ''}>16px - 标准</option>
+                <option value="18" ${fontSize === 18 ? 'selected' : ''}>18px - 较大</option>
+                <option value="20" ${fontSize === 20 ? 'selected' : ''}>20px - 大</option>
+                <option value="24" ${fontSize === 24 ? 'selected' : ''}>24px - 超大</option>
+            </select>
+            <label>答题模式</label>
+            <select id="setting-answer-mode">
+                <option value="normal" ${answerMode === 'normal' ? 'selected' : ''}>普通模式 - 手动提交手动跳题</option>
+                <option value="autoNext" ${answerMode === 'autoNext' ? 'selected' : ''}>自动跳题 - 手动提交答对自动跳</option>
+                <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
+                <option value="instant" ${answerMode === 'instant' ? 'selected' : ''}>即时判断 - 点击即判不自动跳</option>
+            </select>
+            <label>AI 搜索引擎</label>
+            <select id="setting-ai-engine">
+                <option value="metaso" ${aiEngine === 'metaso' ? 'selected' : ''}>秘塔搜索 (metaso.cn)</option>
+                <option value="felo" ${aiEngine === 'felo' ? 'selected' : ''}>Felo AI (felo.ai)</option>
+                <option value="andi" ${aiEngine === 'andi' ? 'selected' : ''}>Andi Search (andisearch.com)</option>
+                <option value="baidu" ${aiEngine === 'baidu' ? 'selected' : ''}>百度搜索 (baidu.com)</option>
+                <option value="custom" ${aiEngine === 'custom' ? 'selected' : ''}>自定义引擎</option>
+            </select>
+            <div id="custom-engine-wrap" style="display: ${aiEngine === 'custom' ? 'block' : 'none'}; margin-top: 8px;">
+                <label>自定义引擎 URL</label>
+                <input type="text" id="setting-custom-engine" placeholder="https://example.com/search?q={keyword}" value="${Utils.escapeHtml(customAiEngine)}">
+                <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">用 {keyword} 表示搜索关键词</p>
+            </div>
+        `;
+
+        Utils.showModal({
+            title: `${Utils.icon('settings')} 设置`,
+            content,
+            buttons: [
+                {
+                    label: '保存',
+                    class: 'btn-primary',
+                    onClick: (modal) => {
+                        const size = parseInt(modal.querySelector('#setting-font-size').value);
+                        const newAnswerMode = modal.querySelector('#setting-answer-mode').value;
+                        const newAiEngine = modal.querySelector('#setting-ai-engine').value;
+                        const newCustomEngine = modal.querySelector('#setting-custom-engine')?.value || '';
+
+                        if (size >= 12 && size <= 24) {
+                            Storage.updateSettings({ fontSize: size });
+                            Utils.applyFontSize(size);
+                        }
+
+                        Storage.updateSettings({
+                            answerMode: newAnswerMode,
+                            aiEngine: newAiEngine,
+                            customAiEngine: newCustomEngine
+                        });
+
+                        // 更新当前答题模式
+                        this.state.answerMode = newAnswerMode;
+
+                        Utils.showToast('设置已保存', 'success');
+                        modal.remove();
+                    }
+                },
+                {
+                    label: '取消',
+                    class: 'btn-secondary',
+                    onClick: (modal) => modal.remove()
+                }
+            ],
+            size: 'sm'
+        });
+
+        // 监听 AI 引擎选择变化
+        const engineSelect = document.getElementById('setting-ai-engine');
+        const customWrap = document.getElementById('custom-engine-wrap');
+        if (engineSelect && customWrap) {
+            engineSelect.addEventListener('change', () => {
+                customWrap.style.display = engineSelect.value === 'custom' ? 'block' : 'none';
+            });
+        }
+    },
+
+    /**
+     * 清理 markdown 标记，保留文本内容
+     * @param {string} text - 原始文本
+     * @returns {string} 清理后的文本
+     */
+    _cleanMarkdown(text) {
+        return text
+            .replace(/```(\w*)\n/g, '')
+            .replace(/```/g, '')
+            .replace(/`([^`]+)`/g, '$1')
+            .replace(/\$([^$]+)\$/g, '$1')
+            .replace(/[#*_~\[\]]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    },
+
+    /**
+     * 构建 AI 搜索关键词
+     * @param {object} question - 题目对象
+     * @returns {string} 搜索关键词
+     */
+    _buildSearchKeyword(question) {
+        let keyword = this._cleanMarkdown(question.question);
+
+        // 补充选项（优先于代码，信息密度更高）
+        if (question.options && question.options.length > 0) {
+            keyword += ' ' + question.options.join(' ');
+        }
+
+        // 先截断文本部分
+        if (keyword.length > 300) {
+            keyword = keyword.substring(0, 300);
+        }
+
+        // 补充 code 字段（单独控制长度）
+        if (question.code) {
+            keyword += ' ' + question.code.substring(0, 200);
+        }
+
+        return keyword;
+    },
+
+    /**
+     * 根据用户设置构建 AI 搜索 URL
+     * @param {string} keyword - 搜索关键词
+     * @returns {string} 完整的搜索 URL
+     */
+    _buildSearchUrl(keyword) {
+        const settings = Storage.getSettings();
+        const aiEngine = settings.aiEngine || 'metaso';
+        const customEngine = settings.customAiEngine || '';
+        const encoded = encodeURIComponent(keyword);
+
+        const engines = {
+            felo: `https://felo.ai/search?q=${encoded}`,
+            andi: `https://andisearch.com/?q=${encoded}`,
+            baidu: `https://www.baidu.com/s?wd=${encoded}`,
+            metaso: `https://metaso.cn/?q=${encoded}`
+        };
+
+        if (engines[aiEngine]) return engines[aiEngine];
+
+        if (aiEngine === 'custom' && customEngine && customEngine.includes('{keyword}') && customEngine.startsWith('https://')) {
+            return customEngine.replace('{keyword}', encoded);
+        }
+
+        return engines.metaso;
+    },
+
+    /**
      * 打开 AI 解析页面
      * @param {number} questionId - 题目 ID
      */
@@ -1162,75 +1328,8 @@ const Quiz = {
         const question = this.state.questions.find((q) => q.id === questionId);
         if (!question) return;
 
-        // 构建搜索关键词
-        let keyword = question.question;
-        const hasCodeBlock = /```[\s\S]*?```/.test(keyword);
-
-        if (hasCodeBlock) {
-            // 包含代码块的题目：保留代码，只清理标记符号
-            keyword = keyword
-                .replace(/```(\w*)\n/g, '') // 移除代码块开始标记
-                .replace(/```/g, '') // 移除代码块结束标记
-                .replace(/`([^`]+)`/g, '$1') // 移除行内代码标记，保留内容
-                .replace(/\$([^$]+)\$/g, '$1') // 移除 LaTeX 标记，保留内容
-                .replace(/[#*_~\[\]]/g, '') // 移除 markdown 符号
-                .replace(/\s+/g, ' ') // 合并空格
-                .trim();
-        } else {
-            // 无代码块：清理 markdown
-            keyword = keyword
-                .replace(/`([^`]+)`/g, '$1') // 移除行内代码标记，保留内容
-                .replace(/\$([^$]+)\$/g, '$1') // 移除 LaTeX 标记，保留内容
-                .replace(/[#*_~\[\]]/g, '') // 移除 markdown 符号
-                .replace(/\s+/g, ' ') // 合并空格
-                .trim();
-        }
-
-        // 补充 code 字段（参考代码）
-        if (question.code) {
-            keyword += ' ' + question.code;
-        }
-
-        // 补充选项
-        if (question.options && question.options.length > 0) {
-            keyword += ' ' + question.options.join(' ');
-        }
-
-        // 截取前 500 字符避免 URL 过长
-        if (keyword.length > 500) {
-            keyword = keyword.substring(0, 500);
-        }
-
-        // 根据用户设置选择 AI 引擎
-        const settings = Storage.getSettings();
-        const aiEngine = settings.aiEngine || 'metaso';
-        const customEngine = settings.customAiEngine || '';
-        const encodedKeyword = encodeURIComponent(keyword);
-
-        let url;
-        switch (aiEngine) {
-            case 'felo':
-                url = `https://felo.ai/search?q=${encodedKeyword}`;
-                break;
-            case 'andi':
-                url = `https://andisearch.com/?q=${encodedKeyword}`;
-                break;
-            case 'baidu':
-                url = `https://www.baidu.com/s?wd=${encodedKeyword}`;
-                break;
-            case 'custom':
-                if (customEngine && customEngine.includes('{keyword}')) {
-                    url = customEngine.replace('{keyword}', encodedKeyword);
-                } else {
-                    url = `https://metaso.cn/?q=${encodedKeyword}`;
-                }
-                break;
-            case 'metaso':
-            default:
-                url = `https://metaso.cn/?q=${encodedKeyword}`;
-                break;
-        }
-
+        const keyword = this._buildSearchKeyword(question);
+        const url = this._buildSearchUrl(keyword);
         window.open(url, '_blank');
     },
 
@@ -1270,7 +1369,7 @@ const Quiz = {
      * 滚动导航面包屑到当前题目
      */
 
-    showFinishModal() {
+    showFinishModal(isTimeout = false) {
         const total = this.state.questions.length;
         const answered = Object.keys(this.state.submitted).length;
         const unanswered = total - answered;
@@ -1286,9 +1385,9 @@ const Quiz = {
         const modalHtml = `
             <div class="finish-modal-overlay show" id="finish-modal" onclick="if(event.target===this)Quiz.closeFinishModal()">
                 <div class="finish-modal">
-                    <div class="finish-modal-icon">${unanswered > 0 ? '📝' : '🎯'}</div>
-                    <div class="finish-modal-title">${unanswered > 0 ? '还有题目未完成' : '全部答完！'}</div>
-                    <div class="finish-modal-desc">${unanswered > 0 ? `还有 ${unanswered} 题未答，确定要结束吗？` : '点击确认查看结果'}</div>
+                    <div class="finish-modal-icon">${isTimeout ? '⏰' : unanswered > 0 ? '📝' : '🎯'}</div>
+                    <div class="finish-modal-title">${isTimeout ? '考试时间到！' : unanswered > 0 ? '还有题目未完成' : '全部答完！'}</div>
+                    <div class="finish-modal-desc">${isTimeout ? '时间已耗尽，请确认结束考试' : unanswered > 0 ? `还有 ${unanswered} 题未答，确定要结束吗？` : '点击确认查看结果'}</div>
                     <div class="finish-modal-stats">
                         <div class="finish-modal-stat">
                             <div class="finish-modal-stat-value">${answered}</div>
@@ -1308,10 +1407,10 @@ const Quiz = {
                         </div>
                     </div>
                     <div class="finish-modal-actions">
-                        ${unanswered > 0 ? `<button class="btn btn-primary" onclick="Quiz.closeFinishModal()">${Utils.icon('book-open')} 继续答题</button>` : ''}
-                        <button class="btn ${unanswered > 0 ? 'btn-secondary' : 'btn-primary'}" onclick="Quiz.confirmFinish()">${Utils.icon('check-circle')} 确认结束</button>
-                        <button class="btn btn-ghost" onclick="Quiz.saveAndQuit()">${Utils.icon('save')} 保存进度退出</button>
-                        <button class="btn btn-ghost" onclick="Quiz.closeFinishModal()">${Utils.icon('x')} 取消</button>
+                        ${!isTimeout && unanswered > 0 ? `<button class="btn btn-primary" onclick="Quiz.closeFinishModal()">${Utils.icon('book-open')} 继续答题</button>` : ''}
+                        <button class="btn btn-primary" onclick="Quiz.confirmFinish()">${Utils.icon('check-circle')} 确认结束</button>
+                        ${!isTimeout ? `<button class="btn btn-ghost" onclick="Quiz.saveAndQuit()">${Utils.icon('save')} 保存进度退出</button>` : ''}
+                        ${!isTimeout ? `<button class="btn btn-ghost" onclick="Quiz.closeFinishModal()">${Utils.icon('x')} 取消</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -1608,15 +1707,6 @@ const Quiz = {
                 this.prevQuestion();
             }
             if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                this.nextQuestion();
-            }
-            // Alt+方向键也支持（兼容旧习惯）
-            if (e.key === 'ArrowLeft' && e.altKey) {
-                e.preventDefault();
-                this.prevQuestion();
-            }
-            if (e.key === 'ArrowRight' && e.altKey) {
                 e.preventDefault();
                 this.nextQuestion();
             }

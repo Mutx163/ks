@@ -63,15 +63,15 @@
 
         <script type="module" src="js/insights.js"></script>
         <script>
-            // 初始化 Lucide 图标
-            function initLucide() {
+            // 初始化 Lucide 图标（最多重试 50 次，共 5 秒）
+            function initLucide(retries) {
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
-                } else {
-                    setTimeout(initLucide, 100);
+                } else if ((retries || 0) < 50) {
+                    setTimeout(function() { initLucide((retries || 0) + 1); }, 100);
                 }
             }
-            initLucide();
+            initLucide(0);
         </script>
         <!-- 51.la 统计 -->
         <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>

@@ -197,7 +197,7 @@
                 }
                 return false;
             }
-            // 尝试立即移动，如果失败则使用 MutationObserver 监听
+            // 尝试立即移动，如果失败则使用 MutationObserver 监听（10秒超时）
             if (!moveLAWidget()) {
                 const observer = new MutationObserver(function(mutations) {
                     if (moveLAWidget()) {
@@ -205,6 +205,7 @@
                     }
                 });
                 observer.observe(document.body, { childList: true, subtree: true });
+                setTimeout(function() { observer.disconnect(); }, 10000);
             }
         </script>
     </body>

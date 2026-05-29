@@ -18,9 +18,13 @@ const Tracker = {
         if (!this._isReady()) return;
         try {
             LA.track(eventName, props);
-            console.log('[Tracker]', eventName, props);
+            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                console.log('[Tracker]', eventName, props);
+            }
         } catch (e) {
-            console.warn('[Tracker] error:', e);
+            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                console.warn('[Tracker] error:', e);
+            }
         }
     },
 
@@ -86,20 +90,6 @@ const Tracker = {
     // ========== 考试模式 ==========
 
     /**
-     * 开始考试
-     * @param {string} bankId - 题库ID
-     * @param {number} questionCount - 题目数量
-     * @param {number} timeLimit - 时间限制 (分钟)
-     */
-    startExam(bankId, questionCount, timeLimit) {
-        this.track('开始考试', {
-            题库ID: bankId,
-            题目数量: questionCount,
-            时间限制: timeLimit + '分钟'
-        });
-    },
-
-    /**
      * 完成考试
      * @param {string} bankId - 题库ID
      * @param {number} total - 总题数
@@ -157,18 +147,6 @@ const Tracker = {
         });
     },
 
-    /**
-     * 删除题库
-     * @param {string} bankId - 题库ID
-     * @param {string} bankName - 题库名称
-     */
-    deleteBank(bankId, bankName) {
-        this.track('删除题库', {
-            题库ID: bankId,
-            题库名称: bankName
-        });
-    },
-
     // ========== 学习行为 ==========
 
     /**
@@ -183,18 +161,7 @@ const Tracker = {
         });
     },
 
-    /**
-     * 收藏/取消收藏题目
-     * @param {string} bankId - 题库ID
-     * @param {number} questionId - 题目ID
-     * @param {boolean} isBookmarked - 是否收藏
-     */
-    toggleBookmark(bankId, questionId, isBookmarked) {
-        this.track(isBookmarked ? '收藏题目' : '取消收藏', {
-            题库ID: bankId,
-            题目ID: questionId
-        });
-    },
+    // ========== 学习行为 ==========
 
     /**
      * 清空错题本
@@ -302,19 +269,6 @@ const Tracker = {
 
     // ========== 页面访问 ==========
 
-    /**
-     * 访问分析页面
-     */
-    viewAnalysis() {
-        this.track('访问分析页', {});
-    },
-
-    /**
-     * 访问趋势页面
-     */
-    viewTrend() {
-        this.track('访问趋势页', {});
-    }
 };
 
 export default Tracker;
