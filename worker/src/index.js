@@ -86,6 +86,29 @@ export default {
                 return await handleLeaderboard(url, env, origin);
             }
 
+            // ========== 管理员接口 ==========
+
+            // GET /api/admin/users?syncCode=xxx
+            if (method === 'GET' && path === '/api/admin/users') {
+                return await handleAdminUsers(url, env, origin);
+            }
+
+            // POST /api/admin/delete-user
+            if (method === 'POST' && path === '/api/admin/delete-user') {
+                return await handleAdminDeleteUser(request, env, origin);
+            }
+
+            // POST /api/admin/reset-stats
+            if (method === 'POST' && path === '/api/admin/reset-stats') {
+                return await handleAdminResetStats(request, env, origin);
+            }
+
+            // GET /api/admin/user-detail/:id
+            if (method === 'GET' && path.startsWith('/api/admin/user-detail/')) {
+                const uid = path.split('/api/admin/user-detail/')[1];
+                return await handleAdminUserDetail(uid, env, origin);
+            }
+
             return error('Not Found', 404, origin);
         } catch (e) {
             console.error('Worker error:', e);
@@ -402,4 +425,82 @@ async function resolveUser(deviceId, env) {
         'SELECT user_id FROM devices WHERE device_id = ?'
     ).bind(deviceId).first();
     return device?.user_id || null;
+}
+
+// ========== 工具函数：验证管理员 ==========
+async function requireAdmin(deviceId, env) {
+    if (!deviceId) return null;
+    const userId = await resolveUser(deviceId, env);
+    if (!userId) return null;
+    const user = await env.DB.prepare(
+        'SELECT id, initials, is_admin FROM users WHERE id = ?'
+    ).bind(userId).first();
+    return user?.is_admin ? user : null;
+}
+
+// ========== 管理员：查看所有用户 ==========
+async function handleAdminUsers(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const admin = await requireAdmin(deviceId, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const { results } = await env.DB.prepare(`
+        SELECT 
+            u.id, u.initials, u.created_at, u.is_admin,
+            (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as device_count,
+            COALESCE(SUM(s.answered), 0) as total_answered,
+            COALESCE(SUM(s.correct), 0) as total_correct,
+            COALESCE(SUM(s.duration), 0) as total_duration
+        FROM users u
+        LEFT JOIN stats s ON u.id = s.user_id
+        GROUP BY u.id
+        ORDER BY u.created_at DESC
+    `).all();
+
+    return json({ ok: true, users: results }, 200, origin);
+}
+
+// ========== 管理员：查看用户详情 ==========
+async function handleAdminUserDetail(userId, env, origin) {
+    const user = await env.DB.prepare(
+        'SELECT id, initials, created_at, is_admin FROM users WHERE id = ?'
+    ).bind(userId).first();
+    if (!user) return error('用户不存在', 404, origin);
+
+    const devices = await env.DB.prepare(
+        'SELECT device_id, bound_at FROM devices WHERE user_id = ?'
+    ).bind(userId).all();
+
+    const stats = await env.DB.prepare(
+        'SELECT bank_id, bank_name, answered, correct, duration, updated_at FROM stats WHERE user_id = ?'
+    ).bind(userId).all();
+
+    return json({ ok: true, user, devices: devices.results, stats: stats.results }, 200, origin);
+}
+
+// ========== 管理员：删除用户 ==========
+async function handleAdminDeleteUser(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, targetUserId } = body;
+    const admin = await requireAdmin(deviceId, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (targetUserId === admin.id) return error('不能删除自己', 400, origin);
+
+    await env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId).run();
+    await env.DB.prepare('DELETE FROM devices WHERE user_id = ?').bind(targetUserId).run();
+    await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetUserId).run();
+
+    return json({ ok: true, message: '已删除' }, 200, origin);
+}
+
+// ========== 管理员：重置用户数据 ==========
+async function handleAdminResetStats(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, targetUserId } = body;
+    const admin = await requireAdmin(deviceId, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    await env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId).run();
+
+    return json({ ok: true, message: '数据已重置' }, 200, origin);
 }

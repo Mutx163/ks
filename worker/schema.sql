@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_device TEXT DEFAULT '',     -- 注册设备标识
     settings TEXT DEFAULT '{}',         -- 用户设置 JSON
     progress TEXT DEFAULT '{}',         -- 答题进度 JSON
-    last_sync_at TEXT DEFAULT ''        -- 最后同步时间
+    last_sync_at TEXT DEFAULT '',       -- 最后同步时间
+    is_admin INTEGER DEFAULT 0          -- 是否管理员
 );
 
 -- 设备表（一个用户可绑定多设备）
