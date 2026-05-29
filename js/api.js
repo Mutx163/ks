@@ -30,11 +30,22 @@ const API = {
     /**
      * 获取或生成设备ID（持久化 UUID）
      */
+    _generateId() {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        // HTTP 环境降级
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    },
+
     getDeviceId() {
         if (this._deviceId) return this._deviceId;
         let id = localStorage.getItem(this.KEYS.DEVICE_ID);
         if (!id) {
-            id = crypto.randomUUID();
+            id = this._generateId();
             localStorage.setItem(this.KEYS.DEVICE_ID, id);
         }
         this._deviceId = id;
