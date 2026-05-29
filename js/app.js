@@ -23,7 +23,7 @@ const App = {
         try {
             await Promise.race([
                 BankLoader.loadAllBuiltinBanks(),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
             ]);
         } catch (e) {
             console.warn('[App] 题库加载超时或失败:', e.message);
