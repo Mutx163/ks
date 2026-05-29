@@ -466,36 +466,83 @@ const Admin = {
     addQuestion(bankId) {
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box" style="max-width:600px;max-height:80vh;overflow-y:auto">
-                    <h3>添加题目到 ${bankId}</h3>
-                    <label>题型</label><select id="aq-type"><option value="single">单选</option><option value="multi">多选</option><option value="judge">判断</option><option value="essay">简答</option></select>
-                    <label>分类</label><input id="aq-category" placeholder="如: 编程指令">
-                    <label>难度(1-3)</label><input id="aq-difficulty" type="number" value="1" min="1" max="3">
-                    <label>题目内容</label><textarea id="aq-question" rows="3" placeholder="题目文本"></textarea>
-                    <label>选项（每行一个，A. xxx 格式）</label><textarea id="aq-options" rows="4" placeholder="A. 选项1\nB. 选项2\nC. 选项3\nD. 选项4"></textarea>
-                    <label>答案</label><input id="aq-answer" placeholder="单选填A/B/C/D，判断填true/false">
-                    <label>解析</label><textarea id="aq-explanation" rows="2" placeholder="答案解析"></textarea>
-                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveNewQuestion('${bankId}')">添加</button></div>
+                <div class="modal-box" style="max-width:700px;max-height:85vh;overflow-y:auto;padding:0">
+                    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                        <h3 style="margin:0">添加题目</h3>
+                        <button class="close-btn" onclick="this.closest('.modal-mask').remove()">✕</button>
+                    </div>
+                    <div style="display:flex;gap:0">
+                        <div style="flex:1;padding:16px 20px;border-right:1px solid var(--border);overflow-y:auto;max-height:70vh">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题型</label>
+                                    <select id="eq-type" style="width:100%" onchange="Admin._onTypeChange()"><option value="single">单选题</option><option value="multi">多选题</option><option value="judge">判断题</option><option value="essay">简答题</option></select>
+                                </div>
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">难度</label>
+                                    <div id="eq-diff-stars" style="line-height:32px">${[1,2,3].map(i => `<span class="diff-star ${i===1?'active':''}" onclick="Admin._setDiff(${i})" style="cursor:pointer;font-size:18px;color:${i===1?'#f59e0b':'var(--text-tertiary)'}">★</span>`).join('')}</div>
+                                    <input type="hidden" id="eq-difficulty" value="1">
+                                </div>
+                            </div>
+                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">分类</label>
+                            <input id="eq-category" style="margin-bottom:12px" placeholder="如: 编程指令">
+
+                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题目内容</label>
+                            <textarea id="eq-question" rows="3" style="margin-bottom:12px" placeholder="输入题目内容..." oninput="Admin._preview()"></textarea>
+
+                            <div id="eq-options-wrap" style="margin-bottom:12px">
+                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">选项</label>
+                                <textarea id="eq-options" rows="5" placeholder="A. 选项1\nB. 选项2\nC. 选项3\nD. 选项4" oninput="Admin._preview()"></textarea>
+                            </div>
+
+                            <div id="eq-answer-wrap">
+                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">答案</label>
+                                <div id="eq-answer-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                                    ${'ABCDEFGH'.split('').map(l => `<button type="button" class="abtn" style="padding:4px 12px;min-width:36px" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
+                                </div>
+                                <div id="eq-judge-wrap" style="display:none;gap:8px;margin-bottom:8px">
+                                    <button type="button" class="abtn" style="padding:6px 20px" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
+                                    <button type="button" class="abtn" style="padding:6px 20px" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
+                                </div>
+                                <input type="hidden" id="eq-answer" value="">
+                            </div>
+
+                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">解析</label>
+                            <textarea id="eq-explanation" rows="3" placeholder="答案解析（可选）" oninput="Admin._preview()"></textarea>
+                        </div>
+
+                        <div style="flex:1;padding:16px 20px;background:var(--bg);overflow-y:auto;max-height:70vh">
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">实时预览</div>
+                            <div id="eq-preview"></div>
+                        </div>
+                    </div>
+                    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+                        <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
+                        <button class="mp" onclick="Admin.saveNewQuestion('${bankId}')">添加题目</button>
+                    </div>
                 </div>
             </div>`;
+        this._preview();
     },
 
     async saveNewQuestion(bankId) {
-        const type = document.getElementById('aq-type').value;
-        const optionsRaw = document.getElementById('aq-options').value.trim();
+        const type = document.getElementById('eq-type').value;
+        const optionsRaw = document.getElementById('eq-options').value.trim();
         const options = optionsRaw ? optionsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
-        let answer = document.getElementById('aq-answer').value.trim();
+        let answer = document.getElementById('eq-answer').value;
         if (type === 'judge') answer = answer === 'true';
 
         const question = {
             type,
-            category: document.getElementById('aq-category').value.trim(),
-            difficulty: parseInt(document.getElementById('aq-difficulty').value) || 1,
-            question: document.getElementById('aq-question').value.trim(),
+            category: document.getElementById('eq-category').value.trim(),
+            difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
+            question: document.getElementById('eq-question').value.trim(),
             options,
             answer,
-            explanation: document.getElementById('aq-explanation').value.trim()
+            explanation: document.getElementById('eq-explanation').value.trim()
         };
+
+        if (!question.question) { Utils.showToast('题目内容不能为空', 'error'); return; }
 
         const r = await this.post(`/api/admin/bank/${bankId}/question`, { question });
         if (r?.ok) {
@@ -515,20 +562,146 @@ const Admin = {
         if (!q) { Utils.showToast('题目不存在', 'error'); return; }
 
         const opts = (q.options || []).join('\n');
+        const diffStars = [1,2,3].map(i => `<span class="diff-star ${i<=(q.difficulty||1)?'active':''}" onclick="Admin._setDiff(${i})" style="cursor:pointer;font-size:18px;color:${i<=(q.difficulty||1)?'#f59e0b':'var(--text-tertiary)'}">★</span>`).join('');
+
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box" style="max-width:600px;max-height:80vh;overflow-y:auto">
-                    <h3>编辑题目 #${qid}</h3>
-                    <label>题型</label><select id="eq-type"><option value="single" ${q.type==='single'?'selected':''}>单选</option><option value="multi" ${q.type==='multi'?'selected':''}>多选</option><option value="judge" ${q.type==='judge'?'selected':''}>判断</option><option value="essay" ${q.type==='essay'?'selected':''}>简答</option></select>
-                    <label>分类</label><input id="eq-category" value="${Utils.escapeHtml(q.category||'')}">
-                    <label>难度(1-3)</label><input id="eq-difficulty" type="number" value="${q.difficulty||1}" min="1" max="3">
-                    <label>题目内容</label><textarea id="eq-question" rows="3">${Utils.escapeHtml(q.question||'')}</textarea>
-                    <label>选项（每行一个）</label><textarea id="eq-options" rows="4">${Utils.escapeHtml(opts)}</textarea>
-                    <label>答案</label><input id="eq-answer" value="${Utils.escapeHtml(String(q.answer||''))}">
-                    <label>解析</label><textarea id="eq-explanation" rows="2">${Utils.escapeHtml(q.explanation||'')}</textarea>
-                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveEditQuestion('${bankId}',${qid})">保存</button></div>
+                <div class="modal-box" style="max-width:700px;max-height:85vh;overflow-y:auto;padding:0">
+                    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                        <h3 style="margin:0">编辑题目 #${qid}</h3>
+                        <button class="close-btn" onclick="this.closest('.modal-mask').remove()">✕</button>
+                    </div>
+                    <div style="display:flex;gap:0">
+                        <!-- 左侧编辑 -->
+                        <div style="flex:1;padding:16px 20px;border-right:1px solid var(--border);overflow-y:auto;max-height:70vh">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题型</label>
+                                    <select id="eq-type" style="width:100%" onchange="Admin._onTypeChange()"><option value="single" ${q.type==='single'?'selected':''}>单选题</option><option value="multi" ${q.type==='multi'?'selected':''}>多选题</option><option value="judge" ${q.type==='judge'?'selected':''}>判断题</option><option value="essay" ${q.type==='essay'?'selected':''}>简答题</option></select>
+                                </div>
+                                <div>
+                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">难度</label>
+                                    <div id="eq-diff-stars" style="line-height:32px">${diffStars}</div>
+                                    <input type="hidden" id="eq-difficulty" value="${q.difficulty||1}">
+                                </div>
+                            </div>
+                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">分类</label>
+                            <input id="eq-category" value="${Utils.escapeHtml(q.category||'')}" style="margin-bottom:12px" placeholder="如: 编程指令">
+
+                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题目内容</label>
+                            <textarea id="eq-question" rows="3" style="margin-bottom:12px" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q.question||'')}</textarea>
+
+                            <div id="eq-options-wrap" style="margin-bottom:12px;${q.type==='judge'||q.type==='essay'?'display:none':''}">
+                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">选项 <span style="font-size:10px;color:var(--text-tertiary)">（每行一个，自动编号）</span></label>
+                                <textarea id="eq-options" rows="5" placeholder="A. 选项1\nB. 选项2\nC. 选项3\nD. 选项4" oninput="Admin._preview()">${Utils.escapeHtml(opts)}</textarea>
+                            </div>
+
+                            <div id="eq-answer-wrap">
+                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">答案</label>
+                                <div id="eq-answer-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;${q.type==='judge'||q.type==='essay'?'display:none':''}">
+                                    ${'ABCDEFGH'.split('').map(l => `<button type="button" class="abtn ${(q.answer||'').includes(l)?'primary':''}" style="padding:4px 12px;min-width:36px" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
+                                </div>
+                                <div id="eq-judge-wrap" style="display:${q.type==='judge'?'flex':'none'};gap:8px;margin-bottom:8px">
+                                    <button type="button" class="abtn ${q.answer===true?'primary':''}" style="padding:6px 20px" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
+                                    <button type="button" class="abtn ${q.answer===false?'primary':''}" style="padding:6px 20px" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
+                                </div>
+                                <input type="hidden" id="eq-answer" value="${Utils.escapeHtml(String(q.answer||''))}">
+                            </div>
+
+                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">解析</label>
+                            <textarea id="eq-explanation" rows="3" placeholder="答案解析（可选）" oninput="Admin._preview()">${Utils.escapeHtml(q.explanation||'')}</textarea>
+                        </div>
+
+                        <!-- 右侧预览 -->
+                        <div style="flex:1;padding:16px 20px;background:var(--bg);overflow-y:auto;max-height:70vh">
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">实时预览</div>
+                            <div id="eq-preview"></div>
+                        </div>
+                    </div>
+                    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                        <span style="font-size:11px;color:var(--text-tertiary)">ID: ${qid} · 修改后将更新版本号</span>
+                        <div style="display:flex;gap:8px">
+                            <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
+                            <button class="mp" onclick="Admin.saveEditQuestion('${bankId}',${qid})">保存修改</button>
+                        </div>
+                    </div>
                 </div>
             </div>`;
+        this._preview();
+    },
+
+    _setDiff(n) {
+        document.getElementById('eq-difficulty').value = n;
+        document.querySelectorAll('#eq-diff-stars .diff-star').forEach((s, i) => {
+            s.style.color = i < n ? '#f59e0b' : 'var(--text-tertiary)';
+        });
+        this._preview();
+    },
+
+    _onTypeChange() {
+        const type = document.getElementById('eq-type').value;
+        document.getElementById('eq-options-wrap').style.display = type === 'judge' || type === 'essay' ? 'none' : '';
+        document.getElementById('eq-answer-btns').style.display = type === 'judge' || type === 'essay' ? 'none' : '';
+        document.getElementById('eq-judge-wrap').style.display = type === 'judge' ? 'flex' : 'none';
+        this._preview();
+    },
+
+    _toggleAnswer(letter) {
+        const type = document.getElementById('eq-type').value;
+        const ansEl = document.getElementById('eq-answer');
+        let ans = ansEl.value;
+        if (type === 'single') {
+            ans = letter;
+        } else {
+            ans = ans.includes(letter) ? ans.replace(letter, '') : (ans + letter);
+        }
+        ansEl.value = ans;
+        'ABCDEFGH'.split('').forEach(l => {
+            const btn = document.getElementById('eq-ans-' + l);
+            if (btn) btn.className = ans.includes(l) ? 'abtn primary' : 'abtn';
+        });
+        this._preview();
+    },
+
+    _setJudge(val) {
+        document.getElementById('eq-answer').value = val;
+        document.getElementById('eq-judge-true').className = val === true ? 'abtn primary' : 'abtn';
+        document.getElementById('eq-judge-false').className = val === false ? 'abtn primary' : 'abtn';
+        this._preview();
+    },
+
+    _preview() {
+        const el = document.getElementById('eq-preview');
+        if (!el) return;
+        const type = document.getElementById('eq-type').value;
+        const question = document.getElementById('eq-question').value;
+        const options = document.getElementById('eq-options').value.split('\n').filter(Boolean);
+        const answer = document.getElementById('eq-answer').value;
+        const explanation = document.getElementById('eq-explanation').value;
+        const difficulty = parseInt(document.getElementById('eq-difficulty').value) || 1;
+        const category = document.getElementById('eq-category').value;
+
+        let html = '';
+        if (category) html += `<div style="font-size:10px;color:var(--accent-primary);margin-bottom:4px">${Utils.escapeHtml(category)}</div>`;
+        html += `<div style="font-size:10px;color:var(--text-tertiary);margin-bottom:8px">${'★'.repeat(difficulty)}${'☆'.repeat(3-difficulty)} · ${type==='single'?'单选':type==='multi'?'多选':type==='judge'?'判断':'简答'}</div>`;
+        html += `<div style="font-size:13px;line-height:1.6;margin-bottom:10px">${Utils.escapeHtml(question) || '<span style="color:var(--text-tertiary)">题目内容...</span>'}</div>`;
+
+        if (type === 'judge') {
+            html += `<div style="display:flex;gap:8px;margin-bottom:8px"><span style="padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">✓ 正确</span><span style="padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">✗ 错误</span></div>`;
+            html += `<div style="font-size:12px;color:var(--text-secondary)">答案: <b>${answer === 'true' ? '✓ 正确' : answer === 'false' ? '✗ 错误' : '未设置'}</b></div>`;
+        } else if (type !== 'essay') {
+            options.forEach((opt, i) => {
+                const letter = String.fromCharCode(65 + i);
+                const isSelected = (answer || '').includes(letter);
+                html += `<div style="padding:6px 10px;margin-bottom:4px;border:1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border)'};border-radius:var(--radius);font-size:12px;background:${isSelected ? 'rgba(102,126,234,0.1)' : 'var(--bg-card)'}">${Utils.escapeHtml(opt)}</div>`;
+            });
+        }
+
+        if (explanation) {
+            html += `<div style="margin-top:10px;padding:8px 10px;background:var(--bg-card);border-radius:var(--radius);border-left:3px solid var(--accent-primary)"><div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px">解析</div><div style="font-size:12px;line-height:1.5;color:var(--text-secondary)">${Utils.escapeHtml(explanation)}</div></div>`;
+        }
+
+        el.innerHTML = html;
     },
 
     async saveEditQuestion(bankId, qid) {
