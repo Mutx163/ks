@@ -380,6 +380,13 @@
     color: var(--info);
 }
 
+.question-timer {
+    display: inline-block;
+    min-width: 70px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
 .question-difficulty {
     display: flex;
     gap: 3px;
