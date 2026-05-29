@@ -43,12 +43,23 @@ const BankLoader = {
         try {
             const existing = Storage.getBank(bankId);
             if (existing && existing.questions && cacheVersions[bankId] === existing.version) {
+                console.log('[BankLoader] 使用缓存:', bankId);
                 return existing;
             }
 
-            const data = await API.request(`/api/bank/${bankId}`);
+            console.log('[BankLoader] 从API加载:', bankId);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 8000);
+            const data = await API.request(`/api/bank/${bankId}`, { signal: controller.signal });
+            clearTimeout(timer);
+
             if (!data?.ok || !data.bank) {
-                console.error('[BankLoader] 加载题库失败:', bankId);
+                console.error('[BankLoader] API返回失败:', bankId, data);
+                // 尝试使用本地缓存
+                if (existing && existing.questions) {
+                    console.warn('[BankLoader] API失败，使用本地缓存:', bankId);
+                    return existing;
+                }
                 return null;
             }
 
@@ -62,9 +73,16 @@ const BankLoader = {
                 this._saveCacheVersions(cacheVersions);
             }
 
+            console.log('[BankLoader] 加载成功:', bankId, bank.questions?.length, '题');
             return bank;
         } catch (e) {
-            console.error('[BankLoader] 加载题库异常:', bankId, e);
+            console.error('[BankLoader] 加载异常:', bankId, e.message);
+            // 尝试使用本地缓存
+            const existing = Storage.getBank(bankId);
+            if (existing && existing.questions) {
+                console.warn('[BankLoader] 异常，使用本地缓存:', bankId);
+                return existing;
+            }
             return null;
         }
     },
