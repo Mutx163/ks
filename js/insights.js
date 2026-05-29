@@ -1,6 +1,7 @@
 import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
+import API from './api.js';
 
 const Insights = {
     state: {
@@ -15,6 +16,10 @@ const Insights = {
         this.state.page = document.body.dataset.page || 'trend';
         this.applySettings();
         await this.loadBuiltinBanks();
+
+        // 云同步
+        await API.autoSync();
+
         this.loadData();
 
         if (this.state.page === 'analysis') {

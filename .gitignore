@@ -35,3 +35,4 @@ coverage/
 
 # 补丁文件
 *.patch
+worker/.wrangler/

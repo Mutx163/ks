@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>排行榜 - 城科卷王</title>
+        <link rel="stylesheet" href="css/base.css" />
+        <link rel="stylesheet" href="css/home.css" />
+        <style>
+            .lb-container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: var(--space-4);
+            }
+            .lb-header {
+                text-align: center;
+                margin-bottom: var(--space-6);
+            }
+            .lb-header h1 {
+                font-size: var(--font-size-2xl);
+                font-weight: 700;
+                margin-bottom: var(--space-2);
+            }
+            .lb-header p {
+                color: var(--text-secondary);
+            }
+            /* Tab 切换 */
+            .lb-tabs {
+                display: flex;
+                gap: var(--space-2);
+                margin-bottom: var(--space-4);
+                border-bottom: 1px solid var(--border);
+                padding-bottom: var(--space-2);
+            }
+            .lb-tab {
+                padding: 8px 16px;
+                border-radius: var(--radius);
+                border: none;
+                background: transparent;
+                color: var(--text-secondary);
+                cursor: pointer;
+                font-size: var(--font-size-sm);
+                font-weight: 500;
+                transition: var(--transition);
+            }
+            .lb-tab:hover {
+                background: var(--bg-hover);
+            }
+            .lb-tab.active {
+                background: var(--primary-light);
+                color: var(--primary);
+            }
+            /* 当前用户卡片 */
+            .lb-me {
+                background: var(--primary-light);
+                border: 1px solid var(--primary);
+                border-radius: var(--radius-lg);
+                padding: var(--space-4);
+                margin-bottom: var(--space-4);
+                display: flex;
+                align-items: center;
+                gap: var(--space-4);
+            }
+            .lb-me-rank {
+                font-size: var(--font-size-2xl);
+                font-weight: 700;
+                color: var(--primary);
+                min-width: 50px;
+                text-align: center;
+            }
+            .lb-me-info {
+                flex: 1;
+            }
+            .lb-me-name {
+                font-weight: 600;
+                font-size: var(--font-size-lg);
+            }
+            .lb-me-stats {
+                display: flex;
+                gap: var(--space-4);
+                margin-top: var(--space-1);
+                color: var(--text-secondary);
+                font-size: var(--font-size-sm);
+            }
+            /* 排行榜列表 */
+            .lb-list {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-2);
+            }
+            .lb-row {
+                display: flex;
+                align-items: center;
+                gap: var(--space-3);
+                padding: var(--space-3) var(--space-4);
+                background: var(--bg-card);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                transition: var(--transition);
+            }
+            .lb-row:hover {
+                border-color: var(--primary);
+            }
+            .lb-row.is-me {
+                border-color: var(--primary);
+                background: var(--primary-light);
+            }
+            .lb-rank {
+                font-weight: 700;
+                font-size: var(--font-size-lg);
+                min-width: 36px;
+                text-align: center;
+                color: var(--text-tertiary);
+            }
+            .lb-rank.top-1 { color: #f59e0b; }
+            .lb-rank.top-2 { color: #94a3b8; }
+            .lb-rank.top-3 { color: #cd7f32; }
+            .lb-avatar {
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background: var(--primary-light);
+                color: var(--primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: var(--font-size-sm);
+            }
+            .lb-name {
+                flex: 1;
+                font-weight: 500;
+            }
+            .lb-value {
+                font-weight: 600;
+                color: var(--primary);
+                font-variant-numeric: tabular-nums;
+            }
+            .lb-sub {
+                font-size: var(--font-size-xs);
+                color: var(--text-tertiary);
+            }
+            /* 空状态 */
+            .lb-empty {
+                text-align: center;
+                padding: var(--space-8);
+                color: var(--text-tertiary);
+            }
+            .lb-empty-icon {
+                font-size: 48px;
+                margin-bottom: var(--space-3);
+            }
+            /* 加载 */
+            .lb-loading {
+                text-align: center;
+                padding: var(--space-8);
+                color: var(--text-secondary);
+            }
+            /* 底部 */
+            .lb-footer {
+                text-align: center;
+                padding: var(--space-6) 0;
+                color: var(--text-tertiary);
+                font-size: var(--font-size-xs);
+            }
+        </style>
+    </head>
+    <body>
+        <header class="home-header">
+            <div class="container">
+                <div class="home-logo">
+                    <div class="home-logo-text">
+                        <h1>城科卷王</h1>
+                        <p>排行榜 · 全站比拼</p>
+                    </div>
+                </div>
+                <div class="home-actions">
+                    <button class="btn btn-ghost btn-sm" onclick="location.href='index.html'" aria-label="返回首页">
+                        <span>首页</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="lb-container">
+            <div class="lb-header">
+                <h1>🏆 排行榜</h1>
+                <p id="lb-desc">全站学习数据排行</p>
+            </div>
+
+            <!-- 当前用户 -->
+            <div id="lb-me" style="display:none;"></div>
+
+            <!-- Tab 切换 -->
+            <div class="lb-tabs">
+                <button class="lb-tab active" data-sort="answered" onclick="LB.switchTab('answered')">📊 答题数</button>
+                <button class="lb-tab" data-sort="accuracy" onclick="LB.switchTab('accuracy')">🎯 正确率</button>
+                <button class="lb-tab" data-sort="duration" onclick="LB.switchTab('duration')">⏱ 学习时长</button>
+            </div>
+
+            <!-- 排行榜列表 -->
+            <div id="lb-list" class="lb-list">
+                <div class="lb-loading">加载中...</div>
+            </div>
+        </main>
+
+        <footer class="lb-footer">
+            <p>城科卷王 · 排行榜</p>
+        </footer>
+
+        <script type="module" src="js/leaderboard.js"></script>
+    </body>
+</html>

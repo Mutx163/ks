@@ -7,6 +7,7 @@ import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
 import Tracker from './tracker.js';
+import API from './api.js';
 
 const INPUT_SAVE_DEBOUNCE_MS = 300;
 const FILL_AUTO_FOCUS_DELAY_MS = 100;
@@ -169,6 +170,9 @@ const Quiz = {
             optionOrderCache: this.state.optionOrderCache,
             questionOrderIds
         });
+
+        // 云同步：推送进度（防抖）
+        API.pushProgress(Storage.getProgress());
     },
 
     async loadBankFromJson() {
@@ -1228,6 +1232,9 @@ const Quiz = {
                         // 更新当前答题模式
                         this.state.answerMode = newAnswerMode;
 
+                        // 同步设置到云端
+                        API.pushSettings(Storage.getSettings());
+
                         Utils.showToast('设置已保存', 'success');
                         modal.remove();
                     }
@@ -1527,6 +1534,15 @@ const Quiz = {
             };
         });
         Tracker.questionHeatmap(this.state.bankId, this.state.bank.name, heatmapData);
+
+        // 云同步：推送答题数据到云端
+        API.pushStats({
+            bankId: this.state.bankId,
+            bankName: this.state.bank.name,
+            answered: submittedIds.length,
+            correct: correctCount,
+            duration: duration
+        });
 
         const container = document.getElementById('question-container');
         container.innerHTML = `

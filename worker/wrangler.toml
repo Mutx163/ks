@@ -1,0 +1,9 @@
+name = "ks-api"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "ks-leaderboard"
+database_id = "75c85d08-7776-48b2-9840-0c6d462e80f8"

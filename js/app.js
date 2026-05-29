@@ -6,6 +6,7 @@ import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
 import Tracker from './tracker.js';
+import API from './api.js';
 
 const App = {
     state: {
@@ -18,9 +19,21 @@ const App = {
     async init() {
         BankLoader.removeDeprecatedBanks(new Set(['engineering-mechanics', '工程力学']));
         await BankLoader.loadAllBuiltinBanks();
-        this.loadData();
+
+        // 云同步：拉取云端数据 + 推送本地数据
+        const synced = await API.autoSync();
+        if (synced) {
+            // 同步后重新加载数据
+            this.loadData();
+        }
+
         this.render();
         this.bindEvents();
+
+        // 首次访问：提示注册
+        if (!API.isRegistered()) {
+            setTimeout(() => API.showRegisterModal(), 1500);
+        }
     },
 
     loadData() {
@@ -791,6 +804,9 @@ const App = {
                             customAiEngine: newCustomEngine
                         });
 
+                        // 同步设置到云端
+                        API.pushSettings(Storage.getSettings());
+
                         Utils.showToast('设置已保存', 'success');
                         modal.remove();
                     }
@@ -860,6 +876,17 @@ const App = {
         if (historyBtn) {
             historyBtn.addEventListener('click', () => {
                 window.location.href = 'trend.html#recent-history';
+            });
+        }
+
+        const syncBtn = document.getElementById('btn-sync');
+        if (syncBtn) {
+            syncBtn.addEventListener('click', () => {
+                if (API.isRegistered()) {
+                    API.showSyncCodePanel();
+                } else {
+                    API.showRegisterModal();
+                }
             });
         }
 
