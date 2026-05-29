@@ -1510,7 +1510,16 @@ const Quiz = {
                 }
             }
 
-            // Alt+方向键切换题目
+            // 方向键切换题目
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                this.prevQuestion();
+            }
+            if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                this.nextQuestion();
+            }
+            // Alt+方向键也支持（兼容旧习惯）
             if (e.key === 'ArrowLeft' && e.altKey) {
                 e.preventDefault();
                 this.prevQuestion();
