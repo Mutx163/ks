@@ -12,19 +12,9 @@
  *   GET  /api/leaderboard   - 排行榜
  */
 
-const ALLOWED_ORIGINS = [
-    'https://ks-cjx.pages.dev',
-    'https://ks.mutx.ccwu.cc',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:5500',
-    'http://localhost:5500'
-];
-
 function corsHeaders(origin) {
-    const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
     return {
-        'Access-Control-Allow-Origin': allowed,
+        'Access-Control-Allow-Origin': origin || '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Max-Age': '86400'
