@@ -720,6 +720,8 @@ const App = {
         const settings = Storage.getSettings();
         const fontSize = settings.fontSize || 16;
         const answerMode = settings.answerMode || 'normal';
+        const aiEngine = settings.aiEngine || 'metaso';
+        const customAiEngine = settings.customAiEngine || '';
 
         const content = `
             <label>字体大小</label>
@@ -737,6 +739,17 @@ const App = {
                 <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
                 <option value="instant" ${answerMode === 'instant' ? 'selected' : ''}>即时判断 - 点击即判不自动跳</option>
             </select>
+            <label>AI 搜索引擎</label>
+            <select id="setting-ai-engine">
+                <option value="metaso" ${aiEngine === 'metaso' ? 'selected' : ''}>秘塔搜索 (metaso.cn)</option>
+                <option value="felo" ${aiEngine === 'felo' ? 'selected' : ''}>Felo AI (felo.ai)</option>
+                <option value="custom" ${aiEngine === 'custom' ? 'selected' : ''}>自定义引擎</option>
+            </select>
+            <div id="custom-engine-wrap" style="display: ${aiEngine === 'custom' ? 'block' : 'none'}; margin-top: 8px;">
+                <label>自定义引擎 URL</label>
+                <input type="text" id="setting-custom-engine" placeholder="https://example.com/search?q={keyword}" value="${Utils.escapeHtml(customAiEngine)}">
+                <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">用 {keyword} 表示搜索关键词</p>
+            </div>
         `;
 
         Utils.showModal({
@@ -749,6 +762,8 @@ const App = {
                     onClick: (modal) => {
                         const size = parseInt(modal.querySelector('#setting-font-size').value);
                         const newAnswerMode = modal.querySelector('#setting-answer-mode').value;
+                        const newAiEngine = modal.querySelector('#setting-ai-engine').value;
+                        const newCustomEngine = modal.querySelector('#setting-custom-engine')?.value || '';
 
                         if (size >= 12 && size <= 24) {
                             Storage.updateSettings({ fontSize: size });
@@ -758,7 +773,11 @@ const App = {
                             );
                         }
 
-                        Storage.updateSettings({ answerMode: newAnswerMode });
+                        Storage.updateSettings({
+                            answerMode: newAnswerMode,
+                            aiEngine: newAiEngine,
+                            customAiEngine: newCustomEngine
+                        });
 
                         Utils.showToast('设置已保存', 'success');
                         modal.remove();
@@ -772,6 +791,17 @@ const App = {
             ],
             size: 'sm'
         });
+
+        // 监听 AI 引擎选择变化
+        setTimeout(() => {
+            const engineSelect = document.getElementById('setting-ai-engine');
+            const customWrap = document.getElementById('custom-engine-wrap');
+            if (engineSelect && customWrap) {
+                engineSelect.addEventListener('change', () => {
+                    customWrap.style.display = engineSelect.value === 'custom' ? 'block' : 'none';
+                });
+            }
+        }, 100);
     },
 
     /**

@@ -1192,7 +1192,30 @@ const Quiz = {
             keyword = keyword.substring(0, 500);
         }
 
-        const url = `https://metaso.cn/?q=${encodeURIComponent(keyword)}`;
+        // 根据用户设置选择 AI 引擎
+        const settings = Storage.getSettings();
+        const aiEngine = settings.aiEngine || 'metaso';
+        const customEngine = settings.customAiEngine || '';
+        const encodedKeyword = encodeURIComponent(keyword);
+
+        let url;
+        switch (aiEngine) {
+            case 'felo':
+                url = `https://felo.ai/search?q=${encodedKeyword}`;
+                break;
+            case 'custom':
+                if (customEngine && customEngine.includes('{keyword}')) {
+                    url = customEngine.replace('{keyword}', encodedKeyword);
+                } else {
+                    url = `https://metaso.cn/?q=${encodedKeyword}`;
+                }
+                break;
+            case 'metaso':
+            default:
+                url = `https://metaso.cn/?q=${encodedKeyword}`;
+                break;
+        }
+
         window.open(url, '_blank');
     },
 
