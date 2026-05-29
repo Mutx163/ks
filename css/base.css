@@ -288,6 +288,17 @@ select {
     background: var(--bg-hover);
 }
 
+.btn-accent {
+    background: var(--warning-light);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+}
+
+.btn-accent:hover {
+    background: var(--warning);
+    color: white;
+}
+
 .btn-sm {
     padding: 6px 14px;
     font-size: var(--font-size-sm);
