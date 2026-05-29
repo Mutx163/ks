@@ -1275,7 +1275,7 @@ const Quiz = {
         });
 
         const modalHtml = `
-            <div class="finish-modal-overlay show" id="finish-modal">
+            <div class="finish-modal-overlay show" id="finish-modal" onclick="if(event.target===this)Quiz.closeFinishModal()">
                 <div class="finish-modal">
                     <div class="finish-modal-icon">${unanswered > 0 ? '📝' : '🎯'}</div>
                     <div class="finish-modal-title">${unanswered > 0 ? '还有题目未完成' : '全部答完！'}</div>
@@ -1302,6 +1302,7 @@ const Quiz = {
                         ${unanswered > 0 ? `<button class="btn btn-primary" onclick="Quiz.closeFinishModal()">${Utils.icon('book-open')} 继续答题</button>` : ''}
                         <button class="btn ${unanswered > 0 ? 'btn-secondary' : 'btn-primary'}" onclick="Quiz.confirmFinish()">${Utils.icon('check-circle')} 确认结束</button>
                         <button class="btn btn-ghost" onclick="Quiz.saveAndQuit()">${Utils.icon('save')} 保存进度退出</button>
+                        <button class="btn btn-ghost" onclick="Quiz.closeFinishModal()">${Utils.icon('x')} 取消</button>
                     </div>
                 </div>
             </div>
