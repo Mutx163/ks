@@ -129,7 +129,7 @@ const App = {
 
         if (dueCount > 0) {
             // 有待复习
-            icon = 'brain';
+            icon = 'refresh-cw';
             title = '今日待复习';
             desc = `有 ${dueCount} 道题需要复习，间隔重复有助于长期记忆`;
             btn = `<button class="btn btn-primary btn-sm" onclick="App.startSmartReview()">开始复习</button>`;
