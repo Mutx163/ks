@@ -1153,41 +1153,43 @@ const Quiz = {
         const question = this.state.questions.find((q) => q.id === questionId);
         if (!question) return;
 
-        // 构建搜索关键词：题目内容 + 选项（如果有）
+        // 构建搜索关键词
         let keyword = question.question;
+        const hasCodeBlock = /```[\s\S]*?```/.test(keyword);
 
-        // 程序题：保留代码块，并补充 code 字段
-        if (question.type === 'code') {
-            // 程序题保留代码块，只清理 markdown 符号
+        if (hasCodeBlock) {
+            // 包含代码块的题目：保留代码，只清理标记符号
             keyword = keyword
                 .replace(/```(\w*)\n/g, '') // 移除代码块开始标记
                 .replace(/```/g, '') // 移除代码块结束标记
-                .replace(/\$[^$]*\$/g, '') // 移除 LaTeX 公式
-                .replace(/[#*_~\[\]()]/g, '') // 移除 markdown 符号
+                .replace(/`([^`]+)`/g, '$1') // 移除行内代码标记，保留内容
+                .replace(/\$([^$]+)\$/g, '$1') // 移除 LaTeX 标记，保留内容
+                .replace(/[#*_~\[\]]/g, '') // 移除 markdown 符号
                 .replace(/\s+/g, ' ') // 合并空格
                 .trim();
-            // 如果有参考代码，也加入关键词
-            if (question.answer && typeof question.answer === 'string') {
-                keyword += ' ' + question.answer;
-            }
         } else {
-            // 其他题型：移除代码块，保留文本
+            // 无代码块：清理 markdown
             keyword = keyword
-                .replace(/```[\s\S]*?```/g, '') // 移除代码块
-                .replace(/`[^`]*`/g, '') // 移除行内代码
-                .replace(/\$[^$]*\$/g, '') // 移除 LaTeX 公式
-                .replace(/[#*_~\[\]()]/g, '') // 移除 markdown 符号
+                .replace(/`([^`]+)`/g, '$1') // 移除行内代码标记，保留内容
+                .replace(/\$([^$]+)\$/g, '$1') // 移除 LaTeX 标记，保留内容
+                .replace(/[#*_~\[\]]/g, '') // 移除 markdown 符号
                 .replace(/\s+/g, ' ') // 合并空格
                 .trim();
         }
 
+        // 补充 code 字段（参考代码）
+        if (question.code) {
+            keyword += ' ' + question.code;
+        }
+
+        // 补充选项
         if (question.options && question.options.length > 0) {
             keyword += ' ' + question.options.join(' ');
         }
 
-        // 截取前 300 字符避免 URL 过长
-        if (keyword.length > 300) {
-            keyword = keyword.substring(0, 300);
+        // 截取前 500 字符避免 URL 过长
+        if (keyword.length > 500) {
+            keyword = keyword.substring(0, 500);
         }
 
         const url = `https://metaso.cn/?q=${encodeURIComponent(keyword)}`;
