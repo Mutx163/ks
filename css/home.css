@@ -1121,7 +1121,7 @@
 
     .home-main {
         margin-top: 52px;
-        padding: 0 0 var(--space-3);
+        padding: var(--space-4) 0 var(--space-3);
     }
 
     .home-dashboard {
