@@ -187,6 +187,58 @@
     padding: var(--space-4) 0;
 }
 
+/* 头部按钮 - 带文字 */
+.btn-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-header:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+    border-color: var(--text-tertiary);
+}
+
+/* 头部按钮 - 纯图标 */
+.btn-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: transparent;
+    color: var(--text-tertiary);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-header-icon:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+    border-color: var(--border);
+}
+
+/* 分隔线 */
+.header-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 4px;
+}
+
 .home-header .container {
     display: flex;
     align-items: center;
