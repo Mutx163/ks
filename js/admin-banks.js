@@ -63,7 +63,7 @@ export function initBanks(Admin) {
                         <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
                             <input type="text" id="bank-search" placeholder="搜索题目..." style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--bg-card);color:var(--text)" oninput="Admin.filterBankQuestions('${bankId}')">
                             <select id="bank-type-filter" style="padding:4px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;background:var(--bg-card);color:var(--text)" onchange="Admin.filterBankQuestions('${bankId}')">
-                                <option value="">全部题型</option><option value="single">单选</option><option value="multi">多选</option><option value="judge">判断</option><option value="essay">简答</option>
+                                <option value="">全部题型</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option><option value="fill">填空</option><option value="essay">简答</option>
                             </select>
                         </div>
                         <div id="bank-questions-list" style="max-height:500px;overflow-y:auto">${this._renderQuestionList(bankId, qs)}</div>
@@ -73,12 +73,13 @@ export function initBanks(Admin) {
     };
 
     Admin._renderQuestionList = function(bankId, qs) {
+        const typeLabels = {single:'单选',multiple:'多选',judge:'判断',fill:'填空',essay:'简答',multi:'多选'};
         return qs.map(q => `
             <div style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer" onclick="Admin.editQuestion('${bankId}',${q.id})">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
                     <div style="flex:1;min-width:0">
                         <span style="color:var(--text-tertiary);font-size:10px">#${q.id}</span>
-                        <span style="background:var(--bg-hover);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">${q.type==='single'?'单选':q.type==='multi'?'多选':q.type==='judge'?'判断':'简答'}</span>
+                        <span style="background:var(--bg-hover);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">${typeLabels[q.type]||q.type||'?'}</span>
                         <span style="margin-left:4px">${Utils.escapeHtml((q.question||'').slice(0,80))}${(q.question||'').length>80?'...':''}</span>
                     </div>
                     <button class="abtn danger" style="padding:1px 6px;font-size:10px;flex-shrink:0" onclick="event.stopPropagation();Admin.deleteQuestion('${bankId}',${q.id})">删除</button>

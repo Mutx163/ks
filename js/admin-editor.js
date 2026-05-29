@@ -36,10 +36,13 @@ export function initEditor(Admin) {
         const answer = q?.answer;
         const opts = q?.options || [];
         const diff = q?.difficulty || 1;
+        const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
+        const isJudge = type === 'judge';
+        const isEssay = type === 'essay' || type === 'fill';
 
         // 构建选项输入框
         let optionsHTML = '';
-        if (type !== 'judge' && type !== 'essay') {
+        if (isChoice) {
             const letters = 'ABCDEFGH';
             optionsHTML = opts.map((opt, i) => `
                 <div class="qe-opt-row" data-idx="${i}">
@@ -61,12 +64,12 @@ export function initEditor(Admin) {
 
         // 答案显示
         let answerDisplay = '';
-        if (type === 'judge') {
+        if (isJudge) {
             answerDisplay = `<div class="qe-judge-btns" id="eq-judge-wrap">
                 <button type="button" class="qe-judge-btn ${answer===true?'active':''}" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
                 <button type="button" class="qe-judge-btn ${answer===false?'active':''}" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
             </div>`;
-        } else if (type !== 'essay') {
+        } else if (isChoice) {
             const letters = 'ABCDEFGH';
             answerDisplay = `<div class="qe-answer-btns" id="eq-answer-btns">
                 ${letters.split('').map(l => `<button type="button" class="qe-ans-btn ${String(answer||'').includes(l)?'active':''}" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
@@ -116,7 +119,7 @@ export function initEditor(Admin) {
                     <label>题目内容</label>
                     <textarea id="eq-question" rows="3" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q?.question||'')}</textarea>
                 </div>
-                <div class="qe-field" id="eq-options-wrap" style="${type==='judge'||type==='essay'?'display:none':''}">
+                <div class="qe-field" id="eq-options-wrap" style="${isChoice?'':'display:none'}">
                     <label>选项</label>
                     <div id="eq-options-list">${optionsHTML}</div>
                     <button type="button" class="qe-add-opt" onclick="Admin._addOption()">+ 添加选项</button>
@@ -186,8 +189,9 @@ export function initEditor(Admin) {
 
     Admin._onTypeChange = function() {
         const type = document.getElementById('eq-type').value;
-        document.getElementById('eq-options-wrap').style.display = type === 'judge' || type === 'essay' ? 'none' : '';
-        document.getElementById('eq-answer-btns') && (document.getElementById('eq-answer-btns').style.display = type === 'judge' || type === 'essay' ? 'none' : '');
+        const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
+        document.getElementById('eq-options-wrap').style.display = isChoice ? '' : 'none';
+        document.getElementById('eq-answer-btns') && (document.getElementById('eq-answer-btns').style.display = isChoice ? '' : 'none');
         document.getElementById('eq-judge-wrap') && (document.getElementById('eq-judge-wrap').style.display = type === 'judge' ? 'flex' : 'none');
         document.getElementById('eq-answer').value = '';
         this._preview();
@@ -217,16 +221,17 @@ export function initEditor(Admin) {
 
     Admin._collectQuestion = function() {
         const type = document.getElementById('eq-type').value;
+        const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         // 从输入框收集选项
         let options = [];
-        if (type !== 'judge' && type !== 'essay') {
+        if (isChoice) {
             document.querySelectorAll('#eq-options-list .qe-opt-input').forEach(inp => {
                 const v = inp.value.trim();
                 if (v) options.push(v);
             });
         }
         let answer = document.getElementById('eq-answer').value;
-        if (type === 'judge') answer = answer === 'true' || answer === true;
+        if (isJudge) answer = answer === 'true' || answer === true;
 
         const question = {
             type,
@@ -272,11 +277,12 @@ export function initEditor(Admin) {
         const explanation = document.getElementById('eq-explanation').value;
         const difficulty = parseInt(document.getElementById('eq-difficulty').value) || 1;
         const category = document.getElementById('eq-category').value;
-        const typeLabel = {single:'单选',multi:'多选',judge:'判断',essay:'简答'}[type] || type;
+        const typeLabel = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答'}[type] || type;
+        const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
 
         // 收集选项
         let options = [];
-        if (type !== 'judge' && type !== 'essay') {
+        if (isChoice) {
             document.querySelectorAll('#eq-options-list .qe-opt-input').forEach(inp => {
                 const v = inp.value.trim();
                 if (v) options.push(v);
@@ -291,12 +297,12 @@ export function initEditor(Admin) {
         html += '</div>';
         html += `<div class="qe-preview-question">${Utils.escapeHtml(question) || '<span style="color:var(--text-tertiary)">题目内容...</span>'}</div>`;
 
-        if (type === 'judge') {
+        if (isJudge) {
             html += '<div style="display:flex;gap:8px;margin-bottom:8px">';
             html += `<div class="qe-preview-opt ${answer===true?'selected':''}">✓ 正确</div>`;
             html += `<div class="qe-preview-opt ${answer===false?'selected':''}">✗ 错误</div>`;
             html += '</div>';
-        } else if (type !== 'essay') {
+        } else if (isChoice) {
             options.forEach((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const sel = (answer||'').includes(letter);
@@ -304,7 +310,7 @@ export function initEditor(Admin) {
             });
         }
 
-        if (answer && type !== 'judge') {
+        if (answer && !isJudge) {
             html += `<div class="qe-preview-answer">答案: <b>${Utils.escapeHtml(String(answer))}</b></div>`;
         }
         if (explanation) {
