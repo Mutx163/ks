@@ -5,77 +5,192 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>管理后台 - 城科卷王</title>
         <link rel="stylesheet" href="css/base.css" />
-        <link rel="stylesheet" href="css/home.css" />
         <style>
-            .admin-container { max-width: 960px; margin: 0 auto; padding: var(--space-4); }
-            .admin-header { text-align: center; margin-bottom: var(--space-6); }
-            .admin-header h1 { font-size: var(--font-size-2xl); font-weight: 700; }
-            .admin-header p { color: var(--text-secondary); }
-            .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6); }
-            .admin-stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; }
-            .admin-stat-value { font-size: var(--font-size-2xl); font-weight: 700; color: var(--primary); }
-            .admin-stat-label { font-size: var(--font-size-sm); color: var(--text-secondary); margin-top: 4px; }
-            .admin-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
-            .admin-table th { background: var(--bg-hover); padding: 10px 12px; text-align: left; font-weight: 600; position: sticky; top: 0; }
-            .admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-            .admin-table tr:hover td { background: var(--bg-hover); }
-            .admin-table .actions { display: flex; gap: 6px; }
-            .admin-table .actions button { padding: 4px 8px; font-size: 11px; }
-            .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-            .badge-admin { background: var(--primary-light); color: var(--primary); }
-            .badge-normal { background: var(--bg-hover); color: var(--text-tertiary); }
-            .search-bar { display: flex; gap: 8px; margin-bottom: var(--space-4); }
-            .search-bar input { flex: 1; }
-            .detail-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-4); display: none; }
+            * { box-sizing: border-box; }
+            body { background: var(--bg-main, #f5f5f5); min-height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+            /* 登录页 */
+            .login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+            .login-card { background: var(--bg-card, #fff); border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 400px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+            .login-card .logo { text-align: center; margin-bottom: 24px; }
+            .login-card .logo-icon { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; margin-bottom: 12px; }
+            .login-card h2 { text-align: center; font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+            .login-card p { text-align: center; color: var(--text-secondary, #888); font-size: 14px; margin: 0 0 24px; }
+            .input-group { position: relative; margin-bottom: 16px; }
+            .input-group .icon-left { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary, #aaa); font-size: 16px; pointer-events: none; }
+            .input-group input { width: 100%; padding: 12px 14px 12px 42px; border: 1px solid var(--border, #e0e0e0); border-radius: 10px; font-size: 15px; background: var(--bg-card, #fff); transition: border-color 0.2s; }
+            .input-group input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+            .login-error { color: #ef4444; font-size: 13px; text-align: center; margin-top: 8px; display: none; }
+            .btn-login { width: 100%; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+            .btn-login:hover { opacity: 0.9; }
+            .btn-login:active { transform: scale(0.98); }
+
+            /* 顶部栏 */
+            .topbar { background: var(--bg-card, #fff); border-bottom: 1px solid var(--border, #e0e0e0); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+            .topbar-left { display: flex; align-items: center; gap: 12px; }
+            .topbar-logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; }
+            .topbar-title { font-weight: 600; font-size: 16px; }
+            .topbar-right { display: flex; align-items: center; gap: 8px; }
+            .topbar-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border, #e0e0e0); background: var(--bg-card, #fff); color: var(--text-secondary, #666); font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+            .topbar-btn:hover { background: var(--bg-hover, #f0f0f0); }
+            .topbar-btn.danger { color: #ef4444; border-color: #fecaca; }
+            .topbar-btn.danger:hover { background: #fef2f2; }
+
+            /* 主内容 */
+            .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+            /* 统计卡片 */
+            .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+            .stat-card { background: var(--bg-card, #fff); border-radius: 12px; padding: 20px; border: 1px solid var(--border, #e0e0e0); }
+            .stat-card .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px; }
+            .stat-card .stat-icon.purple { background: #ede9fe; }
+            .stat-card .stat-icon.blue { background: #dbeafe; }
+            .stat-card .stat-icon.green { background: #dcfce7; }
+            .stat-card .stat-icon.orange { background: #ffedd5; }
+            .stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary, #111); }
+            .stat-card .stat-label { font-size: 13px; color: var(--text-secondary, #888); margin-top: 4px; }
+
+            /* 搜索栏 */
+            .search-section { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+            .search-box { flex: 1; min-width: 200px; position: relative; }
+            .search-box .icon-left { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary, #aaa); }
+            .search-box input { width: 100%; padding: 10px 14px 10px 40px; border: 1px solid var(--border, #e0e0e0); border-radius: 10px; font-size: 14px; background: var(--bg-card, #fff); }
+            .search-box input:focus { outline: none; border-color: #6366f1; }
+            .filter-btn { padding: 10px 16px; border: 1px solid var(--border, #e0e0e0); border-radius: 10px; background: var(--bg-card, #fff); font-size: 13px; cursor: pointer; color: var(--text-secondary, #666); transition: all 0.2s; }
+            .filter-btn.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+            .filter-btn:hover:not(.active) { background: var(--bg-hover, #f0f0f0); }
+
+            /* 表格卡片 */
+            .table-card { background: var(--bg-card, #fff); border-radius: 12px; border: 1px solid var(--border, #e0e0e0); overflow: hidden; }
+            .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border, #e0e0e0); display: flex; align-items: center; justify-content: space-between; }
+            .table-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
+            .table-header .count { color: var(--text-secondary, #888); font-size: 13px; }
+            .table-wrap { overflow-x: auto; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
+            thead th { padding: 10px 16px; text-align: left; font-weight: 600; color: var(--text-secondary, #888); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg-hover, #f9f9f9); border-bottom: 1px solid var(--border, #e0e0e0); white-space: nowrap; }
+            tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border, #f0f0f0); white-space: nowrap; }
+            tbody tr:hover { background: var(--bg-hover, #fafafa); }
+            tbody tr:last-child td { border-bottom: none; }
+            .user-code { font-family: 'SF Mono', 'Consolas', monospace; font-size: 13px; background: var(--bg-hover, #f0f0f0); padding: 2px 8px; border-radius: 6px; letter-spacing: 1px; }
+            .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+            .badge-admin { background: #ede9fe; color: #6366f1; }
+            .badge-me { background: #dbeafe; color: #3b82f6; }
+            .accuracy-bar { display: inline-flex; align-items: center; gap: 6px; }
+            .accuracy-bar .bar { width: 40px; height: 4px; border-radius: 2px; background: #e5e7eb; overflow: hidden; }
+            .accuracy-bar .bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+            .action-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border, #e0e0e0); background: var(--bg-card, #fff); font-size: 12px; cursor: pointer; color: var(--text-secondary, #666); transition: all 0.15s; }
+            .action-btn:hover { background: var(--bg-hover, #f0f0f0); }
+            .action-btn.warn { color: #f59e0b; border-color: #fde68a; }
+            .action-btn.warn:hover { background: #fffbeb; }
+            .action-btn.danger { color: #ef4444; border-color: #fecaca; }
+            .action-btn.danger:hover { background: #fef2f2; }
+            .action-btn.primary { color: #6366f1; border-color: #c7d2fe; }
+            .action-btn.primary:hover { background: #eef2ff; }
+
+            /* 详情面板 */
+            .detail-panel { background: var(--bg-card, #fff); border: 1px solid var(--border, #e0e0e0); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: none; }
             .detail-panel.show { display: block; }
-            .detail-panel h3 { margin-bottom: var(--space-3); }
-            .detail-close { float: right; cursor: pointer; color: var(--text-tertiary); font-size: 18px; }
-            .loading { text-align: center; padding: 40px; color: var(--text-secondary); }
-            /* 登录 */
-            .login-box { max-width: 360px; margin: 80px auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); text-align: center; }
-            .login-box h2 { margin-bottom: var(--space-4); }
-            .login-box input { width: 100%; text-align: center; font-size: 16px; letter-spacing: 4px; margin-bottom: var(--space-3); }
-            .login-box button { width: 100%; }
-            .login-error { color: var(--danger); font-size: var(--font-size-sm); margin-top: var(--space-2); display: none; }
+            .detail-panel .detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+            .detail-panel .detail-header h3 { margin: 0; font-size: 16px; }
+            .detail-panel .close-btn { width: 28px; height: 28px; border-radius: 6px; border: none; background: var(--bg-hover, #f0f0f0); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+            .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+            .detail-item { background: var(--bg-hover, #f9f9f9); border-radius: 8px; padding: 12px; }
+            .detail-item .label { font-size: 12px; color: var(--text-secondary, #888); margin-bottom: 4px; }
+            .detail-item .value { font-size: 14px; font-weight: 500; }
+            .device-list { margin-top: 12px; }
+            .device-list h4 { font-size: 13px; color: var(--text-secondary, #888); margin: 0 0 8px; }
+            .device-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-hover, #f9f9f9); border-radius: 8px; margin-bottom: 6px; font-size: 12px; }
+            .device-item code { font-family: monospace; color: var(--text-secondary, #888); }
+
+            /* 空状态 */
+            .empty { text-align: center; padding: 60px 20px; color: var(--text-tertiary, #aaa); }
+            .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+            @media (max-width: 640px) {
+                .main { padding: 16px; }
+                .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+                .stat-card { padding: 14px; }
+                .stat-card .stat-value { font-size: 22px; }
+                .search-section { flex-direction: column; }
+            }
         </style>
     </head>
     <body>
-        <header class="home-header">
-            <div class="container">
-                <div class="home-logo">
-                    <div class="home-logo-text">
-                        <h1>城科卷王</h1>
-                        <p>管理后台</p>
+        <!-- 登录页 -->
+        <div class="login-page" id="login-page">
+            <div class="login-card">
+                <div class="logo">
+                    <div class="logo-icon">👑</div>
+                    <h2>管理后台</h2>
+                    <p>城科卷王 · 数据管理中心</p>
+                </div>
+                <div class="input-group">
+                    <span class="icon-left">🔒</span>
+                    <input type="password" id="admin-password" placeholder="请输入管理密码" autocomplete="off">
+                </div>
+                <button class="btn-login" id="btn-login">登 录</button>
+                <div class="login-error" id="login-error"></div>
+            </div>
+        </div>
+
+        <!-- 管理页 -->
+        <div id="admin-app" style="display:none;">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-logo">👑</div>
+                    <span class="topbar-title">管理后台</span>
+                </div>
+                <div class="topbar-right">
+                    <button class="topbar-btn" onclick="location.href='index.html'">🏠 首页</button>
+                    <button class="topbar-btn" onclick="Admin.exportData()">📥 导出</button>
+                    <button class="topbar-btn danger" onclick="Admin.logout()">退出</button>
+                </div>
+            </div>
+
+            <div class="main">
+                <!-- 统计 -->
+                <div class="stat-grid" id="stat-grid"></div>
+
+                <!-- 详情面板 -->
+                <div class="detail-panel" id="detail-panel"></div>
+
+                <!-- 搜索 -->
+                <div class="search-section">
+                    <div class="search-box">
+                        <span class="icon-left">🔍</span>
+                        <input type="text" id="search-input" placeholder="搜索同步码或姓名首字母...">
+                    </div>
+                    <button class="filter-btn active" data-sort="time" onclick="Admin.setSort('time')">注册时间</button>
+                    <button class="filter-btn" data-sort="answered" onclick="Admin.setSort('answered')">答题数</button>
+                    <button class="filter-btn" data-sort="duration" onclick="Admin.setSort('duration')">时长</button>
+                </div>
+
+                <!-- 用户表格 -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3>用户列表</h3>
+                        <span class="count" id="user-count"></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>同步码</th>
+                                    <th>姓名</th>
+                                    <th>设备</th>
+                                    <th>答题数</th>
+                                    <th>正确率</th>
+                                    <th>时长</th>
+                                    <th>注册时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-table"></tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="home-actions">
-                    <button class="btn btn-ghost btn-sm" onclick="location.href='index.html'">首页</button>
-                    <button class="btn btn-ghost btn-sm" id="btn-logout" style="display:none;" onclick="Admin.logout()">退出</button>
-                </div>
             </div>
-        </header>
-
-        <main class="admin-container" id="admin-main">
-            <div class="login-box" id="login-box">
-                <h2>🔐 管理员登录</h2>
-                <input type="password" id="admin-password" placeholder="输入管理密码" autocomplete="off">
-                <button class="btn btn-primary" id="btn-login">登录</button>
-                <div class="login-error" id="login-error">密码错误</div>
-            </div>
-        </main>
-        <script>
-            // 立即绑定登录按钮（不等 module 加载）
-            document.getElementById('btn-login').addEventListener('click', function() {
-                if (window.Admin) window.Admin.login();
-                else alert('正在加载，请稍候...');
-            });
-            document.getElementById('admin-password').addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    if (window.Admin) window.Admin.login();
-                    else alert('正在加载，请稍候...');
-                }
-            });
-        </script>
+        </div>
 
         <script type="module">
             import API from './js/api.js';
@@ -84,161 +199,208 @@
             const Admin = {
                 users: [],
                 password: sessionStorage.getItem('admin_pwd') || '',
+                sort: 'time',
 
                 async init() {
-                    // 已登录则直接加载
-                    if (this.password) {
-                        await this.loadUsers();
-                    }
+                    document.getElementById('btn-login').addEventListener('click', () => this.login());
+                    document.getElementById('admin-password').addEventListener('keydown', e => { if (e.key === 'Enter') this.login(); });
+                    document.getElementById('search-input').addEventListener('input', () => this.filter());
+
+                    if (this.password) await this.loadUsers();
                 },
 
                 async login() {
                     const pwd = document.getElementById('admin-password').value.trim();
                     if (!pwd) return;
-
                     const errEl = document.getElementById('login-error');
                     errEl.style.display = 'none';
-                    errEl.textContent = '密码错误';
 
-                    this.password = pwd;
                     try {
-                        const url = `${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`;
-                        console.log('[Admin] 请求:', url);
-                        const res = await fetch(url);
+                        const res = await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`);
                         const data = await res.json();
-                        console.log('[Admin] 响应:', res.status, data);
-
                         if (data.ok) {
                             sessionStorage.setItem('admin_pwd', pwd);
-                            document.getElementById('login-box').style.display = 'none';
-                            document.getElementById('btn-logout').style.display = '';
+                            this.password = pwd;
                             this.users = data.users;
-                            this.renderDashboard();
+                            this.showDashboard();
                         } else {
                             errEl.textContent = data.error || '密码错误';
                             errEl.style.display = 'block';
-                            this.password = '';
                         }
                     } catch (e) {
-                        console.error('[Admin] 错误:', e);
                         errEl.textContent = '网络错误: ' + e.message;
                         errEl.style.display = 'block';
-                        this.password = '';
                     }
                 },
 
                 logout() {
                     sessionStorage.removeItem('admin_pwd');
-                    this.password = '';
                     location.reload();
                 },
 
                 async loadUsers() {
-                    const data = await API.request(`/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
-                    if (!data || !data.ok) {
-                        sessionStorage.removeItem('admin_pwd');
-                        this.password = '';
-                        location.reload();
-                        return;
-                    }
-                    document.getElementById('login-box').style.display = 'none';
-                    document.getElementById('btn-logout').style.display = '';
-                    this.users = data.users;
-                    this.renderDashboard();
+                    try {
+                        const res = await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                        const data = await res.json();
+                        if (!data.ok) { sessionStorage.removeItem('admin_pwd'); location.reload(); return; }
+                        this.users = data.users;
+                        this.showDashboard();
+                    } catch { sessionStorage.removeItem('admin_pwd'); location.reload(); }
                 },
 
-                renderDashboard() {
-                    const totalUsers = this.users.length;
-                    const totalAnswered = this.users.reduce((s, u) => s + u.total_answered, 0);
-                    const totalDuration = this.users.reduce((s, u) => s + u.total_duration, 0);
+                showDashboard() {
+                    document.getElementById('login-page').style.display = 'none';
+                    document.getElementById('admin-app').style.display = '';
+                    this.renderStats();
+                    this.renderTable();
+                },
 
-                    document.getElementById('admin-main').innerHTML = `
-                        <div class="admin-header">
-                            <h1>📊 管理后台</h1>
-                            <p>共 ${totalUsers} 个用户</p>
-                        </div>
-                        <div class="admin-stats">
-                            <div class="admin-stat"><div class="admin-stat-value">${totalUsers}</div><div class="admin-stat-label">总用户</div></div>
-                            <div class="admin-stat"><div class="admin-stat-value">${totalAnswered}</div><div class="admin-stat-label">总答题</div></div>
-                            <div class="admin-stat"><div class="admin-stat-value">${this.fmtDur(totalDuration)}</div><div class="admin-stat-label">总时长</div></div>
-                        </div>
-                        <div id="detail-panel" class="detail-panel"></div>
-                        <div class="search-bar">
-                            <input type="text" id="search-input" placeholder="搜索同步码或姓名..." oninput="Admin.filter()">
-                        </div>
-                        <div style="overflow-x:auto;">
-                            <table class="admin-table">
-                                <thead><tr>
-                                    <th>同步码</th><th>姓名</th><th>设备</th><th>答题数</th><th>正确率</th><th>时长</th><th>注册时间</th><th>操作</th>
-                                </tr></thead>
-                                <tbody id="user-table"></tbody>
-                            </table>
-                        </div>
+                renderStats() {
+                    const total = this.users.length;
+                    const answered = this.users.reduce((s, u) => s + u.total_answered, 0);
+                    const correct = this.users.reduce((s, u) => s + u.total_correct, 0);
+                    const duration = this.users.reduce((s, u) => s + u.total_duration, 0);
+                    const acc = answered > 0 ? Math.round(correct / answered * 100) : 0;
+
+                    document.getElementById('stat-grid').innerHTML = `
+                        <div class="stat-card"><div class="stat-icon purple">👥</div><div class="stat-value">${total}</div><div class="stat-label">注册用户</div></div>
+                        <div class="stat-card"><div class="stat-icon blue">📊</div><div class="stat-value">${this.fmtNum(answered)}</div><div class="stat-label">总答题数</div></div>
+                        <div class="stat-card"><div class="stat-icon green">🎯</div><div class="stat-value">${acc}%</div><div class="stat-label">平均正确率</div></div>
+                        <div class="stat-card"><div class="stat-icon orange">⏱</div><div class="stat-value">${this.fmtDur(duration)}</div><div class="stat-label">总学习时长</div></div>
                     `;
-                    this.renderTable(this.users);
                 },
 
-                renderTable(users) {
+                renderTable() {
+                    const q = (document.getElementById('search-input').value || '').toUpperCase();
+                    let list = this.users.filter(u => !q || u.id.includes(q) || u.initials.toUpperCase().includes(q));
+
+                    if (this.sort === 'answered') list.sort((a, b) => b.total_answered - a.total_answered);
+                    else if (this.sort === 'duration') list.sort((a, b) => b.total_duration - a.total_duration);
+                    // default 'time' is already sorted by created_at DESC from API
+
+                    document.getElementById('user-count').textContent = `${list.length} / ${this.users.length} 人`;
                     const myId = API.getSyncCode();
-                    document.getElementById('user-table').innerHTML = users.map(u => {
-                        const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
-                        return `<tr>
-                            <td><code>${u.id}</code></td>
-                            <td>${Utils.escapeHtml(u.initials)} ${u.is_admin ? '<span class="badge badge-admin">管理员</span>' : ''} ${u.id === myId ? '<span class="badge badge-normal">我</span>' : ''}</td>
-                            <td>${u.device_count}</td>
-                            <td>${u.total_answered}</td>
-                            <td>${acc}%</td>
-                            <td>${this.fmtDur(u.total_duration)}</td>
-                            <td>${u.created_at?.slice(0, 10) || '-'}</td>
-                            <td class="actions">
-                                <button class="btn btn-ghost btn-sm" onclick="Admin.detail('${u.id}')">详情</button>
-                                ${!u.is_admin ? `<button class="btn btn-ghost btn-sm" onclick="Admin.resetStats('${u.id}','${u.initials}')" style="color:var(--warning)">重置</button>` : ''}
-                                ${u.id !== myId && !u.is_admin ? `<button class="btn btn-ghost btn-sm" onclick="Admin.delUser('${u.id}','${u.initials}')" style="color:var(--danger)">删除</button>` : ''}
-                            </td>
-                        </tr>`;
-                    }).join('');
+
+                    document.getElementById('user-table').innerHTML = list.length === 0
+                        ? '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-tertiary)">暂无数据</td></tr>'
+                        : list.map(u => {
+                            const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
+                            const accColor = acc >= 80 ? '#22c55e' : acc >= 60 ? '#f59e0b' : '#ef4444';
+                            const isMe = u.id === myId;
+                            return `<tr>
+                                <td><span class="user-code">${u.id}</span></td>
+                                <td>${Utils.escapeHtml(u.initials)} ${u.is_admin ? '<span class="badge badge-admin">管理员</span>' : ''} ${isMe ? '<span class="badge badge-me">我</span>' : ''}</td>
+                                <td>${u.device_count}</td>
+                                <td><strong>${u.total_answered}</strong></td>
+                                <td><div class="accuracy-bar"><span>${acc}%</span><div class="bar"><div class="bar-fill" style="width:${acc}%;background:${accColor}"></div></div></div></td>
+                                <td>${this.fmtDur(u.total_duration)}</td>
+                                <td>${u.created_at?.slice(0, 10) || '-'}</td>
+                                <td>
+                                    <button class="action-btn primary" onclick="Admin.detail('${u.id}')">详情</button>
+                                    ${!u.is_admin ? `<button class="action-btn warn" onclick="Admin.resetStats('${u.id}','${u.initials}')">重置</button>` : ''}
+                                    ${!isMe && !u.is_admin ? `<button class="action-btn danger" onclick="Admin.delUser('${u.id}','${u.initials}')">删除</button>` : ''}
+                                </td>
+                            </tr>`;
+                        }).join('');
                 },
 
-                filter() {
-                    const q = document.getElementById('search-input').value.toUpperCase();
-                    this.renderTable(this.users.filter(u => u.id.includes(q) || u.initials.toUpperCase().includes(q)));
+                setSort(s) {
+                    this.sort = s;
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === s));
+                    this.renderTable();
                 },
+
+                filter() { this.renderTable(); },
 
                 async detail(uid) {
-                    const data = await API.request(`/api/admin/user-detail/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
-                    if (!data?.ok) return;
-                    const p = document.getElementById('detail-panel');
-                    p.classList.add('show');
-                    p.innerHTML = `
-                        <span class="detail-close" onclick="this.parentElement.classList.remove('show')">×</span>
-                        <h3>${Utils.escapeHtml(data.user.initials)} (${data.user.id})</h3>
-                        <p><b>设备数:</b> ${data.devices.length}</p>
-                        <ul>${data.devices.map(d => `<li><code style="font-size:11px">${d.device_id.slice(0,12)}...</code> (${d.bound_at?.slice(0,10)})</li>`).join('')}</ul>
-                        <p><b>题库数据:</b></p>
-                        <ul>${data.stats.map(s => `<li>${Utils.escapeHtml(s.bank_name || s.bank_id)}: ${s.answered}题, 正确${s.correct}, ${this.fmtDur(s.duration)}</li>`).join('')}</ul>
-                    `;
+                    const panel = document.getElementById('detail-panel');
+                    try {
+                        const res = await fetch(`${API.BASE_URL}/api/admin/user-detail/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                        const data = await res.json();
+                        if (!data?.ok) return;
+
+                        const u = data.user;
+                        const totalAnswered = data.stats.reduce((s, x) => s + x.answered, 0);
+                        const totalCorrect = data.stats.reduce((s, x) => s + x.correct, 0);
+                        const totalDur = data.stats.reduce((s, x) => s + x.duration, 0);
+
+                        panel.classList.add('show');
+                        panel.innerHTML = `
+                            <div class="detail-header">
+                                <h3>${Utils.escapeHtml(u.initials)} <span class="user-code">${u.id}</span> ${u.is_admin ? '<span class="badge badge-admin">管理员</span>' : ''}</h3>
+                                <button class="close-btn" onclick="this.closest('.detail-panel').classList.remove('show')">✕</button>
+                            </div>
+                            <div class="detail-grid">
+                                <div class="detail-item"><div class="label">注册时间</div><div class="value">${u.created_at?.slice(0, 16) || '-'}</div></div>
+                                <div class="detail-item"><div class="label">绑定设备</div><div class="value">${data.devices.length} 台</div></div>
+                                <div class="detail-item"><div class="label">总答题</div><div class="value">${totalAnswered} 题</div></div>
+                                <div class="detail-item"><div class="label">总正确</div><div class="value">${totalCorrect} 题 (${totalAnswered > 0 ? Math.round(totalCorrect/totalAnswered*100) : 0}%)</div></div>
+                                <div class="detail-item"><div class="label">总时长</div><div class="value">${this.fmtDur(totalDur)}</div></div>
+                                <div class="detail-item"><div class="label">题库数</div><div class="value">${data.stats.length} 个</div></div>
+                            </div>
+                            <div class="device-list">
+                                <h4>📱 绑定设备</h4>
+                                ${data.devices.map(d => `<div class="device-item"><code>${d.device_id}</code><span style="color:var(--text-tertiary)">${d.bound_at?.slice(0, 10) || ''}</span></div>`).join('')}
+                            </div>
+                            ${data.stats.length > 0 ? `
+                            <div class="device-list">
+                                <h4>📊 各题库数据</h4>
+                                <table style="width:100%;font-size:12px;margin-top:8px">
+                                    <thead><tr><th style="text-align:left;padding:6px">题库</th><th style="text-align:right;padding:6px">答题</th><th style="text-align:right;padding:6px">正确</th><th style="text-align:right;padding:6px">正确率</th><th style="text-align:right;padding:6px">时长</th></tr></thead>
+                                    <tbody>${data.stats.map(s => {
+                                        const a = s.answered > 0 ? Math.round(s.correct/s.answered*100) : 0;
+                                        return `<tr><td style="padding:6px">${Utils.escapeHtml(s.bank_name || s.bank_id)}</td><td style="text-align:right;padding:6px">${s.answered}</td><td style="text-align:right;padding:6px">${s.correct}</td><td style="text-align:right;padding:6px">${a}%</td><td style="text-align:right;padding:6px">${this.fmtDur(s.duration)}</td></tr>`;
+                                    }).join('')}</tbody>
+                                </table>
+                            </div>` : ''}
+                        `;
+                    } catch (e) {
+                        panel.classList.add('show');
+                        panel.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
+                    }
                 },
 
                 async resetStats(uid, name) {
                     if (!confirm(`确定重置 ${name} 的所有答题数据？`)) return;
-                    const r = await API.request('/api/admin/reset-stats', {
-                        method: 'POST', body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, targetUserId: uid })
-                    });
+                    const r = await this.adminPost('/api/admin/reset-stats', { targetUserId: uid });
                     if (r?.ok) { Utils.showToast('已重置', 'success'); this.loadUsers(); }
                 },
 
                 async delUser(uid, name) {
                     if (!confirm(`确定永久删除 ${name} (${uid})？不可恢复！`)) return;
-                    const r = await API.request('/api/admin/delete-user', {
-                        method: 'POST', body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, targetUserId: uid })
-                    });
+                    const r = await this.adminPost('/api/admin/delete-user', { targetUserId: uid });
                     if (r?.ok) { Utils.showToast('已删除', 'success'); this.loadUsers(); }
                 },
 
+                async adminPost(path, body) {
+                    try {
+                        const res = await fetch(API.BASE_URL + path, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body })
+                        });
+                        return await res.json();
+                    } catch { return null; }
+                },
+
+                exportData() {
+                    const csv = ['同步码,姓名,设备数,答题数,正确数,正确率,时长(秒),注册时间'];
+                    this.users.forEach(u => {
+                        const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
+                        csv.push(`${u.id},${u.initials},${u.device_count},${u.total_answered},${u.total_correct},${acc}%,${u.total_duration},${u.created_at?.slice(0,10)||''}`);
+                    });
+                    const blob = new Blob(['\ufeff' + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `城科卷王_用户数据_${new Date().toISOString().slice(0,10)}.csv`;
+                    a.click();
+                },
+
+                fmtNum(n) { return n >= 1000 ? (n/1000).toFixed(1) + 'k' : n; },
                 fmtDur(s) {
-                    if (!s || s < 60) return (s || 0) + '秒';
-                    if (s < 3600) return Math.floor(s / 60) + '分';
-                    return Math.floor(s / 3600) + '时' + Math.floor((s % 3600) / 60) + '分';
+                    if (!s || s < 60) return (s||0) + '秒';
+                    if (s < 3600) return Math.floor(s/60) + '分';
+                    return Math.floor(s/3600) + '时' + Math.floor((s%3600)/60) + '分';
                 }
             };
 
