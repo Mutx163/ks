@@ -6,9 +6,8 @@
     // 自动检测：有 ?debug=1 参数，或触屏设备
     const params = new URLSearchParams(location.search);
     const isDebug = params.has('debug');
-    const isTouch = 'ontouchstart' in window && !window._eruda;
 
-    if (isDebug || isTouch) {
+    if (isDebug) {
         const s = document.createElement('script');
         s.src = 'https://unpkg.com/eruda';
         s.onload = function() {
