@@ -18,9 +18,18 @@ const App = {
 
     async init() {
         window._pageStartTime = window._pageStartTime || Date.now();
-        await BankLoader.loadAllBuiltinBanks();
 
-        // 云同步（静默，3秒超时，失败不影响本地）
+        // 加载题库（10秒超时，失败不影响页面显示）
+        try {
+            await Promise.race([
+                BankLoader.loadAllBuiltinBanks(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+            ]);
+        } catch (e) {
+            console.warn('[App] 题库加载超时或失败:', e.message);
+        }
+
+        // 云同步（静默，3秒超时）
         try { await Promise.race([API.autoSync(), new Promise(r => setTimeout(r, 3000))]); } catch {}
 
         this.loadData();
@@ -149,24 +158,25 @@ const App = {
         const el = document.getElementById('smart-banner');
         if (!el) return;
         const CACHE_KEY = 'ks_cached_announce';
+        let shown = false;
 
         // 从缓存恢复
         const cached = (() => { try { return localStorage.getItem(CACHE_KEY); } catch { return null; } })();
-        if (cached) this._renderAnnounceWrap(el, cached);
+        if (cached) { this._renderAnnounceWrap(el, cached); shown = true; }
 
+        // 尝试云 API（POST + 空 body，与注册/同步完全一致的请求结构）
         try {
-            // 用 POST 请求（与注册/同步同模式，绕过校园网对 GET 的限制）
-            const d = await API.request('/api/announce', { method: 'POST' });
+            const d = await API.request('/api/announce', { method: 'POST', body: '{}' });
             if (d?.ok && d.announce?.content) {
                 const text = Utils.escapeHtml(d.announce.content.replace(/\n/g, ' '));
                 try { localStorage.setItem(CACHE_KEY, text); } catch {}
                 this._renderAnnounceWrap(el, text);
-            } else if (!cached) {
-                el.style.display = 'none';
+                return;
             }
-        } catch {
-            if (!cached) el.style.display = 'none';
-        }
+        } catch {}
+
+        // 全部失败
+        if (!shown) el.style.display = 'none';
     },
 
     _renderAnnounceWrap(el, text) {
