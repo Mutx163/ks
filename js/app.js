@@ -25,6 +25,12 @@ const App = {
 
         this.loadData();
 
+        // 隐藏骨架屏，显示真实内容
+        const skeleton = document.getElementById('loading-skeleton');
+        const banksSection = document.getElementById('section-banks');
+        if (skeleton) skeleton.classList.add('hidden');
+        if (banksSection) banksSection.style.display = '';
+
         this.render();
         this.bindEvents();
 

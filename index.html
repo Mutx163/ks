@@ -110,8 +110,25 @@
                             </div>
                         </div>
 
+                        <!-- 加载骨架屏 -->
+                        <div id="loading-skeleton">
+                            <section class="section" aria-label="加载中">
+                                <div class="section-header">
+                                    <h2 class="section-title">题库列表</h2>
+                                </div>
+                                <div class="bank-grid">
+                                    <div class="skel-card"></div>
+                                    <div class="skel-card"></div>
+                                    <div class="skel-card"></div>
+                                    <div class="skel-card"></div>
+                                    <div class="skel-card"></div>
+                                    <div class="skel-card"></div>
+                                </div>
+                            </section>
+                        </div>
+
                         <!-- 题库 -->
-                        <section class="section" aria-label="题库列表">
+                        <section class="section" id="section-banks" style="display:none" aria-label="题库列表">
                             <div class="section-header">
                                 <h2 class="section-title">题库列表</h2>
                                 <span class="bank-count" id="bank-count"></span>
