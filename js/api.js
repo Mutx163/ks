@@ -170,31 +170,7 @@ const API = {
         await this.pullCloudData();
         // 推送本地最新数据到云端
         await this.pushAll();
-        // 检查公告
-        this.checkAnnounce();
         return true;
-    },
-
-    /**
-     * 检查并显示公告（每次会话只显示一次）
-     */
-    async checkAnnounce() {
-        if (sessionStorage.getItem('ks_announce_shown')) return;
-        try {
-            const data = await this.request('/api/announce');
-            if (data?.ok && data.announce) {
-                sessionStorage.setItem('ks_announce_shown', '1');
-                const Utils = window.Utils;
-                if (Utils) {
-                    Utils.showModal({
-                        title: '📢 公告',
-                        content: `<div style="padding:8px 0;line-height:1.6">${Utils.escapeHtml(data.announce.content).replace(/\n/g, '<br>')}</div>`,
-                        buttons: [{ label: '知道了', class: 'btn-primary', onClick: (m) => m.remove() }],
-                        size: 'sm'
-                    });
-                }
-            }
-        } catch {}
     },
 
     /**
