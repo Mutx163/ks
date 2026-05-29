@@ -130,7 +130,7 @@ const Admin = {
                 <button class="fbtn ${this.sort === 'duration' ? 'active' : ''}" onclick="Admin.setSort('duration')">时长</button>
             </div>
             <div class="card">
-                <div class="card-header"><h3>用户列表</h3><span class="count">${list.length}/${this.users.length}</span></div>
+                <div class="card-header"><h3>用户列表</h3><span class="count">${list.length}/${this.users.length}</span><button class="abtn primary" style="padding:3px 10px;font-size:11px" onclick="Admin.exportCSV()">导出CSV</button></div>
                 <div class="card-body" style="overflow-x:auto">
                     <table>
                         <thead><tr><th>同步码</th><th>姓名</th><th>设备</th><th>答题</th><th>正确率</th><th>时长</th><th>注册</th><th>状态</th><th>操作</th></tr></thead>
@@ -405,7 +405,16 @@ const Admin = {
                     <button class="btn-login" style="max-width:160px;padding:8px" onclick="Admin.publishAnnounce()">发布公告</button>
                 </div>
             </div>
-            <div class="card" id="announce-list-card" style="margin-top:12px"><div class="card-header"><h3>历史公告</h3></div><div class="empty-state">加载中...</div></div>`;
+            <div class="card" id="announce-list-card" style="margin-top:12px">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                    <h3>历史公告</h3>
+                    <select id="announce-sort" onchange="Admin.loadAnnouncements()" style="font-size:11px;padding:3px 6px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);color:var(--text)">
+                        <option value="newest">最新优先</option>
+                        <option value="oldest">最早优先</option>
+                    </select>
+                </div>
+                <div class="empty-state">加载中...</div>
+            </div>`;
         await this.loadAnnouncements();
     },
 
@@ -414,16 +423,22 @@ const Admin = {
             const d = await this.get('/api/admin/announcements');
             const el = document.getElementById('announce-list-card');
             if (!d || !d.ok || !d.announcements?.length) {
-                el.innerHTML = `<div class="card-header"><h3>历史公告</h3></div><div class="empty-state">暂无公告</div>`;
+                el.innerHTML = `<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3>历史公告</h3></div><div class="empty-state">暂无公告</div>`;
                 return;
             }
-            el.innerHTML = `<div class="card-header"><h3>历史公告</h3></div>` + d.announcements.map(a => `
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--border)">
+            const sort = document.getElementById('announce-sort')?.value || 'newest';
+            const items = [...d.announcements];
+            if (sort === 'oldest') items.reverse();
+            el.innerHTML = `<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3>历史公告</h3><select id="announce-sort" onchange="Admin.loadAnnouncements()" style="font-size:11px;padding:3px 6px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);color:var(--text)"><option value="newest" ${sort==='newest'?'selected':''}>最新优先</option><option value="oldest" ${sort==='oldest'?'selected':''}>最早优先</option></select></div>` + items.map(a => `
+                <div style="display:flex;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--border);gap:8px">
                     <div style="flex:1;min-width:0">
                         <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all">${Utils.escapeHtml(a.content)}</div>
                         <div style="font-size:10px;color:var(--text-tertiary);margin-top:4px">${a.created_at?.slice(0,16)||''} · ID:${a.id}</div>
                     </div>
-                    <button class="abtn danger" style="padding:2px 8px;font-size:10px;margin-left:8px;flex-shrink:0" onclick="Admin.deleteAnnounce(${a.id})">删除</button>
+                    <div style="display:flex;gap:4px;flex-shrink:0">
+                        <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.editAnnounce(${a.id},this.closest('[data-content]').dataset.content)" data-content="${Utils.escapeHtml(a.content).replace(/"/g,'&quot;')}">编辑</button>
+                        <button class="abtn danger" style="padding:2px 8px;font-size:10px" onclick="Admin.deleteAnnounce(${a.id})">删除</button>
+                    </div>
                 </div>
             `).join('');
         } catch (e) { console.error(e); }
@@ -440,6 +455,44 @@ const Admin = {
         if (!confirm('删除这条公告？')) return;
         const r = await this.post('/api/admin/delete-announcement', { id });
         if (r?.ok) { Utils.showToast('已删除', 'success'); await this.loadAnnouncements(); }
+    },
+
+    editAnnounce(id, content) {
+        const decoded = content.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box">
+                    <h3>编辑公告 #${id}</h3>
+                    <label>公告内容</label>
+                    <textarea id="edit-announce-content" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);font-size:13px;resize:vertical">${decoded}</textarea>
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveAnnounce(${id})">保存</button></div>
+                </div>
+            </div>`;
+    },
+
+    async saveAnnounce(id) {
+        const content = document.getElementById('edit-announce-content').value.trim();
+        if (!content) { Utils.showToast('内容不能为空', 'error'); return; }
+        const r = await this.post('/api/admin/edit-announcement', { id, content });
+        if (r?.ok) { Utils.showToast('已更新', 'success'); document.querySelector('.modal-mask')?.remove(); await this.loadAnnouncements(); }
+    },
+
+    // ==================== 导出 CSV ====================
+
+    exportCSV() {
+        const rows = [['同步码', '姓名', '管理员', '注册时间', '设备数', '答题数', '正确数', '正确率', '学习时长(秒)']];
+        this.users.forEach(u => {
+            const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
+            rows.push([u.id, u.initials, u.is_admin ? '是' : '否', u.created_at?.slice(0,10) || '', u.device_count, u.total_answered, u.total_correct, acc + '%', u.total_duration]);
+        });
+        const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const bom = '\uFEFF';
+        const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `用户数据_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click(); URL.revokeObjectURL(url);
+        Utils.showToast('已导出', 'success');
     },
 
     // ==================== 导出 ====================

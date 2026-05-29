@@ -161,6 +161,11 @@ export default {
                 return await handleAdminDeleteAnnouncement(request, env, origin);
             }
 
+            // POST /api/admin/edit-announcement
+            if (method === 'POST' && path === '/api/admin/edit-announcement') {
+                return await handleAdminEditAnnouncement(request, env, origin);
+            }
+
             // POST /api/admin/adjust-stats
             if (method === 'POST' && path === '/api/admin/adjust-stats') {
                 return await handleAdminAdjustStats(request, env, origin);
@@ -771,6 +776,19 @@ async function handleAdminDeleteAnnouncement(request, env, origin) {
     if (!id) return error('缺少 id', 400, origin);
 
     await env.DB.prepare('DELETE FROM announcements WHERE id = ?').bind(id).run();
+    return json({ ok: true }, 200, origin);
+}
+
+// ========== 管理员：编辑公告 ==========
+async function handleAdminEditAnnouncement(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, id, content } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!id || !content) return error('缺少参数', 400, origin);
+    if (content.length > 500) return error('公告内容不超过500字', 400, origin);
+
+    await env.DB.prepare('UPDATE announcements SET content = ? WHERE id = ?').bind(content.trim(), id).run();
     return json({ ok: true }, 200, origin);
 }
 
