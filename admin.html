@@ -6,126 +6,161 @@
         <title>管理后台 - 城科卷王</title>
         <link rel="stylesheet" href="css/base.css" />
         <style>
-            * { box-sizing: border-box; }
-            body { background: var(--bg-main, #f5f5f5); min-height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+            *{box-sizing:border-box;margin:0;padding:0}
+            body{background:#f0f2f5;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a2e}
 
-            /* 登录页 */
-            .login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-            .login-card { background: var(--bg-card, #fff); border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 400px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-            .login-card .logo { text-align: center; margin-bottom: 24px; }
-            .login-card .logo-icon { width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; margin-bottom: 12px; }
-            .login-card h2 { text-align: center; font-size: 20px; font-weight: 600; margin: 0 0 4px; }
-            .login-card p { text-align: center; color: var(--text-secondary, #888); font-size: 14px; margin: 0 0 24px; }
-            .input-group { position: relative; margin-bottom: 16px; }
-            .input-group .icon-left { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary, #aaa); font-size: 16px; pointer-events: none; }
-            .input-group input { width: 100%; padding: 12px 14px 12px 42px; border: 1px solid var(--border, #e0e0e0); border-radius: 10px; font-size: 15px; background: var(--bg-card, #fff); transition: border-color 0.2s; }
-            .input-group input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
-            .login-error { color: #ef4444; font-size: 13px; text-align: center; margin-top: 8px; display: none; }
-            .btn-login { width: 100%; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-            .btn-login:hover { opacity: 0.9; }
-            .btn-login:active { transform: scale(0.98); }
+            /* 登录 */
+            .login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+            .login-card{background:#fff;border-radius:20px;padding:44px 36px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.15)}
+            .login-card .logo-icon{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;box-shadow:0 8px 24px rgba(99,102,241,0.3)}
+            .login-card h2{text-align:center;font-size:22px;font-weight:700;margin-bottom:4px}
+            .login-card>p{text-align:center;color:#888;font-size:14px;margin-bottom:28px}
+            .input-group{position:relative;margin-bottom:16px}
+            .input-group .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px}
+            .input-group input{width:100%;padding:13px 16px 13px 44px;border:2px solid #e5e7eb;border-radius:12px;font-size:15px;transition:all .2s}
+            .input-group input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 4px rgba(99,102,241,0.1)}
+            .btn-login{width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:4px}
+            .btn-login:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,0.35)}
+            .login-error{color:#ef4444;font-size:13px;text-align:center;margin-top:12px;display:none}
 
-            /* 顶部栏 */
-            .topbar { background: var(--bg-card, #fff); border-bottom: 1px solid var(--border, #e0e0e0); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-            .topbar-left { display: flex; align-items: center; gap: 12px; }
-            .topbar-logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; }
-            .topbar-title { font-weight: 600; font-size: 16px; }
-            .topbar-right { display: flex; align-items: center; gap: 8px; }
-            .topbar-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border, #e0e0e0); background: var(--bg-card, #fff); color: var(--text-secondary, #666); font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
-            .topbar-btn:hover { background: var(--bg-hover, #f0f0f0); }
-            .topbar-btn.danger { color: #ef4444; border-color: #fecaca; }
-            .topbar-btn.danger:hover { background: #fef2f2; }
+            /* 顶栏 */
+            .topbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+            .topbar-left{display:flex;align-items:center;gap:12px}
+            .topbar-logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;font-size:18px}
+            .topbar-title{font-weight:700;font-size:17px}
+            .topbar-right{display:flex;align-items:center;gap:8px}
+            .tb-btn{padding:7px 14px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;color:#555;font-size:13px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+            .tb-btn:hover{background:#f5f5f5}
+            .tb-btn.danger{color:#ef4444;border-color:#fecaca}
+            .tb-btn.danger:hover{background:#fef2f2}
+
+            /* Tab 导航 */
+            .tabs{display:flex;gap:4px;padding:0 24px;background:#fff;border-bottom:1px solid #e5e7eb;overflow-x:auto}
+            .tab{padding:12px 18px;font-size:14px;font-weight:500;color:#888;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+            .tab:hover{color:#555;background:#f9f9f9}
+            .tab.active{color:#6366f1;border-bottom-color:#6366f1;font-weight:600}
 
             /* 主内容 */
-            .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+            .main{max-width:1100px;margin:0 auto;padding:24px}
+            .section{display:none}
+            .section.active{display:block}
 
             /* 统计卡片 */
-            .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-            .stat-card { background: var(--bg-card, #fff); border-radius: 12px; padding: 20px; border: 1px solid var(--border, #e0e0e0); }
-            .stat-card .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px; }
-            .stat-card .stat-icon.purple { background: #ede9fe; }
-            .stat-card .stat-icon.blue { background: #dbeafe; }
-            .stat-card .stat-icon.green { background: #dcfce7; }
-            .stat-card .stat-icon.orange { background: #ffedd5; }
-            .stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--text-primary, #111); }
-            .stat-card .stat-label { font-size: 13px; color: var(--text-secondary, #888); margin-top: 4px; }
+            .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+            .stat-card{background:#fff;border-radius:14px;padding:18px;border:1px solid #e5e7eb;transition:all .2s}
+            .stat-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.06)}
+            .stat-card .si{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:12px}
+            .stat-card .si.purple{background:#ede9fe}
+            .stat-card .si.blue{background:#dbeafe}
+            .stat-card .si.green{background:#dcfce7}
+            .stat-card .si.orange{background:#ffedd5}
+            .stat-card .si.red{background:#fef2f2}
+            .stat-card .sv{font-size:28px;font-weight:700}
+            .stat-card .sl{font-size:12px;color:#888;margin-top:2px}
 
-            /* 搜索栏 */
-            .search-section { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-            .search-box { flex: 1; min-width: 200px; position: relative; }
-            .search-box .icon-left { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary, #aaa); }
-            .search-box input { width: 100%; padding: 10px 14px 10px 40px; border: 1px solid var(--border, #e0e0e0); border-radius: 10px; font-size: 14px; background: var(--bg-card, #fff); }
-            .search-box input:focus { outline: none; border-color: #6366f1; }
-            .filter-btn { padding: 10px 16px; border: 1px solid var(--border, #e0e0e0); border-radius: 10px; background: var(--bg-card, #fff); font-size: 13px; cursor: pointer; color: var(--text-secondary, #666); transition: all 0.2s; }
-            .filter-btn.active { background: #6366f1; color: #fff; border-color: #6366f1; }
-            .filter-btn:hover:not(.active) { background: var(--bg-hover, #f0f0f0); }
+            /* 卡片 */
+            .card{background:#fff;border-radius:14px;border:1px solid #e5e7eb;overflow:hidden;margin-bottom:20px}
+            .card-header{padding:16px 20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
+            .card-header h3{font-size:15px;font-weight:600}
+            .card-body{padding:0}
+            .card-body.padded{padding:20px}
 
-            /* 表格卡片 */
-            .table-card { background: var(--bg-card, #fff); border-radius: 12px; border: 1px solid var(--border, #e0e0e0); overflow: hidden; }
-            .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border, #e0e0e0); display: flex; align-items: center; justify-content: space-between; }
-            .table-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
-            .table-header .count { color: var(--text-secondary, #888); font-size: 13px; }
-            .table-wrap { overflow-x: auto; }
-            table { width: 100%; border-collapse: collapse; font-size: 13px; }
-            thead th { padding: 10px 16px; text-align: left; font-weight: 600; color: var(--text-secondary, #888); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg-hover, #f9f9f9); border-bottom: 1px solid var(--border, #e0e0e0); white-space: nowrap; }
-            tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border, #f0f0f0); white-space: nowrap; }
-            tbody tr:hover { background: var(--bg-hover, #fafafa); }
-            tbody tr:last-child td { border-bottom: none; }
-            .user-code { font-family: 'SF Mono', 'Consolas', monospace; font-size: 13px; background: var(--bg-hover, #f0f0f0); padding: 2px 8px; border-radius: 6px; letter-spacing: 1px; }
-            .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-            .badge-admin { background: #ede9fe; color: #6366f1; }
-            .badge-me { background: #dbeafe; color: #3b82f6; }
-            .accuracy-bar { display: inline-flex; align-items: center; gap: 6px; }
-            .accuracy-bar .bar { width: 40px; height: 4px; border-radius: 2px; background: #e5e7eb; overflow: hidden; }
-            .accuracy-bar .bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
-            .action-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border, #e0e0e0); background: var(--bg-card, #fff); font-size: 12px; cursor: pointer; color: var(--text-secondary, #666); transition: all 0.15s; }
-            .action-btn:hover { background: var(--bg-hover, #f0f0f0); }
-            .action-btn.warn { color: #f59e0b; border-color: #fde68a; }
-            .action-btn.warn:hover { background: #fffbeb; }
-            .action-btn.danger { color: #ef4444; border-color: #fecaca; }
-            .action-btn.danger:hover { background: #fef2f2; }
-            .action-btn.primary { color: #6366f1; border-color: #c7d2fe; }
-            .action-btn.primary:hover { background: #eef2ff; }
+            /* 搜索 */
+            .search-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+            .search-box{flex:1;min-width:200px;position:relative}
+            .search-box .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#aaa}
+            .search-box input{width:100%;padding:10px 14px 10px 38px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;background:#fff}
+            .search-box input:focus{outline:none;border-color:#6366f1}
+            .fbtn{padding:10px 14px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;font-size:13px;cursor:pointer;color:#666;transition:all .15s}
+            .fbtn.active{background:#6366f1;color:#fff;border-color:#6366f1}
+            .fbtn:hover:not(.active){background:#f5f5f5}
+
+            /* 表格 */
+            table{width:100%;border-collapse:collapse;font-size:13px}
+            thead th{padding:10px 16px;text-align:left;font-weight:600;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.5px;background:#f9f9f9;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+            tbody td{padding:11px 16px;border-bottom:1px solid #f3f3f3}
+            tbody tr:hover{background:#fafafa}
+            tbody tr:last-child td{border-bottom:none}
+            .code{font-family:'SF Mono',Consolas,monospace;background:#f3f4f6;padding:2px 8px;border-radius:6px;letter-spacing:1px;font-size:12px}
+            .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+            .b-admin{background:#ede9fe;color:#6366f1}
+            .b-me{background:#dbeafe;color:#3b82f6}
+            .b-ban{background:#fef2f2;color:#ef4444}
+            .acc-bar{display:inline-flex;align-items:center;gap:6px}
+            .acc-bar .bar{width:40px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden}
+            .acc-bar .fill{height:100%;border-radius:2px}
+            .abtn{padding:4px 10px;border-radius:6px;border:1px solid #e5e7eb;background:#fff;font-size:12px;cursor:pointer;color:#666;transition:all .12s}
+            .abtn:hover{background:#f5f5f5}
+            .abtn.warn{color:#f59e0b;border-color:#fde68a}.abtn.warn:hover{background:#fffbeb}
+            .abtn.danger{color:#ef4444;border-color:#fecaca}.abtn.danger:hover{background:#fef2f2}
+            .abtn.primary{color:#6366f1;border-color:#c7d2fe}.abtn.primary:hover{background:#eef2ff}
 
             /* 详情面板 */
-            .detail-panel { background: var(--bg-card, #fff); border: 1px solid var(--border, #e0e0e0); border-radius: 12px; padding: 20px; margin-bottom: 20px; display: none; }
-            .detail-panel.show { display: block; }
-            .detail-panel .detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-            .detail-panel .detail-header h3 { margin: 0; font-size: 16px; }
-            .detail-panel .close-btn { width: 28px; height: 28px; border-radius: 6px; border: none; background: var(--bg-hover, #f0f0f0); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
-            .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-            .detail-item { background: var(--bg-hover, #f9f9f9); border-radius: 8px; padding: 12px; }
-            .detail-item .label { font-size: 12px; color: var(--text-secondary, #888); margin-bottom: 4px; }
-            .detail-item .value { font-size: 14px; font-weight: 500; }
-            .device-list { margin-top: 12px; }
-            .device-list h4 { font-size: 13px; color: var(--text-secondary, #888); margin: 0 0 8px; }
-            .device-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-hover, #f9f9f9); border-radius: 8px; margin-bottom: 6px; font-size: 12px; }
-            .device-item code { font-family: monospace; color: var(--text-secondary, #888); }
+            .detail{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:20px;margin-bottom:20px;display:none}
+            .detail.show{display:block}
+            .detail .dh{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+            .detail .dh h3{font-size:16px}
+            .close-btn{width:28px;height:28px;border-radius:8px;border:none;background:#f3f4f6;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+            .close-btn:hover{background:#e5e7eb}
+            .d-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px}
+            .d-item{background:#f9fafb;border-radius:10px;padding:12px}
+            .d-item .dl{font-size:11px;color:#888;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+            .d-item .dv{font-size:15px;font-weight:600}
 
-            /* 空状态 */
-            .empty { text-align: center; padding: 60px 20px; color: var(--text-tertiary, #aaa); }
-            .empty-icon { font-size: 48px; margin-bottom: 12px; }
+            /* 活动时间线 */
+            .timeline{padding:0 20px 20px}
+            .tl-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #f3f3f3}
+            .tl-item:last-child{border-bottom:none}
+            .tl-dot{width:8px;height:8px;border-radius:50%;background:#6366f1;margin-top:6px;flex-shrink:0}
+            .tl-body{flex:1}
+            .tl-title{font-size:13px;font-weight:500}
+            .tl-sub{font-size:12px;color:#888;margin-top:2px}
 
-            @media (max-width: 640px) {
-                .main { padding: 16px; }
-                .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-                .stat-card { padding: 14px; }
-                .stat-card .stat-value { font-size: 22px; }
-                .search-section { flex-direction: column; }
+            /* 公告 */
+            .announce-input{display:flex;gap:10px;margin-bottom:16px}
+            .announce-input textarea{flex:1;padding:12px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;resize:vertical;min-height:60px;font-family:inherit}
+            .announce-input textarea:focus{outline:none;border-color:#6366f1}
+
+            /* 趋势图 */
+            .trend-chart{display:flex;align-items:flex-end;gap:6px;height:100px;padding:16px 20px}
+            .trend-bar{flex:1;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#6366f1,#a855f7);min-width:20px;transition:height .3s;position:relative}
+            .trend-bar:hover{opacity:.85}
+            .trend-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:#888;white-space:nowrap}
+            .trend-value{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:600;color:#6366f1}
+
+            /* 编辑弹窗 */
+            .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+            .modal-box{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+            .modal-box h3{margin-bottom:16px;font-size:17px}
+            .modal-box label{display:block;font-size:13px;font-weight:500;color:#555;margin-bottom:4px;margin-top:12px}
+            .modal-box input,.modal-box select{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px}
+            .modal-box input:focus,.modal-box select:focus{outline:none;border-color:#6366f1}
+            .modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+            .modal-actions button{padding:10px 20px;border-radius:10px;border:none;font-size:14px;font-weight:500;cursor:pointer}
+            .modal-actions .mp{background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff}
+            .modal-actions .ms{background:#f3f4f6;color:#555}
+
+            .loading{text-align:center;padding:60px;color:#aaa}
+            .empty-state{text-align:center;padding:60px 20px;color:#aaa}
+            .empty-state .ei{font-size:48px;margin-bottom:12px}
+
+            @media(max-width:640px){
+                .main{padding:16px}
+                .stat-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+                .stat-card{padding:14px}.stat-card .sv{font-size:22px}
+                .tabs{padding:0 12px}.tab{padding:10px 12px;font-size:13px}
+                .topbar{padding:0 12px}
             }
         </style>
     </head>
     <body>
-        <!-- 登录页 -->
         <div class="login-page" id="login-page">
             <div class="login-card">
-                <div class="logo">
-                    <div class="logo-icon">👑</div>
-                    <h2>管理后台</h2>
-                    <p>城科卷王 · 数据管理中心</p>
-                </div>
+                <div class="logo-icon">👑</div>
+                <h2>管理后台</h2>
+                <p>城科卷王 · 数据管理中心</p>
                 <div class="input-group">
-                    <span class="icon-left">🔒</span>
+                    <span class="ic">🔒</span>
                     <input type="password" id="admin-password" placeholder="请输入管理密码" autocomplete="off">
                 </div>
                 <button class="btn-login" id="btn-login">登 录</button>
@@ -133,279 +168,343 @@
             </div>
         </div>
 
-        <!-- 管理页 -->
-        <div id="admin-app" style="display:none;">
+        <div id="admin-app" style="display:none">
             <div class="topbar">
-                <div class="topbar-left">
-                    <div class="topbar-logo">👑</div>
-                    <span class="topbar-title">管理后台</span>
-                </div>
+                <div class="topbar-left"><div class="topbar-logo">👑</div><span class="topbar-title">管理后台</span></div>
                 <div class="topbar-right">
-                    <button class="topbar-btn" onclick="location.href='index.html'">🏠 首页</button>
-                    <button class="topbar-btn" onclick="Admin.exportData()">📥 导出</button>
-                    <button class="topbar-btn danger" onclick="Admin.logout()">退出</button>
+                    <button class="tb-btn" onclick="location.href='index.html'">🏠 首页</button>
+                    <button class="tb-btn" onclick="Admin.exportCSV()">📥 导出CSV</button>
+                    <button class="tb-btn danger" onclick="Admin.logout()">退出</button>
                 </div>
             </div>
-
+            <div class="tabs" id="tabs">
+                <div class="tab active" data-tab="overview" onclick="Admin.switchTab('overview')">📊 总览</div>
+                <div class="tab" data-tab="users" onclick="Admin.switchTab('users')">👥 用户</div>
+                <div class="tab" data-tab="banks" onclick="Admin.switchTab('banks')">📚 题库</div>
+                <div class="tab" data-tab="activity" onclick="Admin.switchTab('activity')">⚡ 活跃</div>
+                <div class="tab" data-tab="announce" onclick="Admin.switchTab('announce')">📢 公告</div>
+            </div>
             <div class="main">
-                <!-- 统计 -->
-                <div class="stat-grid" id="stat-grid"></div>
-
-                <!-- 详情面板 -->
-                <div class="detail-panel" id="detail-panel"></div>
-
-                <!-- 搜索 -->
-                <div class="search-section">
-                    <div class="search-box">
-                        <span class="icon-left">🔍</span>
-                        <input type="text" id="search-input" placeholder="搜索同步码或姓名首字母...">
-                    </div>
-                    <button class="filter-btn active" data-sort="time" onclick="Admin.setSort('time')">注册时间</button>
-                    <button class="filter-btn" data-sort="answered" onclick="Admin.setSort('answered')">答题数</button>
-                    <button class="filter-btn" data-sort="duration" onclick="Admin.setSort('duration')">时长</button>
-                </div>
-
-                <!-- 用户表格 -->
-                <div class="table-card">
-                    <div class="table-header">
-                        <h3>用户列表</h3>
-                        <span class="count" id="user-count"></span>
-                    </div>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>同步码</th>
-                                    <th>姓名</th>
-                                    <th>设备</th>
-                                    <th>答题数</th>
-                                    <th>正确率</th>
-                                    <th>时长</th>
-                                    <th>注册时间</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="user-table"></tbody>
-                        </table>
-                    </div>
-                </div>
+                <div class="section active" id="sec-overview"></div>
+                <div class="section" id="sec-users"></div>
+                <div class="section" id="sec-banks"></div>
+                <div class="section" id="sec-activity"></div>
+                <div class="section" id="sec-announce"></div>
             </div>
         </div>
+
+        <div id="modal-root"></div>
 
         <script type="module">
             import API from './js/api.js';
             import Utils from './js/utils.js';
 
-            const Admin = {
-                users: [],
-                password: sessionStorage.getItem('admin_pwd') || '',
-                sort: 'time',
+            const A = {
+                users:[], password:sessionStorage.getItem('admin_pwd')||'', sort:'time', tab:'overview',
 
-                async init() {
-                    document.getElementById('btn-login').addEventListener('click', () => this.login());
-                    document.getElementById('admin-password').addEventListener('keydown', e => { if (e.key === 'Enter') this.login(); });
-                    document.getElementById('search-input').addEventListener('input', () => this.filter());
-
-                    if (this.password) await this.loadUsers();
+                async init(){
+                    document.getElementById('btn-login').addEventListener('click',()=>this.login());
+                    document.getElementById('admin-password').addEventListener('keydown',e=>{if(e.key==='Enter')this.login()});
+                    if(this.password) await this.loadAll();
                 },
 
-                async login() {
-                    const pwd = document.getElementById('admin-password').value.trim();
-                    if (!pwd) return;
-                    const errEl = document.getElementById('login-error');
-                    errEl.style.display = 'none';
-
-                    try {
-                        const res = await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`);
-                        const data = await res.json();
-                        if (data.ok) {
-                            sessionStorage.setItem('admin_pwd', pwd);
-                            this.password = pwd;
-                            this.users = data.users;
-                            this.showDashboard();
-                        } else {
-                            errEl.textContent = data.error || '密码错误';
-                            errEl.style.display = 'block';
-                        }
-                    } catch (e) {
-                        errEl.textContent = '网络错误: ' + e.message;
-                        errEl.style.display = 'block';
-                    }
+                async login(){
+                    const pwd=document.getElementById('admin-password').value.trim();
+                    if(!pwd)return;
+                    const err=document.getElementById('login-error'); err.style.display='none';
+                    try{
+                        const r=await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`);
+                        const d=await r.json();
+                        if(d.ok){sessionStorage.setItem('admin_pwd',pwd);this.password=pwd;this.users=d.users;this.showApp();await this.loadAll();}
+                        else{err.textContent=d.error||'密码错误';err.style.display='block';}
+                    }catch(e){err.textContent='网络错误: '+e.message;err.style.display='block';}
                 },
 
-                logout() {
-                    sessionStorage.removeItem('admin_pwd');
-                    location.reload();
+                logout(){sessionStorage.removeItem('admin_pwd');location.reload();},
+
+                async loadAll(){
+                    try{
+                        const r=await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                        const d=await r.json();
+                        if(!d.ok){sessionStorage.removeItem('admin_pwd');location.reload();return;}
+                        this.users=d.users;
+                        this.showApp();
+                    }catch{sessionStorage.removeItem('admin_pwd');location.reload();}
                 },
 
-                async loadUsers() {
-                    try {
-                        const res = await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
-                        const data = await res.json();
-                        if (!data.ok) { sessionStorage.removeItem('admin_pwd'); location.reload(); return; }
-                        this.users = data.users;
-                        this.showDashboard();
-                    } catch { sessionStorage.removeItem('admin_pwd'); location.reload(); }
+                showApp(){
+                    document.getElementById('login-page').style.display='none';
+                    document.getElementById('admin-app').style.display='';
+                    this.renderTab();
                 },
 
-                showDashboard() {
-                    document.getElementById('login-page').style.display = 'none';
-                    document.getElementById('admin-app').style.display = '';
-                    this.renderStats();
-                    this.renderTable();
+                switchTab(t){
+                    this.tab=t;
+                    document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+                    this.renderTab();
                 },
 
-                renderStats() {
-                    const total = this.users.length;
-                    const answered = this.users.reduce((s, u) => s + u.total_answered, 0);
-                    const correct = this.users.reduce((s, u) => s + u.total_correct, 0);
-                    const duration = this.users.reduce((s, u) => s + u.total_duration, 0);
-                    const acc = answered > 0 ? Math.round(correct / answered * 100) : 0;
+                async renderTab(){
+                    if(this.tab==='overview') await this.renderOverview();
+                    else if(this.tab==='users') this.renderUsers();
+                    else if(this.tab==='banks') await this.renderBanks();
+                    else if(this.tab==='activity') await this.renderActivity();
+                    else if(this.tab==='announce') this.renderAnnounce();
+                },
 
-                    document.getElementById('stat-grid').innerHTML = `
-                        <div class="stat-card"><div class="stat-icon purple">👥</div><div class="stat-value">${total}</div><div class="stat-label">注册用户</div></div>
-                        <div class="stat-card"><div class="stat-icon blue">📊</div><div class="stat-value">${this.fmtNum(answered)}</div><div class="stat-label">总答题数</div></div>
-                        <div class="stat-card"><div class="stat-icon green">🎯</div><div class="stat-value">${acc}%</div><div class="stat-label">平均正确率</div></div>
-                        <div class="stat-card"><div class="stat-icon orange">⏱</div><div class="stat-value">${this.fmtDur(duration)}</div><div class="stat-label">总学习时长</div></div>
+                // ===== 总览 =====
+                async renderOverview(){
+                    const el=document.getElementById('sec-overview');
+                    el.innerHTML='<div class="loading">加载中...</div>';
+                    try{
+                        const r=await fetch(`${API.BASE_URL}/api/admin/overview?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                        const d=await r.json();
+                        if(!d.ok){el.innerHTML='<div class="empty-state"><div class="ei">⚠️</div>加载失败</div>';return;}
+                        const o=d.overview;
+                        const total=this.users.reduce((s,u)=>s+u.total_answered,0);
+                        const dur=this.users.reduce((s,u)=>s+u.total_duration,0);
+                        const acc=total>0?Math.round(this.users.reduce((s,u)=>s+u.total_correct,0)/total*100):0;
+
+                        // 趋势图
+                        const maxCnt=Math.max(...o.weekTrend.map(w=>w.cnt),1);
+                        const trendHtml=o.weekTrend.map(w=>`<div class="trend-bar" style="height:${Math.max(w.cnt/maxCnt*80,4)}px"><span class="trend-value">${w.cnt}</span><span class="trend-label">${w.day.slice(5)}</span></div>`).join('');
+
+                        el.innerHTML=`
+                            <div class="stat-grid">
+                                <div class="stat-card"><div class="si purple">👥</div><div class="sv">${this.users.length}</div><div class="sl">注册用户</div></div>
+                                <div class="stat-card"><div class="si blue">📊</div><div class="sv">${this.fmtN(total)}</div><div class="sl">总答题数</div></div>
+                                <div class="stat-card"><div class="si green">🎯</div><div class="sv">${acc}%</div><div class="sl">平均正确率</div></div>
+                                <div class="stat-card"><div class="si orange">⏱</div><div class="sv">${this.fmtDur(dur)}</div><div class="sl">总学习时长</div></div>
+                            </div>
+                            <div class="stat-grid">
+                                <div class="stat-card"><div class="si blue">📅</div><div class="sv">${o.todayReg}</div><div class="sl">今日注册</div></div>
+                                <div class="stat-card"><div class="si green">🔥</div><div class="sv">${o.todayActive}</div><div class="sl">今日活跃</div></div>
+                                <div class="stat-card"><div class="si purple">📚</div><div class="sv">${o.bankCount}</div><div class="sl">题库总数</div></div>
+                                <div class="stat-card"><div class="si red">🚫</div><div class="sv">${o.bannedCount}</div><div class="sl">封禁用户</div></div>
+                            </div>
+                            <div class="card">
+                                <div class="card-header"><h3>📈 近7天注册趋势</h3></div>
+                                <div class="trend-chart">${trendHtml||'<div style="padding:20px;color:#aaa;text-align:center">暂无数据</div>'}</div>
+                            </div>
+                        `;
+                    }catch(e){el.innerHTML=`<div class="empty-state">加载失败: ${e.message}</div>`;}
+                },
+
+                // ===== 用户 =====
+                renderUsers(){
+                    const el=document.getElementById('sec-users');
+                    const q=(document.getElementById('search-input')?.value||'').toUpperCase();
+                    let list=this.users.filter(u=>!q||u.id.includes(q)||u.initials.toUpperCase().includes(q));
+                    if(this.sort==='answered')list.sort((a,b)=>b.total_answered-a.total_answered);
+                    else if(this.sort==='duration')list.sort((a,b)=>b.total_duration-a.total_duration);
+                    const myId=API.getSyncCode();
+
+                    el.innerHTML=`
+                        <div class="detail" id="detail-panel"></div>
+                        <div class="search-row">
+                            <div class="search-box"><span class="ic">🔍</span><input type="text" id="search-input" placeholder="搜索同步码或姓名..." value="${q?'':''}"></div>
+                            <button class="fbtn ${this.sort==='time'?'active':''}" onclick="A.setSort('time')">注册时间</button>
+                            <button class="fbtn ${this.sort==='answered'?'active':''}" onclick="A.setSort('answered')">答题数</button>
+                            <button class="fbtn ${this.sort==='duration'?'active':''}" onclick="A.setSort('duration')">时长</button>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h3>用户列表</h3><span style="color:#888;font-size:13px">${list.length}/${this.users.length}人</span></div>
+                            <div class="card-body" style="overflow-x:auto">
+                                <table>
+                                    <thead><tr><th>同步码</th><th>姓名</th><th>设备</th><th>答题</th><th>正确率</th><th>时长</th><th>注册</th><th>状态</th><th>操作</th></tr></thead>
+                                    <tbody>${list.map(u=>{
+                                        const acc=u.total_answered>0?Math.round(u.total_correct/u.total_answered*100):0;
+                                        const c=acc>=80?'#22c55e':acc>=60?'#f59e0b':'#ef4444';
+                                        return`<tr>
+                                            <td><span class="code">${u.id}</span></td>
+                                            <td>${Utils.escapeHtml(u.initials)} ${u.is_admin?'<span class="badge b-admin">管理员</span>':''} ${u.id===myId?'<span class="badge b-me">我</span>':''}</td>
+                                            <td>${u.device_count}</td>
+                                            <td><b>${u.total_answered}</b></td>
+                                            <td><div class="acc-bar"><span>${acc}%</span><div class="bar"><div class="fill" style="width:${acc}%;background:${c}"></div></div></div></td>
+                                            <td>${this.fmtDur(u.total_duration)}</td>
+                                            <td>${u.created_at?.slice(0,10)||'-'}</td>
+                                            <td>${u.banned?'<span class="badge b-ban">封禁</span>':'<span style="color:#22c55e;font-size:12px">正常</span>'}</td>
+                                            <td style="white-space:nowrap">
+                                                <button class="abtn primary" onclick="A.detail('${u.id}')">详情</button>
+                                                <button class="abtn" onclick="A.editUser('${u.id}','${Utils.escapeHtml(u.initials)}',${u.is_admin?1:0})">编辑</button>
+                                                ${u.id!==myId?`<button class="abtn ${u.banned?'':'warn'}" onclick="A.banUser('${u.id}','${Utils.escapeHtml(u.initials)}',${u.banned?0:1})">${u.banned?'解封':'封禁'}</button>`:''}
+                                                ${!u.is_admin&&u.id!==myId?`<button class="abtn danger" onclick="A.resetStats('${u.id}','${Utils.escapeHtml(u.initials)}')">重置</button><button class="abtn danger" onclick="A.delUser('${u.id}','${Utils.escapeHtml(u.initials)}')">删除</button>`:''}
+                                            </td>
+                                        </tr>`;}).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('search-input')?.addEventListener('input',()=>this.renderUsers());
+                },
+
+                setSort(s){this.sort=s;this.renderUsers();},
+
+                async detail(uid){
+                    const p=document.getElementById('detail-panel');
+                    try{
+                        const r=await fetch(`${API.BASE_URL}/api/admin/user-detail/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                        const d=await r.json();if(!d?.ok)return;
+                        const u=d.user,ta=d.stats.reduce((s,x)=>s+x.answered,0),tc=d.stats.reduce((s,x)=>s+x.correct,0),td=d.stats.reduce((s,x)=>s+x.duration,0);
+                        p.classList.add('show');
+                        p.innerHTML=`
+                            <div class="dh"><h3>${Utils.escapeHtml(u.initials)} <span class="code">${u.id}</span> ${u.is_admin?'<span class="badge b-admin">管理员</span>':''} ${u.banned?'<span class="badge b-ban">已封禁</span>':''}</h3><button class="close-btn" onclick="this.closest('.detail').classList.remove('show')">✕</button></div>
+                            <div class="d-grid">
+                                <div class="d-item"><div class="dl">注册时间</div><div class="dv">${u.created_at?.slice(0,16)||'-'}</div></div>
+                                <div class="d-item"><div class="dl">绑定设备</div><div class="dv">${d.devices.length} 台</div></div>
+                                <div class="d-item"><div class="dl">总答题</div><div class="dv">${ta} 题</div></div>
+                                <div class="d-item"><div class="dl">正确率</div><div class="dv">${ta>0?Math.round(tc/ta*100):0}%</div></div>
+                                <div class="d-item"><div class="dl">总时长</div><div class="dv">${this.fmtDur(td)}</div></div>
+                                <div class="d-item"><div class="dl">题库数</div><div class="dv">${d.stats.length}</div></div>
+                            </div>
+                            ${d.devices.length?`<h4 style="font-size:13px;color:#888;margin:12px 0 6px">📱 设备</h4>${d.devices.map(x=>`<div style="display:flex;gap:8px;padding:6px 10px;background:#f9fafb;border-radius:8px;margin-bottom:4px;font-size:12px"><code style="color:#888">${x.device_id}</code><span style="color:#aaa">${x.bound_at?.slice(0,10)||''}</span></div>`).join('')}`:''}
+                            ${d.stats.length?`<h4 style="font-size:13px;color:#888;margin:12px 0 6px">📊 题库明细</h4><table style="font-size:12px"><thead><tr><th style="text-align:left;padding:6px">题库</th><th style="text-align:right;padding:6px">答题</th><th style="text-align:right;padding:6px">正确</th><th style="text-align:right;padding:6px">正确率</th><th style="text-align:right;padding:6px">时长</th></tr></thead><tbody>${d.stats.map(s=>{const a=s.answered>0?Math.round(s.correct/s.answered*100):0;return`<tr><td style="padding:6px">${Utils.escapeHtml(s.bank_name||s.bank_id)}</td><td style="text-align:right;padding:6px">${s.answered}</td><td style="text-align:right;padding:6px">${s.correct}</td><td style="text-align:right;padding:6px">${a}%</td><td style="text-align:right;padding:6px">${this.fmtDur(s.duration)}</td></tr>`;}).join('')}</tbody></table>`:''}
+                        `;
+                    }catch(e){p.classList.add('show');p.innerHTML=`<div class="empty-state">加载失败: ${e.message}</div>`;}
+                },
+
+                editUser(uid,name,admin){
+                    const m=document.getElementById('modal-root');
+                    m.innerHTML=`<div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                        <div class="modal-box">
+                            <h3>编辑用户 ${name}</h3>
+                            <label>姓名首字母</label><input id="eu-initials" value="${name}" maxlength="4" style="text-transform:uppercase">
+                            <label>管理员</label><select id="eu-admin"><option value="0"${!admin?' selected':''}>否</option><option value="1"${admin?' selected':''}>是</option></select>
+                            <div class="modal-actions">
+                                <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
+                                <button class="mp" onclick="A.saveEdit('${uid}')">保存</button>
+                            </div>
+                        </div>
+                    </div>`;
+                },
+
+                async saveEdit(uid){
+                    const initials=document.getElementById('eu-initials').value.trim();
+                    const isAdmin=parseInt(document.getElementById('eu-admin').value);
+                    await this.post('/api/admin/update-user',{targetUserId:uid,initials,isAdmin});
+                    document.querySelector('.modal-mask')?.remove();
+                    Utils.showToast('已更新','success');
+                    await this.loadAll();this.renderUsers();
+                },
+
+                async banUser(uid,name,ban){
+                    if(!confirm(`确定${ban?'封禁':'解封'} ${name}？`))return;
+                    await this.post('/api/admin/ban-user',{targetUserId:uid,banned:!!ban});
+                    Utils.showToast(ban?'已封禁':'已解封','success');
+                    await this.loadAll();this.renderUsers();
+                },
+
+                async resetStats(uid,name){
+                    if(!confirm(`确定重置 ${name} 的答题数据？`))return;
+                    const r=await this.post('/api/admin/reset-stats',{targetUserId:uid});
+                    if(r?.ok){Utils.showToast('已重置','success');await this.loadAll();this.renderUsers();}
+                },
+
+                async delUser(uid,name){
+                    if(!confirm(`确定永久删除 ${name}？不可恢复！`))return;
+                    const r=await this.post('/api/admin/delete-user',{targetUserId:uid});
+                    if(r?.ok){Utils.showToast('已删除','success');await this.loadAll();this.renderUsers();}
+                },
+
+                // ===== 题库 =====
+                async renderBanks(){
+                    const el=document.getElementById('sec-banks');
+                    el.innerHTML='<div class="loading">加载中...</div>';
+                    try{
+                        const r=await fetch(`${API.BASE_URL}/api/admin/banks?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                        const d=await r.json();
+                        if(!d.ok){el.innerHTML='<div class="empty-state">加载失败</div>';return;}
+                        el.innerHTML=d.banks.length===0?'<div class="empty-state"><div class="ei">📚</div>暂无题库数据</div>':`
+                            <div class="card">
+                                <div class="card-header"><h3>题库统计</h3><span style="color:#888;font-size:13px">${d.banks.length} 个题库</span></div>
+                                <div class="card-body" style="overflow-x:auto">
+                                    <table>
+                                        <thead><tr><th>题库</th><th>使用人数</th><th>总答题</th><th>正确率</th><th>总时长</th></tr></thead>
+                                        <tbody>${d.banks.map(b=>{
+                                            const acc=b.total_answered>0?Math.round(b.total_correct/b.total_answered*100):0;
+                                            return`<tr><td><b>${Utils.escapeHtml(b.bank_name||b.bank_id)}</b></td><td>${b.user_count}</td><td>${b.total_answered}</td><td>${acc}%</td><td>${this.fmtDur(b.total_duration)}</td></tr>`;
+                                        }).join('')}</tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                    }catch(e){el.innerHTML=`<div class="empty-state">加载失败: ${e.message}</div>`;}
+                },
+
+                // ===== 活跃 =====
+                async renderActivity(){
+                    const el=document.getElementById('sec-activity');
+                    el.innerHTML='<div class="loading">加载中...</div>';
+                    try{
+                        const r=await fetch(`${API.BASE_URL}/api/admin/activity?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                        const d=await r.json();
+                        if(!d.ok){el.innerHTML='<div class="empty-state">加载失败</div>';return;}
+                        el.innerHTML=d.activity.length===0?'<div class="empty-state"><div class="ei">⚡</div>暂无活跃记录</div>':`
+                            <div class="card">
+                                <div class="card-header"><h3>最近活跃</h3><span style="color:#888;font-size:13px">最近50条</span></div>
+                                <div class="timeline">${d.activity.map(a=>`
+                                    <div class="tl-item">
+                                        <div class="tl-dot"></div>
+                                        <div class="tl-body">
+                                            <div class="tl-title"><b>${Utils.escapeHtml(a.initials)}</b> (${a.bank_name||'未知题库'}) · 答题${a.answered}道 · 正确${a.correct}道</div>
+                                            <div class="tl-sub">${this.fmtDur(a.duration)} · ${a.updated_at?.slice(0,16)||'-'}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}</div>
+                            </div>
+                        `;
+                    }catch(e){el.innerHTML=`<div class="empty-state">加载失败: ${e.message}</div>`;}
+                },
+
+                // ===== 公告 =====
+                renderAnnounce(){
+                    const el=document.getElementById('sec-announce');
+                    el.innerHTML=`
+                        <div class="card">
+                            <div class="card-header"><h3>发布公告</h3></div>
+                            <div class="card-body padded">
+                                <p style="color:#888;font-size:13px;margin-bottom:12px">公告会在用户打开网站时弹出显示（每次登录显示一次）</p>
+                                <div class="announce-input">
+                                    <textarea id="announce-content" placeholder="输入公告内容..."></textarea>
+                                </div>
+                                <button class="btn-login" style="max-width:200px" onclick="A.publishAnnounce()">📢 发布公告</button>
+                            </div>
+                        </div>
                     `;
                 },
 
-                renderTable() {
-                    const q = (document.getElementById('search-input').value || '').toUpperCase();
-                    let list = this.users.filter(u => !q || u.id.includes(q) || u.initials.toUpperCase().includes(q));
-
-                    if (this.sort === 'answered') list.sort((a, b) => b.total_answered - a.total_answered);
-                    else if (this.sort === 'duration') list.sort((a, b) => b.total_duration - a.total_duration);
-                    // default 'time' is already sorted by created_at DESC from API
-
-                    document.getElementById('user-count').textContent = `${list.length} / ${this.users.length} 人`;
-                    const myId = API.getSyncCode();
-
-                    document.getElementById('user-table').innerHTML = list.length === 0
-                        ? '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-tertiary)">暂无数据</td></tr>'
-                        : list.map(u => {
-                            const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
-                            const accColor = acc >= 80 ? '#22c55e' : acc >= 60 ? '#f59e0b' : '#ef4444';
-                            const isMe = u.id === myId;
-                            return `<tr>
-                                <td><span class="user-code">${u.id}</span></td>
-                                <td>${Utils.escapeHtml(u.initials)} ${u.is_admin ? '<span class="badge badge-admin">管理员</span>' : ''} ${isMe ? '<span class="badge badge-me">我</span>' : ''}</td>
-                                <td>${u.device_count}</td>
-                                <td><strong>${u.total_answered}</strong></td>
-                                <td><div class="accuracy-bar"><span>${acc}%</span><div class="bar"><div class="bar-fill" style="width:${acc}%;background:${accColor}"></div></div></div></td>
-                                <td>${this.fmtDur(u.total_duration)}</td>
-                                <td>${u.created_at?.slice(0, 10) || '-'}</td>
-                                <td>
-                                    <button class="action-btn primary" onclick="Admin.detail('${u.id}')">详情</button>
-                                    ${!u.is_admin ? `<button class="action-btn warn" onclick="Admin.resetStats('${u.id}','${u.initials}')">重置</button>` : ''}
-                                    ${!isMe && !u.is_admin ? `<button class="action-btn danger" onclick="Admin.delUser('${u.id}','${u.initials}')">删除</button>` : ''}
-                                </td>
-                            </tr>`;
-                        }).join('');
+                async publishAnnounce(){
+                    const content=document.getElementById('announce-content').value.trim();
+                    if(!content){Utils.showToast('请输入公告内容','error');return;}
+                    const r=await this.post('/api/admin/announce',{content});
+                    if(r?.ok){Utils.showToast('公告已发布','success');document.getElementById('announce-content').value='';}
                 },
 
-                setSort(s) {
-                    this.sort = s;
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === s));
-                    this.renderTable();
+                // ===== 工具 =====
+                async post(path,body){
+                    try{
+                        const r=await fetch(API.BASE_URL+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deviceId:API.getDeviceId(),password:this.password,...body})});
+                        return await r.json();
+                    }catch{return null;}
                 },
 
-                filter() { this.renderTable(); },
-
-                async detail(uid) {
-                    const panel = document.getElementById('detail-panel');
-                    try {
-                        const res = await fetch(`${API.BASE_URL}/api/admin/user-detail/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
-                        const data = await res.json();
-                        if (!data?.ok) return;
-
-                        const u = data.user;
-                        const totalAnswered = data.stats.reduce((s, x) => s + x.answered, 0);
-                        const totalCorrect = data.stats.reduce((s, x) => s + x.correct, 0);
-                        const totalDur = data.stats.reduce((s, x) => s + x.duration, 0);
-
-                        panel.classList.add('show');
-                        panel.innerHTML = `
-                            <div class="detail-header">
-                                <h3>${Utils.escapeHtml(u.initials)} <span class="user-code">${u.id}</span> ${u.is_admin ? '<span class="badge badge-admin">管理员</span>' : ''}</h3>
-                                <button class="close-btn" onclick="this.closest('.detail-panel').classList.remove('show')">✕</button>
-                            </div>
-                            <div class="detail-grid">
-                                <div class="detail-item"><div class="label">注册时间</div><div class="value">${u.created_at?.slice(0, 16) || '-'}</div></div>
-                                <div class="detail-item"><div class="label">绑定设备</div><div class="value">${data.devices.length} 台</div></div>
-                                <div class="detail-item"><div class="label">总答题</div><div class="value">${totalAnswered} 题</div></div>
-                                <div class="detail-item"><div class="label">总正确</div><div class="value">${totalCorrect} 题 (${totalAnswered > 0 ? Math.round(totalCorrect/totalAnswered*100) : 0}%)</div></div>
-                                <div class="detail-item"><div class="label">总时长</div><div class="value">${this.fmtDur(totalDur)}</div></div>
-                                <div class="detail-item"><div class="label">题库数</div><div class="value">${data.stats.length} 个</div></div>
-                            </div>
-                            <div class="device-list">
-                                <h4>📱 绑定设备</h4>
-                                ${data.devices.map(d => `<div class="device-item"><code>${d.device_id}</code><span style="color:var(--text-tertiary)">${d.bound_at?.slice(0, 10) || ''}</span></div>`).join('')}
-                            </div>
-                            ${data.stats.length > 0 ? `
-                            <div class="device-list">
-                                <h4>📊 各题库数据</h4>
-                                <table style="width:100%;font-size:12px;margin-top:8px">
-                                    <thead><tr><th style="text-align:left;padding:6px">题库</th><th style="text-align:right;padding:6px">答题</th><th style="text-align:right;padding:6px">正确</th><th style="text-align:right;padding:6px">正确率</th><th style="text-align:right;padding:6px">时长</th></tr></thead>
-                                    <tbody>${data.stats.map(s => {
-                                        const a = s.answered > 0 ? Math.round(s.correct/s.answered*100) : 0;
-                                        return `<tr><td style="padding:6px">${Utils.escapeHtml(s.bank_name || s.bank_id)}</td><td style="text-align:right;padding:6px">${s.answered}</td><td style="text-align:right;padding:6px">${s.correct}</td><td style="text-align:right;padding:6px">${a}%</td><td style="text-align:right;padding:6px">${this.fmtDur(s.duration)}</td></tr>`;
-                                    }).join('')}</tbody>
-                                </table>
-                            </div>` : ''}
-                        `;
-                    } catch (e) {
-                        panel.classList.add('show');
-                        panel.innerHTML = `<div class="empty">加载失败: ${e.message}</div>`;
-                    }
-                },
-
-                async resetStats(uid, name) {
-                    if (!confirm(`确定重置 ${name} 的所有答题数据？`)) return;
-                    const r = await this.adminPost('/api/admin/reset-stats', { targetUserId: uid });
-                    if (r?.ok) { Utils.showToast('已重置', 'success'); this.loadUsers(); }
-                },
-
-                async delUser(uid, name) {
-                    if (!confirm(`确定永久删除 ${name} (${uid})？不可恢复！`)) return;
-                    const r = await this.adminPost('/api/admin/delete-user', { targetUserId: uid });
-                    if (r?.ok) { Utils.showToast('已删除', 'success'); this.loadUsers(); }
-                },
-
-                async adminPost(path, body) {
-                    try {
-                        const res = await fetch(API.BASE_URL + path, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body })
-                        });
-                        return await res.json();
-                    } catch { return null; }
-                },
-
-                exportData() {
-                    const csv = ['同步码,姓名,设备数,答题数,正确数,正确率,时长(秒),注册时间'];
-                    this.users.forEach(u => {
-                        const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
-                        csv.push(`${u.id},${u.initials},${u.device_count},${u.total_answered},${u.total_correct},${acc}%,${u.total_duration},${u.created_at?.slice(0,10)||''}`);
+                exportCSV(){
+                    const csv=['同步码,姓名,设备数,答题数,正确数,正确率,时长(秒),注册时间,状态'];
+                    this.users.forEach(u=>{
+                        const acc=u.total_answered>0?Math.round(u.total_correct/u.total_answered*100):0;
+                        csv.push(`${u.id},${u.initials},${u.device_count},${u.total_answered},${u.total_correct},${acc}%,${u.total_duration},${u.created_at?.slice(0,10)||''},${u.banned?'封禁':'正常'}`);
                     });
-                    const blob = new Blob(['\ufeff' + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `城科卷王_用户数据_${new Date().toISOString().slice(0,10)}.csv`;
-                    a.click();
+                    const b=new Blob(['\ufeff'+csv.join('\n')],{type:'text/csv;charset=utf-8'});
+                    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`城科卷王_数据_${new Date().toISOString().slice(0,10)}.csv`;a.click();
                 },
 
-                fmtNum(n) { return n >= 1000 ? (n/1000).toFixed(1) + 'k' : n; },
-                fmtDur(s) {
-                    if (!s || s < 60) return (s||0) + '秒';
-                    if (s < 3600) return Math.floor(s/60) + '分';
-                    return Math.floor(s/3600) + '时' + Math.floor((s%3600)/60) + '分';
-                }
+                fmtN(n){return n>=1000?(n/1000).toFixed(1)+'k':n},
+                fmtDur(s){if(!s||s<60)return(s||0)+'秒';if(s<3600)return Math.floor(s/60)+'分';return Math.floor(s/3600)+'时'+Math.floor((s%3600)/60)+'分';}
             };
 
-            window.Admin = Admin;
-            Admin.init();
+            window.A=A;window.Admin=A;
+            A.init();
         </script>
         <script src="js/debug.js"></script>
     </body>

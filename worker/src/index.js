@@ -109,6 +109,41 @@ export default {
                 return await handleAdminUserDetail(uid, env, origin);
             }
 
+            // POST /api/admin/update-user
+            if (method === 'POST' && path === '/api/admin/update-user') {
+                return await handleAdminUpdateUser(request, env, origin);
+            }
+
+            // POST /api/admin/ban-user
+            if (method === 'POST' && path === '/api/admin/ban-user') {
+                return await handleAdminBanUser(request, env, origin);
+            }
+
+            // GET /api/admin/banks
+            if (method === 'GET' && path === '/api/admin/banks') {
+                return await handleAdminBanks(url, env, origin);
+            }
+
+            // GET /api/admin/activity
+            if (method === 'GET' && path === '/api/admin/activity') {
+                return await handleAdminActivity(url, env, origin);
+            }
+
+            // GET /api/admin/overview
+            if (method === 'GET' && path === '/api/admin/overview') {
+                return await handleAdminOverview(url, env, origin);
+            }
+
+            // POST /api/admin/announce
+            if (method === 'POST' && path === '/api/admin/announce') {
+                return await handleAdminAnnounce(request, env, origin);
+            }
+
+            // GET /api/announce
+            if (method === 'GET' && path === '/api/announce') {
+                return await handleGetAnnounce(env, origin);
+            }
+
             return error('Not Found', 404, origin);
         } catch (e) {
             console.error('Worker error:', e);
@@ -515,4 +550,155 @@ async function handleAdminResetStats(request, env, origin) {
     await env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId).run();
 
     return json({ ok: true, message: '数据已重置' }, 200, origin);
+}
+
+// ========== 管理员：修改用户信息 ==========
+async function handleAdminUpdateUser(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, targetUserId, initials, isAdmin } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const updates = [];
+    const params = [];
+    if (initials) { updates.push('initials = ?'); params.push(initials.trim().toUpperCase()); }
+    if (isAdmin !== undefined) { updates.push('is_admin = ?'); params.push(isAdmin ? 1 : 0); }
+    if (updates.length === 0) return error('无更新内容', 400, origin);
+
+    params.push(targetUserId);
+    await env.DB.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+
+    return json({ ok: true, message: '已更新' }, 200, origin);
+}
+
+// ========== 管理员：封禁/解封用户 ==========
+async function handleAdminBanUser(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, targetUserId, banned } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (targetUserId === admin.id) return error('不能封禁自己', 400, origin);
+
+    await env.DB.prepare('UPDATE users SET banned = ? WHERE id = ?').bind(banned ? 1 : 0, targetUserId).run();
+
+    return json({ ok: true, message: banned ? '已封禁' : '已解封' }, 200, origin);
+}
+
+// ========== 管理员：题库统计 ==========
+async function handleAdminBanks(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const { results } = await env.DB.prepare(`
+        SELECT 
+            bank_id,
+            bank_name,
+            COUNT(DISTINCT user_id) as user_count,
+            SUM(answered) as total_answered,
+            SUM(correct) as total_correct,
+            SUM(duration) as total_duration
+        FROM stats
+        GROUP BY bank_id
+        ORDER BY total_answered DESC
+    `).all();
+
+    return json({ ok: true, banks: results }, 200, origin);
+}
+
+// ========== 管理员：最近活跃 ==========
+async function handleAdminActivity(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const { results } = await env.DB.prepare(`
+        SELECT 
+            u.id, u.initials,
+            s.bank_name,
+            s.answered, s.correct, s.duration,
+            s.updated_at
+        FROM stats s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.updated_at IS NOT NULL AND s.updated_at != ''
+        ORDER BY s.updated_at DESC
+        LIMIT 50
+    `).all();
+
+    return json({ ok: true, activity: results }, 200, origin);
+}
+
+// ========== 管理员：系统概览 ==========
+async function handleAdminOverview(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    // 今日注册
+    const today = new Date().toISOString().slice(0, 10);
+    const todayReg = await env.DB.prepare(
+        "SELECT COUNT(*) as cnt FROM users WHERE created_at LIKE ?"
+    ).bind(today + '%').first();
+
+    // 今日活跃（有更新记录的）
+    const todayActive = await env.DB.prepare(
+        "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE updated_at LIKE ?"
+    ).bind(today + '%').first();
+
+    // 总题库数
+    const bankCount = await env.DB.prepare(
+        'SELECT COUNT(DISTINCT bank_id) as cnt FROM stats'
+    ).first();
+
+    // 封禁用户数
+    const bannedCount = await env.DB.prepare(
+        'SELECT COUNT(*) as cnt FROM users WHERE banned = 1'
+    ).first();
+
+    // 最近7天注册趋势
+    const weekTrend = await env.DB.prepare(`
+        SELECT SUBSTR(created_at, 1, 10) as day, COUNT(*) as cnt
+        FROM users
+        WHERE created_at >= DATE('now', '-7 days')
+        GROUP BY day
+        ORDER BY day
+    `).all();
+
+    return json({
+        ok: true,
+        overview: {
+            todayReg: todayReg?.cnt || 0,
+            todayActive: todayActive?.cnt || 0,
+            bankCount: bankCount?.cnt || 0,
+            bannedCount: bannedCount?.cnt || 0,
+            weekTrend: weekTrend?.results || []
+        }
+    }, 200, origin);
+}
+
+// ========== 管理员：发布公告 ==========
+async function handleAdminAnnounce(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, content } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!content || content.length > 500) return error('公告内容1-500字', 400, origin);
+
+    await env.DB.prepare(
+        'INSERT INTO announcements (content, created_at) VALUES (?, ?)'
+    ).bind(content.trim(), new Date().toISOString()).run();
+
+    return json({ ok: true, message: '已发布' }, 200, origin);
+}
+
+// ========== 公开：获取最新公告 ==========
+async function handleGetAnnounce(env, origin) {
+    const announce = await env.DB.prepare(
+        'SELECT id, content, created_at FROM announcements ORDER BY id DESC LIMIT 1'
+    ).first();
+
+    return json({ ok: true, announce }, 200, origin);
 }
