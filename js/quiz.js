@@ -1347,6 +1347,7 @@ const Quiz = {
         this.recordQuestionTime();
         Storage.clearSession(this.state.bankId, this.state.mode);
         this.state.isFinished = true;
+        this.renderFooter();
         this.renderResult();
     },
 
