@@ -237,8 +237,8 @@ export default {
                 return await handleAdminUserCloudData(uid, url, env, origin);
             }
 
-            // GET /api/announce
-            if (method === 'GET' && path === '/api/announce') {
+            // GET / POST /api/announce（支持 POST 绕过部分网络对 GET 的限制）
+            if ((method === 'GET' || method === 'POST') && path === '/api/announce') {
                 return await handleGetAnnounce(env, origin);
             }
 

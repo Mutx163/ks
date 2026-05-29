@@ -25,6 +25,22 @@ const Utils = {
             lucide.createIcons();
         }
     },
+
+    /**
+     * 安全转义字符串，用于 onclick="handler('VALUE')" 上下文
+     * 同时保护 HTML 属性边界和 JS 字符串字面量
+     * @param {string} str - 原始用户输入
+     * @returns {string} 安全字符串
+     */
+    jsSafe(str) {
+        return String(str)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\u0022')
+            .replace(/&/g, '\\u0026')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r');
+    },
     /**
      * 生成唯一ID
      */
