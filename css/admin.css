@@ -228,6 +228,16 @@ tbody tr:last-child td { border-bottom: none; }
 .loading { text-align: center; padding: 40px; color: var(--text-tertiary); font-size: 13px; }
 .empty-state { text-align: center; padding: 40px 16px; color: var(--text-tertiary); font-size: 13px; }
 
+/* 选项输入框 */
+.qe-add-opt { margin-top: 6px; padding: 6px 12px; font-size: 12px; color: var(--accent-primary); background: none; border: 1px dashed var(--border); border-radius: var(--radius); cursor: pointer; width: 100%; }
+.qe-add-opt:hover { border-color: var(--accent-primary); background: rgba(102,126,234,0.05); }
+.qe-opt-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.qe-opt-letter { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: var(--bg-hover); border-radius: 50%; font-size: 12px; font-weight: 600; color: var(--text-secondary); flex-shrink: 0; }
+.qe-opt-input { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-card); color: var(--text); font-size: 13px; }
+.qe-opt-input:focus { outline: none; border-color: var(--accent-primary); }
+.qe-opt-del { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text-tertiary); cursor: pointer; border-radius: 50%; font-size: 12px; flex-shrink: 0; }
+.qe-opt-del:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+
 /* ===== 响应式 ===== */
 @media (max-width: 640px) {
     .main { padding: 8px 10px; }
