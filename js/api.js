@@ -358,41 +358,51 @@ const API = {
                     {
                         label: '注册新账号',
                         class: 'btn-primary',
-                        onClick: async (modal) => {
+                        onClick: (modal) => {
                             const input = modal.querySelector('#reg-initials');
                             const initials = (input?.value || '').trim().toUpperCase();
                             if (initials.length < 1 || initials.length > 4) {
                                 Utils.showToast('请输入1-4个字符', 'error');
                                 return;
                             }
-                            const result = await API.register(initials);
-                            if (result && result.ok) {
-                                Utils.showToast(`注册成功！同步码: ${result.syncCode}`, 'success', 5000);
-                                modal.remove();
-                                resolve(true);
-                            } else {
-                                Utils.showToast('注册失败，请重试', 'error');
-                            }
+                            Utils.showToast('注册中...', 'info');
+                            API.register(initials).then(result => {
+                                if (result && result.ok) {
+                                    Utils.showToast(`注册成功！同步码: ${result.syncCode}`, 'success', 5000);
+                                    modal.remove();
+                                    resolve(true);
+                                } else {
+                                    Utils.showToast('注册失败，请重试', 'error');
+                                }
+                            }).catch(e => {
+                                console.error('[Register]', e);
+                                Utils.showToast('网络错误，请重试', 'error');
+                            });
                         }
                     },
                     {
                         label: '绑定同步码',
                         class: 'btn-secondary',
-                        onClick: async (modal) => {
+                        onClick: (modal) => {
                             const input = modal.querySelector('#reg-sync-code');
                             const code = (input?.value || '').trim().toUpperCase();
                             if (code.length !== 6) {
                                 Utils.showToast('请输入6位同步码', 'error');
                                 return;
                             }
-                            const result = await API.bindDevice(code);
-                            if (result && result.ok) {
-                                Utils.showToast(`绑定成功！欢迎 ${result.initials}`, 'success');
-                                modal.remove();
-                                resolve(true);
-                            } else {
-                                Utils.showToast(result?.error || '绑定失败', 'error');
-                            }
+                            Utils.showToast('绑定中...', 'info');
+                            API.bindDevice(code).then(result => {
+                                if (result && result.ok) {
+                                    Utils.showToast(`绑定成功！欢迎 ${result.initials}`, 'success');
+                                    modal.remove();
+                                    resolve(true);
+                                } else {
+                                    Utils.showToast(result?.error || '绑定失败', 'error');
+                                }
+                            }).catch(e => {
+                                console.error('[Bind]', e);
+                                Utils.showToast('网络错误，请重试', 'error');
+                            });
                         }
                     },
                     {
