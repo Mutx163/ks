@@ -427,9 +427,19 @@ async function resolveUser(deviceId, env) {
     return device?.user_id || null;
 }
 
+// 管理员密码（SHA-256 哈希）
+const ADMIN_PASSWORD_HASH = 'c014d32d3686385fd8287ed5c61374fae42ab80342105ece72930d5c8f9c6065';
+
+async function sha256(str) {
+    const data = new TextEncoder().encode(str);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // ========== 工具函数：验证管理员 ==========
-async function requireAdmin(deviceId, env) {
-    if (!deviceId) return null;
+async function requireAdmin(deviceId, password, env) {
+    if (!deviceId || !password) return null;
+    if (await sha256(password) !== ADMIN_PASSWORD_HASH) return null;
     const userId = await resolveUser(deviceId, env);
     if (!userId) return null;
     const user = await env.DB.prepare(
@@ -441,7 +451,8 @@ async function requireAdmin(deviceId, env) {
 // ========== 管理员：查看所有用户 ==========
 async function handleAdminUsers(url, env, origin) {
     const deviceId = url.searchParams.get('deviceId') || '';
-    const admin = await requireAdmin(deviceId, env);
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
     const { results } = await env.DB.prepare(`
@@ -462,6 +473,7 @@ async function handleAdminUsers(url, env, origin) {
 
 // ========== 管理员：查看用户详情 ==========
 async function handleAdminUserDetail(userId, env, origin) {
+    // 注意：此函数不验证密码，由调用方保证
     const user = await env.DB.prepare(
         'SELECT id, initials, created_at, is_admin FROM users WHERE id = ?'
     ).bind(userId).first();
@@ -481,8 +493,8 @@ async function handleAdminUserDetail(userId, env, origin) {
 // ========== 管理员：删除用户 ==========
 async function handleAdminDeleteUser(request, env, origin) {
     const body = await request.json();
-    const { deviceId, targetUserId } = body;
-    const admin = await requireAdmin(deviceId, env);
+    const { deviceId, targetUserId, password } = body;
+    const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
     if (targetUserId === admin.id) return error('不能删除自己', 400, origin);
 
@@ -496,8 +508,8 @@ async function handleAdminDeleteUser(request, env, origin) {
 // ========== 管理员：重置用户数据 ==========
 async function handleAdminResetStats(request, env, origin) {
     const body = await request.json();
-    const { deviceId, targetUserId } = body;
-    const admin = await requireAdmin(deviceId, env);
+    const { deviceId, targetUserId, password } = body;
+    const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
     await env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId).run();

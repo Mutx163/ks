@@ -31,6 +31,12 @@
             .detail-panel h3 { margin-bottom: var(--space-3); }
             .detail-close { float: right; cursor: pointer; color: var(--text-tertiary); font-size: 18px; }
             .loading { text-align: center; padding: 40px; color: var(--text-secondary); }
+            /* 登录 */
+            .login-box { max-width: 360px; margin: 80px auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-6); text-align: center; }
+            .login-box h2 { margin-bottom: var(--space-4); }
+            .login-box input { width: 100%; text-align: center; font-size: 16px; letter-spacing: 4px; margin-bottom: var(--space-3); }
+            .login-box button { width: 100%; }
+            .login-error { color: var(--danger); font-size: var(--font-size-sm); margin-top: var(--space-2); display: none; }
         </style>
     </head>
     <body>
@@ -44,13 +50,17 @@
                 </div>
                 <div class="home-actions">
                     <button class="btn btn-ghost btn-sm" onclick="location.href='index.html'">首页</button>
+                    <button class="btn btn-ghost btn-sm" id="btn-logout" style="display:none;" onclick="Admin.logout()">退出</button>
                 </div>
             </div>
         </header>
 
-        <main class="admin-container">
-            <div id="admin-content">
-                <div class="loading">加载中...</div>
+        <main class="admin-container" id="admin-main">
+            <div class="login-box" id="login-box">
+                <h2>🔐 管理员登录</h2>
+                <input type="password" id="admin-password" placeholder="输入管理密码" autocomplete="off">
+                <button class="btn btn-primary" onclick="Admin.login()">登录</button>
+                <div class="login-error" id="login-error">密码错误</div>
             </div>
         </main>
 
@@ -60,153 +70,148 @@
 
             const Admin = {
                 users: [],
+                password: sessionStorage.getItem('admin_pwd') || '',
 
                 async init() {
-                    if (!API.isRegistered()) {
-                        document.getElementById('admin-content').innerHTML = '<div class="loading">请先注册账号</div>';
-                        return;
+                    // 已登录则直接加载
+                    if (this.password) {
+                        await this.loadUsers();
+                    } else {
+                        // 回车登录
+                        document.getElementById('admin-password').addEventListener('keydown', e => {
+                            if (e.key === 'Enter') Admin.login();
+                        });
                     }
-
-                    const data = await API.request(`/api/admin/users?deviceId=${API.getDeviceId()}`);
-                    if (!data || !data.ok) {
-                        document.getElementById('admin-content').innerHTML = '<div class="loading">⚠️ 无管理员权限</div>';
-                        return;
-                    }
-
-                    this.users = data.users;
-                    this.render();
                 },
 
-                render() {
+                async login() {
+                    const pwd = document.getElementById('admin-password').value.trim();
+                    if (!pwd) return;
+
+                    this.password = pwd;
+                    const data = await API.request(`/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`);
+
+                    if (data && data.ok) {
+                        sessionStorage.setItem('admin_pwd', pwd);
+                        document.getElementById('login-box').style.display = 'none';
+                        document.getElementById('btn-logout').style.display = '';
+                        this.users = data.users;
+                        this.renderDashboard();
+                    } else {
+                        document.getElementById('login-error').style.display = 'block';
+                        this.password = '';
+                    }
+                },
+
+                logout() {
+                    sessionStorage.removeItem('admin_pwd');
+                    this.password = '';
+                    location.reload();
+                },
+
+                async loadUsers() {
+                    const data = await API.request(`/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                    if (!data || !data.ok) {
+                        sessionStorage.removeItem('admin_pwd');
+                        this.password = '';
+                        location.reload();
+                        return;
+                    }
+                    document.getElementById('login-box').style.display = 'none';
+                    document.getElementById('btn-logout').style.display = '';
+                    this.users = data.users;
+                    this.renderDashboard();
+                },
+
+                renderDashboard() {
                     const totalUsers = this.users.length;
                     const totalAnswered = this.users.reduce((s, u) => s + u.total_answered, 0);
                     const totalDuration = this.users.reduce((s, u) => s + u.total_duration, 0);
 
-                    document.getElementById('admin-content').innerHTML = `
+                    document.getElementById('admin-main').innerHTML = `
                         <div class="admin-header">
                             <h1>📊 管理后台</h1>
                             <p>共 ${totalUsers} 个用户</p>
                         </div>
-
                         <div class="admin-stats">
-                            <div class="admin-stat">
-                                <div class="admin-stat-value">${totalUsers}</div>
-                                <div class="admin-stat-label">总用户</div>
-                            </div>
-                            <div class="admin-stat">
-                                <div class="admin-stat-value">${totalAnswered}</div>
-                                <div class="admin-stat-label">总答题</div>
-                            </div>
-                            <div class="admin-stat">
-                                <div class="admin-stat-value">${this.formatDuration(totalDuration)}</div>
-                                <div class="admin-stat-label">总时长</div>
-                            </div>
+                            <div class="admin-stat"><div class="admin-stat-value">${totalUsers}</div><div class="admin-stat-label">总用户</div></div>
+                            <div class="admin-stat"><div class="admin-stat-value">${totalAnswered}</div><div class="admin-stat-label">总答题</div></div>
+                            <div class="admin-stat"><div class="admin-stat-value">${this.fmtDur(totalDuration)}</div><div class="admin-stat-label">总时长</div></div>
                         </div>
-
                         <div id="detail-panel" class="detail-panel"></div>
-
                         <div class="search-bar">
                             <input type="text" id="search-input" placeholder="搜索同步码或姓名..." oninput="Admin.filter()">
                         </div>
-
-                        <div style="overflow-x: auto;">
+                        <div style="overflow-x:auto;">
                             <table class="admin-table">
-                                <thead>
-                                    <tr>
-                                        <th>同步码</th>
-                                        <th>姓名</th>
-                                        <th>设备</th>
-                                        <th>答题数</th>
-                                        <th>正确率</th>
-                                        <th>时长</th>
-                                        <th>注册时间</th>
-                                        <th>操作</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr>
+                                    <th>同步码</th><th>姓名</th><th>设备</th><th>答题数</th><th>正确率</th><th>时长</th><th>注册时间</th><th>操作</th>
+                                </tr></thead>
                                 <tbody id="user-table"></tbody>
                             </table>
                         </div>
                     `;
-
                     this.renderTable(this.users);
                 },
 
                 renderTable(users) {
                     const myId = API.getSyncCode();
-                    const tbody = document.getElementById('user-table');
-                    tbody.innerHTML = users.map(u => {
-                        const accuracy = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
-                        const isAdmin = u.is_admin;
-                        const isMe = u.id === myId;
-                        return `
-                            <tr>
-                                <td><code>${u.id}</code></td>
-                                <td>${Utils.escapeHtml(u.initials)} ${isAdmin ? '<span class="badge badge-admin">管理员</span>' : ''} ${isMe ? '<span class="badge badge-normal">我</span>' : ''}</td>
-                                <td>${u.device_count}</td>
-                                <td>${u.total_answered}</td>
-                                <td>${accuracy}%</td>
-                                <td>${this.formatDuration(u.total_duration)}</td>
-                                <td>${u.created_at?.slice(0, 10) || '-'}</td>
-                                <td class="actions">
-                                    <button class="btn btn-ghost btn-sm" onclick="Admin.detail('${u.id}')">详情</button>
-                                    ${!isAdmin ? `<button class="btn btn-ghost btn-sm" onclick="Admin.resetStats('${u.id}', '${u.initials}')" style="color:var(--warning)">重置</button>` : ''}
-                                    ${!isMe && !isAdmin ? `<button class="btn btn-ghost btn-sm" onclick="Admin deleteUser('${u.id}', '${u.initials}')" style="color:var(--danger)">删除</button>` : ''}
-                                </td>
-                            </tr>
-                        `;
+                    document.getElementById('user-table').innerHTML = users.map(u => {
+                        const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
+                        return `<tr>
+                            <td><code>${u.id}</code></td>
+                            <td>${Utils.escapeHtml(u.initials)} ${u.is_admin ? '<span class="badge badge-admin">管理员</span>' : ''} ${u.id === myId ? '<span class="badge badge-normal">我</span>' : ''}</td>
+                            <td>${u.device_count}</td>
+                            <td>${u.total_answered}</td>
+                            <td>${acc}%</td>
+                            <td>${this.fmtDur(u.total_duration)}</td>
+                            <td>${u.created_at?.slice(0, 10) || '-'}</td>
+                            <td class="actions">
+                                <button class="btn btn-ghost btn-sm" onclick="Admin.detail('${u.id}')">详情</button>
+                                ${!u.is_admin ? `<button class="btn btn-ghost btn-sm" onclick="Admin.resetStats('${u.id}','${u.initials}')" style="color:var(--warning)">重置</button>` : ''}
+                                ${u.id !== myId && !u.is_admin ? `<button class="btn btn-ghost btn-sm" onclick="Admin.delUser('${u.id}','${u.initials}')" style="color:var(--danger)">删除</button>` : ''}
+                            </td>
+                        </tr>`;
                     }).join('');
                 },
 
                 filter() {
                     const q = document.getElementById('search-input').value.toUpperCase();
-                    const filtered = this.users.filter(u =>
-                        u.id.includes(q) || u.initials.toUpperCase().includes(q)
-                    );
-                    this.renderTable(filtered);
+                    this.renderTable(this.users.filter(u => u.id.includes(q) || u.initials.toUpperCase().includes(q)));
                 },
 
-                async detail(userId) {
-                    const data = await API.request(`/api/admin/user-detail/${userId}?deviceId=${API.getDeviceId()}`);
-                    if (!data || !data.ok) return;
-
-                    const panel = document.getElementById('detail-panel');
-                    panel.classList.add('show');
-                    panel.innerHTML = `
+                async detail(uid) {
+                    const data = await API.request(`/api/admin/user-detail/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+                    if (!data?.ok) return;
+                    const p = document.getElementById('detail-panel');
+                    p.classList.add('show');
+                    p.innerHTML = `
                         <span class="detail-close" onclick="this.parentElement.classList.remove('show')">×</span>
                         <h3>${Utils.escapeHtml(data.user.initials)} (${data.user.id})</h3>
                         <p><b>设备数:</b> ${data.devices.length}</p>
-                        <p><b>设备ID:</b></p>
-                        <ul>${data.devices.map(d => `<li><code style="font-size:11px">${d.device_id}</code> (${d.bound_at?.slice(0, 10)})</li>`).join('')}</ul>
+                        <ul>${data.devices.map(d => `<li><code style="font-size:11px">${d.device_id.slice(0,12)}...</code> (${d.bound_at?.slice(0,10)})</li>`).join('')}</ul>
                         <p><b>题库数据:</b></p>
-                        <ul>${data.stats.map(s => `<li>${Utils.escapeHtml(s.bank_name || s.bank_id)}: ${s.answered}题, 正确${s.correct}, ${this.formatDuration(s.duration)}</li>`).join('')}</ul>
+                        <ul>${data.stats.map(s => `<li>${Utils.escapeHtml(s.bank_name || s.bank_id)}: ${s.answered}题, 正确${s.correct}, ${this.fmtDur(s.duration)}</li>`).join('')}</ul>
                     `;
                 },
 
-                async resetStats(userId, name) {
+                async resetStats(uid, name) {
                     if (!confirm(`确定重置 ${name} 的所有答题数据？`)) return;
-                    const data = await API.request('/api/admin/reset-stats', {
-                        method: 'POST',
-                        body: JSON.stringify({ deviceId: API.getDeviceId(), targetUserId: userId })
+                    const r = await API.request('/api/admin/reset-stats', {
+                        method: 'POST', body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, targetUserId: uid })
                     });
-                    if (data?.ok) {
-                        Utils.showToast('已重置', 'success');
-                        this.init();
-                    }
+                    if (r?.ok) { Utils.showToast('已重置', 'success'); this.loadUsers(); }
                 },
 
-                async deleteUser(userId, name) {
-                    if (!confirm(`确定永久删除用户 ${name} (${userId})？此操作不可恢复！`)) return;
-                    const data = await API.request('/api/admin/delete-user', {
-                        method: 'POST',
-                        body: JSON.stringify({ deviceId: API.getDeviceId(), targetUserId: userId })
+                async delUser(uid, name) {
+                    if (!confirm(`确定永久删除 ${name} (${uid})？不可恢复！`)) return;
+                    const r = await API.request('/api/admin/delete-user', {
+                        method: 'POST', body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, targetUserId: uid })
                     });
-                    if (data?.ok) {
-                        Utils.showToast('已删除', 'success');
-                        this.init();
-                    }
+                    if (r?.ok) { Utils.showToast('已删除', 'success'); this.loadUsers(); }
                 },
 
-                formatDuration(s) {
+                fmtDur(s) {
                     if (!s || s < 60) return (s || 0) + '秒';
                     if (s < 3600) return Math.floor(s / 60) + '分';
                     return Math.floor(s / 3600) + '时' + Math.floor((s % 3600) / 60) + '分';
