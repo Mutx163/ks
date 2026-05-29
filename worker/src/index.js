@@ -139,6 +139,27 @@ export default {
                 return await handleAdminAnnounce(request, env, origin);
             }
 
+            // POST /api/admin/adjust-stats
+            if (method === 'POST' && path === '/api/admin/adjust-stats') {
+                return await handleAdminAdjustStats(request, env, origin);
+            }
+
+            // POST /api/admin/change-sync-code
+            if (method === 'POST' && path === '/api/admin/change-sync-code') {
+                return await handleAdminChangeSyncCode(request, env, origin);
+            }
+
+            // POST /api/admin/remove-device
+            if (method === 'POST' && path === '/api/admin/remove-device') {
+                return await handleAdminRemoveDevice(request, env, origin);
+            }
+
+            // GET /api/admin/user-cloud-data/:id
+            if (method === 'GET' && path.startsWith('/api/admin/user-cloud-data/')) {
+                const uid = path.split('/api/admin/user-cloud-data/')[1];
+                return await handleAdminUserCloudData(uid, url, env, origin);
+            }
+
             // GET /api/announce
             if (method === 'GET' && path === '/api/announce') {
                 return await handleGetAnnounce(env, origin);
@@ -701,4 +722,83 @@ async function handleGetAnnounce(env, origin) {
     ).first();
 
     return json({ ok: true, announce }, 200, origin);
+}
+
+// ========== 管理员：手动调整用户数据 ==========
+async function handleAdminAdjustStats(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, targetUserId, bankId, bankName, answered, correct, duration } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!targetUserId || !bankId) return error('缺少参数', 400, origin);
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(`
+        INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, bank_id) DO UPDATE SET
+            answered = stats.answered + excluded.answered,
+            correct = stats.correct + excluded.correct,
+            duration = stats.duration + excluded.duration,
+            updated_at = excluded.updated_at
+    `).bind(targetUserId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now).run();
+
+    return json({ ok: true, message: '已调整' }, 200, origin);
+}
+
+// ========== 管理员：修改同步码 ==========
+async function handleAdminChangeSyncCode(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, targetUserId, newSyncCode } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!targetUserId || !newSyncCode) return error('缺少参数', 400, origin);
+    if (newSyncCode.length < 4 || newSyncCode.length > 8) return error('同步码4-8位', 400, origin);
+
+    const code = newSyncCode.trim().toUpperCase();
+
+    // 检查新同步码是否已存在
+    const exists = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(code).first();
+    if (exists) return error('该同步码已被使用', 400, origin);
+
+    // 更新 users 表
+    await env.DB.prepare('UPDATE users SET id = ? WHERE id = ?').bind(code, targetUserId).run();
+    // 更新 devices 表
+    await env.DB.prepare('UPDATE devices SET user_id = ? WHERE user_id = ?').bind(code, targetUserId).run();
+    // 更新 stats 表
+    await env.DB.prepare('UPDATE stats SET user_id = ? WHERE user_id = ?').bind(code, targetUserId).run();
+
+    return json({ ok: true, message: '同步码已修改', newCode: code }, 200, origin);
+}
+
+// ========== 管理员：解绑设备 ==========
+async function handleAdminRemoveDevice(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, targetDeviceId } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!targetDeviceId) return error('缺少参数', 400, origin);
+
+    await env.DB.prepare('DELETE FROM devices WHERE device_id = ?').bind(targetDeviceId).run();
+
+    return json({ ok: true, message: '设备已解绑' }, 200, origin);
+}
+
+// ========== 管理员：查看用户云端数据 ==========
+async function handleAdminUserCloudData(userId, url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const user = await env.DB.prepare(
+        'SELECT id, initials, settings, progress, last_sync_at FROM users WHERE id = ?'
+    ).bind(userId).first();
+    if (!user) return error('用户不存在', 404, origin);
+
+    let settings = {}, progress = {};
+    try { settings = JSON.parse(user.settings || '{}'); } catch {}
+    try { progress = JSON.parse(user.progress || '{}'); } catch {}
+
+    return json({ ok: true, user: { id: user.id, initials: user.initials, lastSyncAt: user.last_sync_at }, settings, progress }, 200, origin);
 }

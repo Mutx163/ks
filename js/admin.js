@@ -179,9 +179,10 @@ const Admin = {
             const d = await r.json();
             if (!d?.ok) return;
             const u = d.user, ta = d.stats.reduce((s, x) => s + x.answered, 0), tc = d.stats.reduce((s, x) => s + x.correct, 0), td = d.stats.reduce((s, x) => s + x.duration, 0);
+            const n = Utils.escapeHtml(u.initials);
             p.classList.add('show');
             p.innerHTML = `
-                <div class="dh"><h3>${Utils.escapeHtml(u.initials)} <span class="code">${u.id}</span>${u.is_admin?' <span class="badge b-admin">管理</span>':''}${u.banned?' <span class="badge b-ban">封禁</span>':''}</h3><button class="close-btn" onclick="this.closest('.detail').classList.remove('show')">✕</button></div>
+                <div class="dh"><h3>${n} <span class="code">${u.id}</span>${u.is_admin?' <span class="badge b-admin">管理</span>':''}${u.banned?' <span class="badge b-ban">封禁</span>':''}</h3><button class="close-btn" onclick="this.closest('.detail').classList.remove('show')">✕</button></div>
                 <div class="d-grid">
                     <div class="d-item"><div class="dl">注册</div><div class="dv">${u.created_at?.slice(0,16)||'-'}</div></div>
                     <div class="d-item"><div class="dl">设备</div><div class="dv">${d.devices.length}台</div></div>
@@ -190,8 +191,16 @@ const Admin = {
                     <div class="d-item"><div class="dl">时长</div><div class="dv">${this.fmtDur(td)}</div></div>
                     <div class="d-item"><div class="dl">题库</div><div class="dv">${d.stats.length}个</div></div>
                 </div>
-                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">设备列表</div>${d.devices.map(x=>`<div style="display:flex;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary)">${x.device_id}</code><span style="color:var(--text-tertiary)">${x.bound_at?.slice(0,10)||''}</span></div>`).join('')}`:''}
+                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">设备列表</div>${d.devices.map(x=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis">${x.device_id}</code><span style="color:var(--text-tertiary)">${x.bound_at?.slice(0,10)||''}</span><button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="Admin.removeDevice('${x.device_id}','${u.id}')">解绑</button></div>`).join('')}`:''}
                 ${d.stats.length?`<div style="font-size:11px;color:var(--text-tertiary);margin:8px 0 4px">题库明细</div><table style="font-size:11px"><thead><tr><th style="text-align:left;padding:4px 6px">题库</th><th style="text-align:right;padding:4px 6px">答题</th><th style="text-align:right;padding:4px 6px">正确</th><th style="text-align:right;padding:4px 6px">正确率</th><th style="text-align:right;padding:4px 6px">时长</th></tr></thead><tbody>${d.stats.map(s=>{const a=s.answered>0?Math.round(s.correct/s.answered*100):0;return`<tr><td style="padding:4px 6px">${Utils.escapeHtml(s.bank_name||s.bank_id)}</td><td style="text-align:right;padding:4px 6px">${s.answered}</td><td style="text-align:right;padding:4px 6px">${s.correct}</td><td style="text-align:right;padding:4px 6px">${a}%</td><td style="text-align:right;padding:4px 6px">${this.fmtDur(s.duration)}</td></tr>`}).join('')}</tbody></table>`:''}
+                <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+                    <button class="abtn primary" onclick="Admin.editUser('${u.id}','${n}',${u.is_admin?1:0})">编辑信息</button>
+                    <button class="abtn primary" onclick="Admin.changeSyncCode('${u.id}','${n}')">修改同步码</button>
+                    <button class="abtn primary" onclick="Admin.adjustStats('${u.id}','${n}')">调整数据</button>
+                    <button class="abtn primary" onclick="Admin.viewCloudData('${u.id}')">查看云端数据</button>
+                    ${u.id!==API.getSyncCode()?`<button class="abtn ${u.banned?'':'warn'}" onclick="Admin.banUser('${u.id}','${n}',${u.banned?0:1})">${u.banned?'解封':'封禁'}</button>`:''}
+                    ${!u.is_admin?`<button class="abtn danger" onclick="Admin.resetStats('${u.id}','${n}')">重置数据</button><button class="abtn danger" onclick="Admin.delUser('${u.id}','${n}')">删除用户</button>`:''}
+                </div>
             `;
         } catch (e) { p.classList.add('show'); p.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
     },
@@ -215,6 +224,105 @@ const Admin = {
         document.querySelector('.modal-mask')?.remove();
         Utils.showToast('已更新', 'success');
         await this.loadAll(); this.renderUsers();
+    },
+
+    // ==================== 修改同步码 ====================
+
+    changeSyncCode(uid, name) {
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box">
+                    <h3>修改同步码 - ${name}</h3>
+                    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">当前同步码: <span class="code">${uid}</span></p>
+                    <label>新同步码（4-8位）</label><input id="new-sync-code" maxlength="8" style="text-transform:uppercase" placeholder="如: ABCD1234">
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveSyncCode('${uid}')">确认修改</button></div>
+                </div>
+            </div>`;
+    },
+
+    async saveSyncCode(oldUid) {
+        const code = document.getElementById('new-sync-code').value.trim().toUpperCase();
+        if (code.length < 4 || code.length > 8) { Utils.showToast('同步码需4-8位', 'error'); return; }
+        if (!confirm(`确认将同步码从 ${oldUid} 改为 ${code}？用户需要在所有设备重新绑定。`)) return;
+        const r = await this.post('/api/admin/change-sync-code', { targetUserId: oldUid, newSyncCode: code });
+        if (r?.ok) {
+            document.querySelector('.modal-mask')?.remove();
+            Utils.showToast('同步码已修改为 ' + r.newCode, 'success', 5000);
+            await this.loadAll(); this.renderUsers();
+            document.getElementById('detail-panel').classList.remove('show');
+        } else {
+            Utils.showToast(r?.error || '修改失败', 'error');
+        }
+    },
+
+    // ==================== 调整数据 ====================
+
+    adjustStats(uid, name) {
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box">
+                    <h3>调整数据 - ${name}</h3>
+                    <label>题库ID</label><input id="adj-bank-id" placeholder="题库ID">
+                    <label>题库名称</label><input id="adj-bank-name" placeholder="题库名称（可选）">
+                    <label>增加答题数（负数为减少）</label><input id="adj-answered" type="number" value="0">
+                    <label>增加正确数</label><input id="adj-correct" type="number" value="0">
+                    <label>增加时长（秒）</label><input id="adj-duration" type="number" value="0">
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveAdjust('${uid}')">确认调整</button></div>
+                </div>
+            </div>`;
+    },
+
+    async saveAdjust(uid) {
+        const r = await this.post('/api/admin/adjust-stats', {
+            targetUserId: uid,
+            bankId: document.getElementById('adj-bank-id').value.trim(),
+            bankName: document.getElementById('adj-bank-name').value.trim(),
+            answered: parseInt(document.getElementById('adj-answered').value) || 0,
+            correct: parseInt(document.getElementById('adj-correct').value) || 0,
+            duration: parseInt(document.getElementById('adj-duration').value) || 0
+        });
+        if (r?.ok) {
+            document.querySelector('.modal-mask')?.remove();
+            Utils.showToast('数据已调整', 'success');
+            await this.loadAll(); this.detail(uid);
+        } else {
+            Utils.showToast(r?.error || '调整失败', 'error');
+        }
+    },
+
+    // ==================== 解绑设备 ====================
+
+    async removeDevice(deviceId, uid) {
+        if (!confirm(`解绑设备 ${deviceId.slice(0, 12)}...？`)) return;
+        const r = await this.post('/api/admin/remove-device', { targetDeviceId: deviceId });
+        if (r?.ok) {
+            Utils.showToast('设备已解绑', 'success');
+            this.detail(uid);
+        }
+    },
+
+    // ==================== 查看云端数据 ====================
+
+    async viewCloudData(uid) {
+        const r = await fetch(`${API.BASE_URL}/api/admin/user-cloud-data/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+        const d = await r.json();
+        if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
+
+        const settingsStr = Object.keys(d.settings).length ? JSON.stringify(d.settings, null, 2) : '无';
+        const progressStr = Object.keys(d.progress).length ? JSON.stringify(d.progress, null, 2) : '无';
+
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:600px;max-height:80vh;overflow-y:auto">
+                    <h3>云端数据 - ${Utils.escapeHtml(d.user.initials)} (${d.user.id})</h3>
+                    <p style="font-size:11px;color:var(--text-tertiary)">最后同步: ${d.user.lastSyncAt || '无'}</p>
+                    <label style="margin-top:12px">设置 (Settings)</label>
+                    <pre style="background:var(--bg-hover);padding:8px;border-radius:var(--radius);font-size:11px;overflow-x:auto;max-height:200px;overflow-y:auto">${Utils.escapeHtml(settingsStr)}</pre>
+                    <label style="margin-top:8px">进度 (Progress)</label>
+                    <pre style="background:var(--bg-hover);padding:8px;border-radius:var(--radius);font-size:11px;overflow-x:auto;max-height:200px;overflow-y:auto">${Utils.escapeHtml(progressStr)}</pre>
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
+                </div>
+            </div>`;
     },
 
     // ==================== 操作 ====================
