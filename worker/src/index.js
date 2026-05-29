@@ -171,6 +171,12 @@ export default {
                 return await handleAdminImportBank(request, env, origin);
             }
 
+            // GET /api/admin/bank/:id/history（必须在 :id 前面）
+            if (method === 'GET' && path.match(/\/api\/admin\/bank\/[^/]+\/history$/)) {
+                const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
+                return await handleAdminBankHistory(bankId, url, env, origin);
+            }
+
             // GET /api/admin/bank/:id
             if (method === 'GET' && path.startsWith('/api/admin/bank/')) {
                 const bankId = path.split('/api/admin/bank/')[1];
@@ -197,12 +203,6 @@ export default {
                 const bankId = parts[4];
                 const qid = parseInt(parts[6]);
                 return await handleAdminDeleteQuestion(bankId, qid, request, env, origin);
-            }
-
-            // GET /api/admin/bank/:id/history
-            if (method === 'GET' && path.match(/\/api\/admin\/bank\/[^/]+\/history$/)) {
-                const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
-                return await handleAdminBankHistory(bankId, url, env, origin);
             }
 
             // GET /api/banks（前端获取题库列表）
