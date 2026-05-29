@@ -675,6 +675,12 @@ const Admin = {
             return await r.json();
         } catch (e) { return { ok: false, error: e.message }; }
     },
+
+    // ==================== 活跃 ====================
+
+    async renderActivity() {
+        const el = document.getElementById('sec-activity');
+        el.innerHTML = '<div class="loading">加载中...</div>';
         try {
             const d = await this.get('/api/admin/activity');
             if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
