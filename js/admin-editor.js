@@ -69,7 +69,7 @@ export function initEditor(Admin) {
         } else if (type !== 'essay') {
             const letters = 'ABCDEFGH';
             answerDisplay = `<div class="qe-answer-btns" id="eq-answer-btns">
-                ${letters.split('').map(l => `<button type="button" class="qe-ans-btn ${(answer||[]).join('').includes(l) || answer===l?'active':''}" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
+                ${letters.split('').map(l => `<button type="button" class="qe-ans-btn ${String(answer||'').includes(l)?'active':''}" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
             </div>`;
         }
 
