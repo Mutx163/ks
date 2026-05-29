@@ -111,6 +111,75 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* ===== 公告横幅 ===== */
+.announce-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08));
+    border: 1px solid rgba(102,126,234,0.15);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+    overflow: hidden;
+}
+
+.announce-badge {
+    flex-shrink: 0;
+    padding: 3px 10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 20px;
+    letter-spacing: 1px;
+}
+
+.announce-scroll-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    height: 20px;
+}
+
+.announce-scroll-text {
+    position: absolute;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 20px;
+    animation: announce-marquee 12s linear infinite;
+}
+
+.announce-scroll-text:hover {
+    animation-play-state: paused;
+}
+
+@keyframes announce-marquee {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+/* 短文本不滚动 */
+.announce-scroll-wrap {
+    display: flex;
+    align-items: center;
+}
+
+.announce-scroll-text {
+    position: relative;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    animation: none;
+}
+
+/* 长文本才滚动 */
+.announce-scroll-wrap.overflow .announce-scroll-text {
+    position: absolute;
+    animation: announce-marquee 12s linear infinite;
+}
+
 /* ===== 头部 ===== */
 .home-header {
     background: var(--bg-card);

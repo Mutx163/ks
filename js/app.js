@@ -45,8 +45,8 @@ const App = {
             setTimeout(() => API.showRegisterModal(), 1500);
         }
 
-        // 检查公告
-        API.checkAnnounce();
+        // 加载公告横幅
+        this.loadAnnouncement();
     },
 
     loadData() {
@@ -143,60 +143,37 @@ const App = {
      * 渲染智能头条 — 根据用户状态动态展示
      */
     renderSmartBanner() {
+        // 已用公告横幅替代，此方法保留兼容
+    },
+
+    async loadAnnouncement() {
         const el = document.getElementById('smart-banner');
         if (!el) return;
-
-        const dueCount = Storage.getTodayDueCount();
-        const stats = this.state.stats;
-        const history = Storage.getHistory();
-        const lastSession = history[0]; // 最近一次答题
-
-        let icon, title, desc, btn;
-
-        if (dueCount > 0) {
-            // 有待复习
-            icon = 'refresh-cw';
-            title = '今日待复习';
-            desc = `有 ${dueCount} 道题需要复习，间隔重复有助于长期记忆`;
-            btn = `<button class="btn btn-primary btn-sm" onclick="App.startSmartReview()">开始复习</button>`;
-        } else if (lastSession) {
-            const date = new Date(lastSession.timestamp);
-            const isToday = new Date().toDateString() === date.toDateString();
-            if (isToday) {
-                icon = 'party-popper';
-                title = '今日已无待复习';
-                desc = `上次答题：${lastSession.correct}/${lastSession.total} 正确`;
-                btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">继续刷题</button>`;
+        try {
+            const data = await API.request('/api/announce');
+            if (data?.ok && data.announce?.content) {
+                const text = Utils.escapeHtml(data.announce.content.replace(/\n/g, ' '));
+                el.innerHTML = `
+                    <div class="announce-banner">
+                        <div class="announce-badge">公告</div>
+                        <div class="announce-scroll-wrap" id="announce-scroll-wrap">
+                            <div class="announce-scroll-text" id="announce-scroll-text">${text}</div>
+                        </div>
+                    </div>
+                `;
+                el.style.display = '';
+                // 判断是否需要滚动
+                requestAnimationFrame(() => {
+                    const wrap = document.getElementById('announce-scroll-wrap');
+                    const txt = document.getElementById('announce-scroll-text');
+                    if (wrap && txt && txt.scrollWidth > wrap.clientWidth) {
+                        wrap.classList.add('overflow');
+                    }
+                });
             } else {
-                icon = 'hand-metal';
-                title = '欢迎回来';
-                desc = `上次答题：${Utils.formatDate(lastSession.timestamp, 'MM月DD日 HH:mm')}，正确率 ${Math.round((lastSession.correct / lastSession.total) * 100)}%`;
-                btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">开始刷题</button>`;
+                el.style.display = 'none';
             }
-        } else if (stats.totalQuestions > 0) {
-            icon = 'rocket';
-            title = '欢迎使用城科卷王';
-            desc = `共 ${stats.totalQuestions} 道题，选择一个题库开始学习吧`;
-            btn = `<button class="btn btn-primary btn-sm" onclick="App.scrollToBankGrid()">查看题库</button>`;
-        } else {
-            icon = 'download';
-            title = '还没有题库';
-            desc = '点击导入按钮或等待内置题库加载';
-            btn = `<button class="btn btn-primary btn-sm" onclick="App.importBank()">导入题库</button>`;
-        }
-
-        el.innerHTML = `
-            <div class="smart-banner">
-                <div class="smart-banner-icon">${Utils.icon(icon, 'icon-xl')}</div>
-                <div class="smart-banner-info">
-                    <div class="smart-banner-title">${title}</div>
-                    <div class="smart-banner-desc">${desc}</div>
-                </div>
-                ${btn}
-            </div>
-        `;
-        el.style.display = '';
-        Utils.initIcons();
+        } catch { el.style.display = 'none'; }
     },
 
     scrollToBankGrid() {
