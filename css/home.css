@@ -185,6 +185,9 @@
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     padding: var(--space-4) 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 /* 头部按钮 - 带文字 */
