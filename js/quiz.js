@@ -358,6 +358,9 @@ const Quiz = {
         if (!question || this.state.isFinished) {
             setSubmitHidden(true);
             setHint('');
+            // 隐藏顶栏完成按钮
+            const finishBtn = document.getElementById('btn-finish');
+            if (finishBtn) finishBtn.style.display = 'none';
             return;
         }
 
