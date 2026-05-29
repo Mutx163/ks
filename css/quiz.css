@@ -12,9 +12,7 @@
     z-index: 100;
 }
 
-.quiz-layout {
-    padding-top: 52px;
-}
+
 
 .quiz-header .container {
     display: flex;
@@ -97,6 +95,7 @@
 .quiz-layout {
     display: flex;
     min-height: calc(100vh - 56px);
+    padding-top: 52px;
 }
 
 .quiz-main-col {

@@ -192,10 +192,6 @@
     z-index: 100;
 }
 
-.home-main {
-    padding-top: 60px;
-}
-
 /* 头部按钮 - 带文字 */
 .btn-header {
     display: inline-flex;
@@ -281,7 +277,7 @@
 
 /* ===== 主内容 ===== */
 .home-main {
-    padding: var(--space-6) 0;
+    padding: 60px 0 var(--space-6);
 }
 
 /* ===== 首页主体：题库优先 ===== */

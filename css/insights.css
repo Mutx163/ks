@@ -10,10 +10,6 @@
     z-index: 100;
 }
 
-.insight-main {
-    padding-top: 60px;
-}
-
 .insight-header .container {
     display: flex;
     align-items: center;
@@ -48,7 +44,7 @@
 }
 
 .insight-main {
-    padding: var(--space-6) 0;
+    padding: 60px 0 var(--space-6);
 }
 
 .insight-summary {
