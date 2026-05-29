@@ -26,16 +26,14 @@ const Admin = {
         const err = document.getElementById('login-error');
         err.style.display = 'none';
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/users`, { headers: { 'X-Admin-Password': pwd, 'X-Admin-Device-Id': API.getDeviceId() } });
-            if (!r.ok) { err.textContent = `服务器错误 ${r.status}`; err.style.display = 'block'; return; }
-            const d = await r.json();
-            if (d.ok) {
+            const d = await this.get('/api/admin/users');
+            if (d && d.ok) {
                 sessionStorage.setItem('admin_pwd', pwd);
                 this.password = pwd;
                 this.users = d.users;
                 this.showApp();
             } else {
-                err.textContent = d.error || '密码错误';
+                err.textContent = (d && d.error) || '密码错误';
                 err.style.display = 'block';
             }
         } catch (e) {
