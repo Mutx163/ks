@@ -55,12 +55,18 @@ const Admin = {
 
     async loadAll() {
         try {
-            const r = await this.get('/api/admin/users');
-            const d = await r.json();
-            if (!d.ok) { sessionStorage.removeItem('admin_pwd'); location.reload(); return; }
+            const d = await this.get('/api/admin/users');
+            if (!d?.ok) {
+                localStorage.removeItem('admin_pwd');
+                sessionStorage.removeItem('admin_pwd');
+                return;
+            }
             this.users = d.users;
             this.showApp();
-        } catch { sessionStorage.removeItem('admin_pwd'); location.reload(); }
+        } catch {
+            localStorage.removeItem('admin_pwd');
+            sessionStorage.removeItem('admin_pwd');
+        }
     },
 
     showApp() {
