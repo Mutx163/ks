@@ -28,7 +28,7 @@ const BankLoader = {
         try {
             console.log('[BankLoader] 获取题库列表...');
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 5000);
+            const timer = setTimeout(() => controller.abort(), 15000);
             const data = await API.request('/api/banks', { signal: controller.signal });
             clearTimeout(timer);
             console.log('[BankLoader] 题库列表响应:', data);
@@ -54,7 +54,7 @@ const BankLoader = {
 
             console.log('[BankLoader] 从API加载:', bankId);
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 8000);
+            const timer = setTimeout(() => controller.abort(), 15000);
             const data = await API.request(`/api/bank/${bankId}`, { signal: controller.signal });
             clearTimeout(timer);
 
