@@ -435,37 +435,53 @@ const API = {
     /**
      * 显示同步码面板（查看/复制同步码）
      */
-    showSyncCodePanel() {
+    showAccountPanel() {
         const Utils = window.Utils;
         if (!Utils) return;
         const code = this.getSyncCode();
         const initials = this.getInitials();
 
-        Utils.showModal({
-            title: '📱 多设备同步',
-            content: `
-                <div style="text-align: center; padding: 12px 0;">
-                    <p style="color: var(--text-secondary); margin-bottom: 16px;">
-                        ${initials}，你的同步码是：
-                    </p>
-                    <div style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: var(--primary); font-family: monospace; padding: 16px; background: var(--bg-hover); border-radius: var(--radius); margin-bottom: 16px;">
-                        ${code}
-                    </div>
-                    <p style="color: var(--text-tertiary); font-size: 13px;">
-                        在其他设备输入此同步码即可同步所有数据
-                    </p>
+        const content = code ? `
+            <div style="text-align: center; margin-bottom: 16px;">
+                <p style="color: var(--text-secondary); margin-bottom: 8px;">${Utils.escapeHtml(initials)}，你的同步码：</p>
+                <div id="sync-code-display" style="font-size: 28px; font-weight: 700; letter-spacing: 6px; color: var(--primary); font-family: monospace; padding: 12px; background: var(--bg-hover); border-radius: var(--radius);">
+                    ${code}
                 </div>
-            `,
+            </div>
+            <div style="border-top: 1px solid var(--border); padding-top: 12px;">
+                <label>修改姓名首字母</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="change-initials" value="${Utils.escapeHtml(initials)}" maxlength="4" style="text-transform: uppercase; flex: 1;">
+                    <button class="btn btn-secondary btn-sm" onclick="API.changeInitials()">保存</button>
+                </div>
+            </div>
+            <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;">
+                <label>绑定其他同步码（切换账号）</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="rebind-code" placeholder="输入新的6位同步码" maxlength="6" style="text-transform: uppercase; flex: 1;">
+                    <button class="btn btn-secondary btn-sm" onclick="API.rebindDevice()">绑定</button>
+                </div>
+                <p style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">⚠️ 绑定后本设备数据将关联到新同步码</p>
+            </div>
+        ` : `
+            <div style="text-align: center; padding: 16px 0;">
+                <p style="color: var(--text-secondary); margin-bottom: 12px;">你还没有注册</p>
+                <button class="btn btn-primary" onclick="API.showRegisterModal(); this.closest('.modal-overlay').remove();">注册 / 绑定</button>
+            </div>
+        `;
+
+        Utils.showModal({
+            title: '⚙️ 账号管理',
+            content,
             buttons: [
-                {
+                ...(code ? [{
                     label: '复制同步码',
                     class: 'btn-primary',
-                    onClick: (modal) => {
+                    onClick: () => {
                         navigator.clipboard?.writeText(code);
                         Utils.showToast('已复制', 'success');
-                        modal.remove();
                     }
-                },
+                }] : []),
                 {
                     label: '关闭',
                     class: 'btn-ghost',
@@ -474,6 +490,57 @@ const API = {
             ],
             size: 'sm'
         });
+    },
+
+    /**
+     * 修改姓名首字母
+     */
+    async changeInitials() {
+        const Utils = window.Utils;
+        const input = document.getElementById('change-initials');
+        const newInitials = (input?.value || '').trim().toUpperCase();
+        if (newInitials.length < 1 || newInitials.length > 4) {
+            Utils.showToast('请输入1-4个字符', 'error');
+            return;
+        }
+        // 重新注册（同步码不变，只更新名字）
+        const data = await this.request('/api/register', {
+            method: 'POST',
+            body: JSON.stringify({
+                deviceId: this.getDeviceId(),
+                initials: newInitials
+            })
+        });
+        if (data && data.ok) {
+            localStorage.setItem(this.KEYS.INITIALS, data.initials);
+            Utils.showToast('姓名已更新', 'success');
+            // 关闭弹窗重新打开刷新显示
+            document.querySelector('.modal-overlay')?.remove();
+            setTimeout(() => this.showAccountPanel(), 300);
+        } else {
+            Utils.showToast('更新失败', 'error');
+        }
+    },
+
+    /**
+     * 重新绑定到其他同步码
+     */
+    async rebindDevice() {
+        const Utils = window.Utils;
+        const input = document.getElementById('rebind-code');
+        const code = (input?.value || '').trim().toUpperCase();
+        if (code.length !== 6) {
+            Utils.showToast('请输入6位同步码', 'error');
+            return;
+        }
+        Utils.showToast('绑定中...', 'info');
+        const result = await this.bindDevice(code);
+        if (result && result.ok) {
+            Utils.showToast(`已切换到 ${result.initials}`, 'success');
+            document.querySelector('.modal-overlay')?.remove();
+        } else {
+            Utils.showToast(result?.error || '绑定失败', 'error');
+        }
     }
 };
 

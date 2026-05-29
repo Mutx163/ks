@@ -122,6 +122,10 @@ async function handleRegister(request, env, origin) {
     ).bind(deviceId).first();
 
     if (existingDevice) {
+        // 已绑定：更新姓名首字母
+        await env.DB.prepare(
+            'UPDATE users SET initials = ? WHERE id = ?'
+        ).bind(initials.trim().toUpperCase(), existingDevice.user_id).run();
         const user = await env.DB.prepare(
             'SELECT id, initials FROM users WHERE id = ?'
         ).bind(existingDevice.user_id).first();

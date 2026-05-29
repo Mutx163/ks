@@ -881,7 +881,7 @@ const App = {
         if (syncBtn) {
             syncBtn.addEventListener('click', () => {
                 if (API.isRegistered()) {
-                    API.showSyncCodePanel();
+                    API.showAccountPanel();
                 } else {
                     API.showRegisterModal();
                 }
