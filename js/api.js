@@ -11,7 +11,7 @@
 import StorageMod from './storage.js';
 
 const API = {
-    BASE_URL: 'https://ks-api.mutx163.workers.dev',
+    BASE_URL: 'https://ks-api.mutx.ccwu.cc',
 
     // localStorage 键名
     KEYS: {
