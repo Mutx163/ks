@@ -1025,6 +1025,19 @@ const Quiz = {
         // 追踪：提交答案
         Tracker.submitAnswer(this.state.bankId, question.type, isCorrect, question.difficulty);
 
+        // 追踪：题目停留时间（热力图）
+        const timeSpent = this.state.questionTimes[question.id] || 0;
+        Tracker.questionTime(
+            this.state.bankId,
+            this.state.bank?.name || '',
+            question.id,
+            question.category,
+            question.type,
+            question.difficulty,
+            timeSpent,
+            isCorrect
+        );
+
         this.renderQuestion();
         this.renderFooter();
 
@@ -1288,7 +1301,6 @@ const Quiz = {
         });
 
         // 追踪：完成答题
-        const isExam = this.state.mode === 'exam';
         if (isExam) {
             Tracker.finishExam(
                 this.state.bankId,
@@ -1310,6 +1322,20 @@ const Quiz = {
                 duration
             );
         }
+
+        // 追踪：答题热力图汇总
+        const heatmapData = submittedIds.map(qId => {
+            const q = this.state.questions.find(q => q.id == qId);
+            return {
+                id: qId,
+                category: q?.category,
+                type: q?.type,
+                difficulty: q?.difficulty,
+                timeSpent: this.state.questionTimes[qId] || 0,
+                isCorrect: q ? this.checkAnswer(q) : false
+            };
+        });
+        Tracker.questionHeatmap(this.state.bankId, this.state.bank.name, heatmapData);
 
         const container = document.getElementById('question-container');
         container.innerHTML = `
