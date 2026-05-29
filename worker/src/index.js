@@ -16,7 +16,7 @@ function corsHeaders(origin) {
     return {
         'Access-Control-Allow-Origin': origin || '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password, X-Admin-Device-Id',
         'Access-Control-Max-Age': '86400'
     };
 }
@@ -38,6 +38,14 @@ export default {
         const path = url.pathname;
         const method = request.method;
         const origin = request.headers.get('Origin') || '';
+
+        // 支持管理员密码通过 Header 传递（避免暴露在 URL query string）
+        if (method === 'GET' && path.startsWith('/api/admin')) {
+            const pwd = request.headers.get('X-Admin-Password');
+            if (pwd) url.searchParams.set('password', pwd);
+            const did = request.headers.get('X-Admin-Device-Id');
+            if (did) url.searchParams.set('deviceId', did);
+        }
 
         if (method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: corsHeaders(origin) });
@@ -527,7 +535,7 @@ async function handleAdminUsers(url, env, origin) {
 
     const { results } = await env.DB.prepare(`
         SELECT 
-            u.id, u.initials, u.created_at, u.is_admin,
+            u.id, u.initials, u.created_at, u.is_admin, u.banned,
             (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as device_count,
             COALESCE(SUM(s.answered), 0) as total_answered,
             COALESCE(SUM(s.correct), 0) as total_correct,
@@ -545,7 +553,7 @@ async function handleAdminUsers(url, env, origin) {
 async function handleAdminUserDetail(userId, env, origin) {
     // 注意：此函数不验证密码，由调用方保证
     const user = await env.DB.prepare(
-        'SELECT id, initials, created_at, is_admin FROM users WHERE id = ?'
+        'SELECT id, initials, created_at, is_admin, banned FROM users WHERE id = ?'
     ).bind(userId).first();
     if (!user) return error('用户不存在', 404, origin);
 
@@ -568,9 +576,11 @@ async function handleAdminDeleteUser(request, env, origin) {
     if (!admin) return error('无权限', 403, origin);
     if (targetUserId === admin.id) return error('不能删除自己', 400, origin);
 
-    await env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId).run();
-    await env.DB.prepare('DELETE FROM devices WHERE user_id = ?').bind(targetUserId).run();
-    await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetUserId).run();
+    await env.DB.batch([
+        env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId),
+        env.DB.prepare('DELETE FROM devices WHERE user_id = ?').bind(targetUserId),
+        env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetUserId)
+    ]);
 
     return json({ ok: true, message: '已删除' }, 200, origin);
 }
@@ -771,9 +781,9 @@ async function handleAdminAdjustStats(request, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
     if (!targetUserId || !bankId) return error('缺少参数', 400, origin);
-    if (answered !== undefined && (typeof answered !== 'number' || answered < 0)) return error('answered 必须为非负数', 400, origin);
-    if (correct !== undefined && (typeof correct !== 'number' || correct < 0)) return error('correct 必须为非负数', 400, origin);
-    if (duration !== undefined && (typeof duration !== 'number' || duration < 0)) return error('duration 必须为非负数', 400, origin);
+    if (answered !== undefined && typeof answered !== 'number') return error('answered 必须为数字', 400, origin);
+    if (correct !== undefined && typeof correct !== 'number') return error('correct 必须为数字', 400, origin);
+    if (duration !== undefined && typeof duration !== 'number') return error('duration 必须为数字', 400, origin);
 
     const now = new Date().toISOString();
     await env.DB.prepare(`
@@ -805,12 +815,12 @@ async function handleAdminChangeSyncCode(request, env, origin) {
     const exists = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(code).first();
     if (exists) return error('该同步码已被使用', 400, origin);
 
-    // 更新 users 表
-    await env.DB.prepare('UPDATE users SET id = ? WHERE id = ?').bind(code, targetUserId).run();
-    // 更新 devices 表
-    await env.DB.prepare('UPDATE devices SET user_id = ? WHERE user_id = ?').bind(code, targetUserId).run();
-    // 更新 stats 表
-    await env.DB.prepare('UPDATE stats SET user_id = ? WHERE user_id = ?').bind(code, targetUserId).run();
+    // 事务性更新三张表（全部成功或全部回滚）
+    await env.DB.batch([
+        env.DB.prepare('UPDATE users SET id = ? WHERE id = ?').bind(code, targetUserId),
+        env.DB.prepare('UPDATE devices SET user_id = ? WHERE user_id = ?').bind(code, targetUserId),
+        env.DB.prepare('UPDATE stats SET user_id = ? WHERE user_id = ?').bind(code, targetUserId)
+    ]);
 
     return json({ ok: true, message: '同步码已修改', newCode: code }, 200, origin);
 }

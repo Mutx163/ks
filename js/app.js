@@ -151,6 +151,7 @@ const App = {
         if (!el) return;
         try {
             const data = await API.request('/api/announce');
+            console.log('[公告]', data);
             if (data?.ok && data.announce?.content) {
                 const text = Utils.escapeHtml(data.announce.content.replace(/\n/g, ' '));
                 el.innerHTML = `
