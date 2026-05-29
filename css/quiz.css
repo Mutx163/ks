@@ -5,9 +5,15 @@
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     padding: var(--space-3) 0;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
+}
+
+.quiz-layout {
+    padding-top: 52px;
 }
 
 .quiz-header .container {

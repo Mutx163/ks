@@ -3,9 +3,15 @@
     background: var(--bg-card);
     border-bottom: 1px solid var(--border);
     padding: var(--space-4) 0;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
+}
+
+.insight-main {
+    padding-top: 60px;
 }
 
 .insight-header .container {
