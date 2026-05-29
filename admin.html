@@ -96,17 +96,33 @@
                     const pwd = document.getElementById('admin-password').value.trim();
                     if (!pwd) return;
 
-                    this.password = pwd;
-                    const data = await API.request(`/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`);
+                    const errEl = document.getElementById('login-error');
+                    errEl.style.display = 'none';
+                    errEl.textContent = '密码错误';
 
-                    if (data && data.ok) {
-                        sessionStorage.setItem('admin_pwd', pwd);
-                        document.getElementById('login-box').style.display = 'none';
-                        document.getElementById('btn-logout').style.display = '';
-                        this.users = data.users;
-                        this.renderDashboard();
-                    } else {
-                        document.getElementById('login-error').style.display = 'block';
+                    this.password = pwd;
+                    try {
+                        const url = `${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`;
+                        console.log('[Admin] 请求:', url);
+                        const res = await fetch(url);
+                        const data = await res.json();
+                        console.log('[Admin] 响应:', res.status, data);
+
+                        if (data.ok) {
+                            sessionStorage.setItem('admin_pwd', pwd);
+                            document.getElementById('login-box').style.display = 'none';
+                            document.getElementById('btn-logout').style.display = '';
+                            this.users = data.users;
+                            this.renderDashboard();
+                        } else {
+                            errEl.textContent = data.error || '密码错误';
+                            errEl.style.display = 'block';
+                            this.password = '';
+                        }
+                    } catch (e) {
+                        console.error('[Admin] 错误:', e);
+                        errEl.textContent = '网络错误: ' + e.message;
+                        errEl.style.display = 'block';
                         this.password = '';
                     }
                 },
