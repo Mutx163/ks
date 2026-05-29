@@ -20,12 +20,10 @@ const App = {
         BankLoader.removeDeprecatedBanks(new Set(['engineering-mechanics', '工程力学']));
         await BankLoader.loadAllBuiltinBanks();
 
-        // 云同步：拉取云端数据 + 推送本地数据
-        const synced = await API.autoSync();
-        if (synced) {
-            // 同步后重新加载数据
-            this.loadData();
-        }
+        // 云同步（静默，失败不影响本地）
+        try { await API.autoSync(); } catch {}
+
+        this.loadData();
 
         this.render();
         this.bindEvents();
