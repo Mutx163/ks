@@ -16,7 +16,9 @@ const ALLOWED_ORIGINS = [
     'https://ks-cjx.pages.dev',
     'https://ks.mutx.ccwu.cc',
     'http://localhost:3000',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500'
 ];
 
 function corsHeaders(origin) {
