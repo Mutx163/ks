@@ -277,7 +277,8 @@
 
 /* ===== 主内容 ===== */
 .home-main {
-    padding: 60px 0 var(--space-6);
+    margin-top: 60px;
+    padding: 0 0 var(--space-6);
 }
 
 /* ===== 首页主体：题库优先 ===== */
@@ -1119,7 +1120,8 @@
     }
 
     .home-main {
-        padding: 60px 0 var(--space-3);
+        margin-top: 60px;
+        padding: 0 0 var(--space-3);
     }
 
     .home-dashboard {
