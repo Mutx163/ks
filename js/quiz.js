@@ -590,11 +590,14 @@ const Quiz = {
                         const isCorrect = origLetter === question.answer;
                         const isUserSel = origLetter === userAnswer;
                         let cls = 'option-item';
+                        let markerHtml = `<div class="option-marker">${letter}</div>`;
                         if (isSubmitted) {
                             if (isCorrect) {
                                 cls += ' correct disabled';
+                                markerHtml = `<div class="option-marker">${Utils.icon('check')}</div>`;
                             } else if (isUserSel && !isCorrect) {
                                 cls += ' wrong disabled';
+                                markerHtml = `<div class="option-marker">${Utils.icon('x')}</div>`;
                             } else {
                                 cls += ' disabled';
                             }
@@ -603,7 +606,7 @@ const Quiz = {
                         }
                         return `
                         <div class="${cls}" data-answer="${origLetter}" role="radio" aria-checked="${isUserSel}" tabindex="0">
-                            <div class="option-marker">${letter}</div>
+                            ${markerHtml}
                             <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
                         </div>
                     `;
@@ -624,13 +627,16 @@ const Quiz = {
                         const letter = opt.displayLetter;
                         const origLetter = opt.originalLetter;
                         let cls = 'option-item';
+                        let markerHtml = `<div class="option-marker">${letter}</div>`;
                         if (isSubmitted) {
                             const isCorrectOption = correctAnswers.includes(origLetter);
                             const isUserSelected = userAnswers.includes(origLetter);
                             if (isCorrectOption) {
                                 cls += ' correct disabled';
+                                markerHtml = `<div class="option-marker">${Utils.icon('check')}</div>`;
                             } else if (isUserSelected) {
                                 cls += ' wrong disabled';
+                                markerHtml = `<div class="option-marker">${Utils.icon('x')}</div>`;
                             } else {
                                 cls += ' disabled';
                             }
@@ -639,7 +645,7 @@ const Quiz = {
                         }
                         return `
                         <div class="${cls}" data-answer="${origLetter}" role="checkbox" aria-checked="${userAnswers.includes(origLetter)}" tabindex="0">
-                            <div class="option-marker">${letter}</div>
+                            ${markerHtml}
                             <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
                         </div>
                     `;

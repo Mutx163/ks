@@ -568,8 +568,14 @@
 
 .option-item.correct {
     border-color: var(--success);
+    border-width: 2px;
     background: var(--success-light);
     animation: optionCorrect 0.35s ease;
+}
+
+.option-item.correct .option-marker {
+    background: var(--success);
+    color: white;
 }
 
 .option-item.correct.disabled:hover {
@@ -579,8 +585,14 @@
 
 .option-item.wrong {
     border-color: var(--danger);
+    border-width: 2px;
     background: var(--danger-light);
     animation: shake 0.35s ease;
+}
+
+.option-item.wrong .option-marker {
+    background: var(--danger);
+    color: white;
 }
 
 .option-item.wrong.disabled:hover {
@@ -718,6 +730,7 @@
 
 .judge-option.correct {
     border-color: var(--success);
+    border-width: 2px;
     background: var(--success-light);
     color: var(--success);
     animation: optionCorrect 0.35s ease;
@@ -725,6 +738,7 @@
 
 .judge-option.wrong {
     border-color: var(--danger);
+    border-width: 2px;
     background: var(--danger-light);
     color: var(--danger);
     animation: shake 0.35s ease;
