@@ -6,27 +6,31 @@
         <title>城科卷王</title>
         <script>window._pageStartTime = Date.now();</script>
 
-        <!-- KaTeX 数学公式渲染 -->
+        <!-- Lucide 图标（最先加载，页面需要） -->
+        <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
+
+        <!-- KaTeX 数学公式（defer，不阻塞骨架屏） -->
         <link
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
         />
-        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" defer></script>
 
-        <!-- Prism.js 代码高亮 -->
+        <!-- Prism.js 代码高亮（defer，不阻塞骨架屏） -->
         <link
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"
         />
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js" defer></script>
 
-        <!-- Lucide 图标（异步加载，不阻塞页面） -->
-        <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" async defer></script>
+        <!-- 预加载题库 JSON -->
+        <link rel="preload" href="banks/c-language.json" as="fetch" crossorigin />
+        <link rel="preload" href="banks/cnc-machine.json" as="fetch" crossorigin />
 
         <!-- 样式 -->
         <link rel="stylesheet" href="css/base.css" />
@@ -199,11 +203,19 @@
                 lucide.createIcons();
             }
         </script>
-        <!-- 51.la 统计 -->
-        <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
-        <script>LA.init({id:"LCw11fJOoJPF3gGU",ck:"LCw11fJOoJPF3gGU",autoTrack:true})</script>
+        <!-- 51.la 统计（async，不阻塞） -->
+        <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js" async></script>
+        <script>
+            // 等 51.la 加载完再初始化
+            function initLA() {
+                if (typeof LA !== 'undefined') {
+                    LA.init({id:"LCw11fJOoJPF3gGU",ck:"LCw11fJOoJPF3gGU",autoTrack:true});
+                }
+            }
+            document.getElementById('LA_COLLECT').addEventListener('load', initLA);
+        </script>
         <!-- 51.la 数据挂件 -->
-        <script id="LA-DATA-WIDGET" crossorigin="anonymous" charset="UTF-8" src="https://v6-widget.51.la/v6/LCw11fJOoJPF3gGU/quote.js?theme=0&col=true&f=12"></script>
+        <script id="LA-DATA-WIDGET" crossorigin="anonymous" charset="UTF-8" src="https://v6-widget.51.la/v6/LCw11fJOoJPF3gGU/quote.js?theme=0&col=true&f=12" async></script>
         <script>
             // 将 51.la 挂件移动到指定容器
             function moveLAWidget() {

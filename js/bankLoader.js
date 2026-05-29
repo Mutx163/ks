@@ -75,12 +75,10 @@ const BankLoader = {
      * @returns {Promise<object[]>} - 返回成功加载的题库数组
      */
     async loadAllBuiltinBanks() {
-        const results = [];
-        for (const filename of builtinBanks) {
-            const bank = await this.loadBank(filename);
-            if (bank) results.push(bank);
-        }
-        return results;
+        const results = await Promise.all(
+            builtinBanks.map(filename => this.loadBank(filename))
+        );
+        return results.filter(Boolean);
     },
 
     /**
