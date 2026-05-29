@@ -17,6 +17,7 @@ const App = {
     },
 
     async init() {
+        window._pageStartTime = window._pageStartTime || Date.now();
         BankLoader.removeDeprecatedBanks(new Set(['engineering-mechanics', '工程力学']));
         await BankLoader.loadAllBuiltinBanks();
 
@@ -25,11 +26,16 @@ const App = {
 
         this.loadData();
 
-        // 隐藏骨架屏，显示真实内容
+        // 隐藏骨架屏，显示真实内容（最少显示 500ms）
         const skeleton = document.getElementById('loading-skeleton');
         const banksSection = document.getElementById('section-banks');
-        if (skeleton) skeleton.classList.add('hidden');
-        if (banksSection) banksSection.style.display = '';
+        const showReal = () => {
+            if (skeleton) skeleton.classList.add('hidden');
+            if (banksSection) banksSection.style.display = '';
+        };
+        const elapsed = Date.now() - window._pageStartTime;
+        if (elapsed < 500) setTimeout(showReal, 500 - elapsed);
+        else showReal();
 
         this.render();
         this.bindEvents();
