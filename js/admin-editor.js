@@ -208,9 +208,10 @@ export function initEditor(Admin) {
     };
 
     Admin._setJudge = function(val) {
-        document.getElementById('eq-answer').value = val;
-        document.getElementById('eq-judge-true').className = val === true ? 'qe-judge-btn active' : 'qe-judge-btn';
-        document.getElementById('eq-judge-false').className = val === false ? 'qe-judge-btn active' : 'qe-judge-btn';
+        const boolVal = val === true || val === 'true';
+        document.getElementById('eq-answer').value = boolVal;
+        document.getElementById('eq-judge-true').className = boolVal ? 'qe-judge-btn active' : 'qe-judge-btn';
+        document.getElementById('eq-judge-false').className = !boolVal ? 'qe-judge-btn active' : 'qe-judge-btn';
         this._preview();
     };
 
