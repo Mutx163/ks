@@ -356,7 +356,7 @@ const Admin = {
         const el = document.getElementById('sec-banks');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const d = await this.get('/api/admin/banks');
+            const d = await this.get('/api/banks');
             if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
             el.innerHTML = `
                 <div id="bank-detail-panel"></div>
