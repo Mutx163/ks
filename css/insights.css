@@ -420,6 +420,7 @@
     .insight-stat,
     .insight-panel {
         padding: var(--space-3);
+        margin-bottom: var(--space-4);
     }
 
     .insight-stat-value {
