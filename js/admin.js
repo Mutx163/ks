@@ -6,7 +6,15 @@ import Utils from './utils.js';
 
 const Admin = {
     users: [],
-    password: sessionStorage.getItem('admin_pwd') || '',
+    password: (() => {
+        const saved = localStorage.getItem('admin_pwd');
+        if (!saved) return sessionStorage.getItem('admin_pwd') || '';
+        try {
+            const { pwd, ts } = JSON.parse(saved);
+            if (Date.now() - ts > 3600000) { localStorage.removeItem('admin_pwd'); return ''; }
+            return pwd;
+        } catch { localStorage.removeItem('admin_pwd'); return ''; }
+    })(),
     sort: 'time',
     tab: 'overview',
 
@@ -28,6 +36,7 @@ const Admin = {
         try {
             const d = await this.getWithAuth('/api/admin/users', pwd);
             if (d && d.ok) {
+                localStorage.setItem('admin_pwd', JSON.stringify({ pwd, ts: Date.now() }));
                 sessionStorage.setItem('admin_pwd', pwd);
                 this.password = pwd;
                 this.users = d.users;
@@ -42,7 +51,7 @@ const Admin = {
         }
     },
 
-    logout() { sessionStorage.removeItem('admin_pwd'); location.reload(); },
+    logout() { localStorage.removeItem('admin_pwd'); sessionStorage.removeItem('admin_pwd'); location.reload(); },
 
     async loadAll() {
         try {
