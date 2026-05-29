@@ -33,7 +33,6 @@ const Admin = {
                 this.password = pwd;
                 this.users = d.users;
                 this.showApp();
-                await this.loadAll();
             } else {
                 err.textContent = d.error || '密码错误';
                 err.style.display = 'block';
@@ -150,6 +149,8 @@ const Admin = {
         const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
         const c = acc >= 80 ? '#22c55e' : acc >= 60 ? '#f59e0b' : '#ef4444';
         const n = Utils.escapeHtml(u.initials);
+        const jsn = Utils.jsSafe(u.initials);
+        const jsu = Utils.jsSafe(u.id);
         return `<tr>
             <td><span class="code">${u.id}</span></td>
             <td>${n}${u.is_admin ? ' <span class="badge b-admin">管理</span>' : ''}${u.id === myId ? ' <span class="badge b-me">我</span>' : ''}</td>
@@ -160,10 +161,10 @@ const Admin = {
             <td>${u.created_at?.slice(0, 10) || '-'}</td>
             <td>${u.banned ? '<span class="badge b-ban">封禁</span>' : '<span style="color:#22c55e">正常</span>'}</td>
             <td style="white-space:nowrap">
-                <button class="abtn primary" onclick="Admin.detail('${u.id}')">详情</button>
-                <button class="abtn" onclick="Admin.editUser('${u.id}','${n}',${u.is_admin?1:0})">编辑</button>
-                ${u.id!==myId?`<button class="abtn ${u.banned?'':'warn'}" onclick="Admin.banUser('${u.id}','${n}',${u.banned?0:1})">${u.banned?'解封':'封禁'}</button>`:''}
-                ${!u.is_admin&&u.id!==myId?`<button class="abtn danger" onclick="Admin.resetStats('${u.id}','${n}')">重置</button><button class="abtn danger" onclick="Admin.delUser('${u.id}','${n}')">删除</button>`:''}
+                <button class="abtn primary" onclick="Admin.detail('${jsu}')">详情</button>
+                <button class="abtn" onclick="Admin.editUser('${jsu}','${jsn}',${u.is_admin?1:0})">编辑</button>
+                ${u.id!==myId?`<button class="abtn ${u.banned?'':'warn'}" onclick="Admin.banUser('${jsu}','${jsn}',${u.banned?0:1})">${u.banned?'解封':'封禁'}</button>`:''}
+                ${!u.is_admin&&u.id!==myId?`<button class="abtn danger" onclick="Admin.resetStats('${jsu}','${jsn}')">重置</button><button class="abtn danger" onclick="Admin.delUser('${jsu}','${jsn}')">删除</button>`:''}
             </td>
         </tr>`;
     },
@@ -180,6 +181,8 @@ const Admin = {
             if (!d?.ok) return;
             const u = d.user, ta = d.stats.reduce((s, x) => s + x.answered, 0), tc = d.stats.reduce((s, x) => s + x.correct, 0), td = d.stats.reduce((s, x) => s + x.duration, 0);
             const n = Utils.escapeHtml(u.initials);
+            const jsn = Utils.jsSafe(u.initials);
+            const jsu = Utils.jsSafe(u.id);
             p.classList.add('show');
             p.innerHTML = `
                 <div class="dh"><h3>${n} <span class="code">${u.id}</span>${u.is_admin?' <span class="badge b-admin">管理</span>':''}${u.banned?' <span class="badge b-ban">封禁</span>':''}</h3><button class="close-btn" onclick="this.closest('.detail').classList.remove('show')">✕</button></div>
@@ -191,15 +194,15 @@ const Admin = {
                     <div class="d-item"><div class="dl">时长</div><div class="dv">${this.fmtDur(td)}</div></div>
                     <div class="d-item"><div class="dl">题库</div><div class="dv">${d.stats.length}个</div></div>
                 </div>
-                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">设备列表</div>${d.devices.map(x=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis">${x.device_id}</code><span style="color:var(--text-tertiary)">${x.bound_at?.slice(0,10)||''}</span><button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="Admin.removeDevice('${x.device_id}','${u.id}')">解绑</button></div>`).join('')}`:''}
+                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">设备列表</div>${d.devices.map(x=>{const jsd=Utils.jsSafe(x.device_id);return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis">${x.device_id}</code><span style="color:var(--text-tertiary)">${x.bound_at?.slice(0,10)||''}</span><button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="Admin.removeDevice('${jsd}','${jsu}')">解绑</button></div>`;}).join('')}`:''}
                 ${d.stats.length?`<div style="font-size:11px;color:var(--text-tertiary);margin:8px 0 4px">题库明细</div><table style="font-size:11px"><thead><tr><th style="text-align:left;padding:4px 6px">题库</th><th style="text-align:right;padding:4px 6px">答题</th><th style="text-align:right;padding:4px 6px">正确</th><th style="text-align:right;padding:4px 6px">正确率</th><th style="text-align:right;padding:4px 6px">时长</th></tr></thead><tbody>${d.stats.map(s=>{const a=s.answered>0?Math.round(s.correct/s.answered*100):0;return`<tr><td style="padding:4px 6px">${Utils.escapeHtml(s.bank_name||s.bank_id)}</td><td style="text-align:right;padding:4px 6px">${s.answered}</td><td style="text-align:right;padding:4px 6px">${s.correct}</td><td style="text-align:right;padding:4px 6px">${a}%</td><td style="text-align:right;padding:4px 6px">${this.fmtDur(s.duration)}</td></tr>`}).join('')}</tbody></table>`:''}
                 <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-                    <button class="abtn primary" onclick="Admin.editUser('${u.id}','${n}',${u.is_admin?1:0})">编辑信息</button>
-                    <button class="abtn primary" onclick="Admin.changeSyncCode('${u.id}','${n}')">修改同步码</button>
-                    <button class="abtn primary" onclick="Admin.adjustStats('${u.id}','${n}')">调整数据</button>
-                    <button class="abtn primary" onclick="Admin.viewCloudData('${u.id}')">查看云端数据</button>
-                    ${u.id!==API.getSyncCode()?`<button class="abtn ${u.banned?'':'warn'}" onclick="Admin.banUser('${u.id}','${n}',${u.banned?0:1})">${u.banned?'解封':'封禁'}</button>`:''}
-                    ${!u.is_admin?`<button class="abtn danger" onclick="Admin.resetStats('${u.id}','${n}')">重置数据</button><button class="abtn danger" onclick="Admin.delUser('${u.id}','${n}')">删除用户</button>`:''}
+                    <button class="abtn primary" onclick="Admin.editUser('${jsu}','${jsn}',${u.is_admin?1:0})">编辑信息</button>
+                    <button class="abtn primary" onclick="Admin.changeSyncCode('${jsu}','${jsn}')">修改同步码</button>
+                    <button class="abtn primary" onclick="Admin.adjustStats('${jsu}','${jsn}')">调整数据</button>
+                    <button class="abtn primary" onclick="Admin.viewCloudData('${jsu}')">查看云端数据</button>
+                    ${u.id!==API.getSyncCode()?`<button class="abtn ${u.banned?'':'warn'}" onclick="Admin.banUser('${jsu}','${jsn}',${u.banned?0:1})">${u.banned?'解封':'封禁'}</button>`:''}
+                    ${!u.is_admin?`<button class="abtn danger" onclick="Admin.resetStats('${jsu}','${jsn}')">重置数据</button><button class="abtn danger" onclick="Admin.delUser('${jsu}','${jsn}')">删除用户</button>`:''}
                 </div>
             `;
         } catch (e) { p.classList.add('show'); p.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
@@ -208,11 +211,12 @@ const Admin = {
     // ==================== 编辑 ====================
 
     editUser(uid, name, admin) {
+        const hn = Utils.escapeHtml(name);
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="modal-box">
-                    <h3>编辑 ${name}</h3>
-                    <label>姓名首字母</label><input id="eu-initials" value="${name}" maxlength="4" style="text-transform:uppercase">
+                    <h3>编辑 ${hn}</h3>
+                    <label>姓名首字母</label><input id="eu-initials" value="${hn}" maxlength="4" style="text-transform:uppercase">
                     <label>管理员</label><select id="eu-admin"><option value="0" ${!admin?'selected':''}>否</option><option value="1" ${admin?'selected':''}>是</option></select>
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveEdit('${uid}')">保存</button></div>
                 </div>
@@ -220,7 +224,8 @@ const Admin = {
     },
 
     async saveEdit(uid) {
-        await this.post('/api/admin/update-user', { targetUserId: uid, initials: document.getElementById('eu-initials').value.trim(), isAdmin: parseInt(document.getElementById('eu-admin').value) });
+        const r = await this.post('/api/admin/update-user', { targetUserId: uid, initials: document.getElementById('eu-initials').value.trim(), isAdmin: parseInt(document.getElementById('eu-admin').value) });
+        if (!r?.ok) { Utils.showToast(r?.error || '更新失败', 'error'); return; }
         document.querySelector('.modal-mask')?.remove();
         Utils.showToast('已更新', 'success');
         await this.loadAll(); this.renderUsers();
@@ -229,10 +234,11 @@ const Admin = {
     // ==================== 修改同步码 ====================
 
     changeSyncCode(uid, name) {
+        const hn = Utils.escapeHtml(name);
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="modal-box">
-                    <h3>修改同步码 - ${name}</h3>
+                    <h3>修改同步码 - ${hn}</h3>
                     <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">当前同步码: <span class="code">${uid}</span></p>
                     <label>新同步码（4-8位）</label><input id="new-sync-code" maxlength="8" style="text-transform:uppercase" placeholder="如: ABCD1234">
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveSyncCode('${uid}')">确认修改</button></div>
@@ -258,10 +264,11 @@ const Admin = {
     // ==================== 调整数据 ====================
 
     adjustStats(uid, name) {
+        const hn = Utils.escapeHtml(name);
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="modal-box">
-                    <h3>调整数据 - ${name}</h3>
+                    <h3>调整数据 - ${hn}</h3>
                     <label>题库ID</label><input id="adj-bank-id" placeholder="题库ID">
                     <label>题库名称</label><input id="adj-bank-name" placeholder="题库名称（可选）">
                     <label>增加答题数（负数为减少）</label><input id="adj-answered" type="number" value="0">
@@ -329,7 +336,8 @@ const Admin = {
 
     async banUser(uid, name, ban) {
         if (!confirm(`${ban?'封禁':'解封'} ${name}？`)) return;
-        await this.post('/api/admin/ban-user', { targetUserId: uid, banned: !!ban });
+        const r = await this.post('/api/admin/ban-user', { targetUserId: uid, banned: !!ban });
+        if (!r?.ok) { Utils.showToast(r?.error || '操作失败', 'error'); return; }
         Utils.showToast(ban?'已封禁':'已解封', 'success');
         await this.loadAll(); this.renderUsers();
     },
@@ -393,7 +401,7 @@ const Admin = {
 
     // ==================== 公告 ====================
 
-    renderAnnounce() {
+    async renderAnnounce() {
         document.getElementById('sec-announce').innerHTML = `
             <div class="card">
                 <div class="card-header"><h3>发布公告</h3></div>
@@ -402,14 +410,43 @@ const Admin = {
                     <div class="announce-input"><textarea id="announce-content" placeholder="输入公告内容..."></textarea></div>
                     <button class="btn-login" style="max-width:160px;padding:8px" onclick="Admin.publishAnnounce()">发布公告</button>
                 </div>
-            </div>`;
+            </div>
+            <div class="card" id="announce-list-card" style="margin-top:12px"><div class="card-header"><h3>历史公告</h3></div><div class="empty-state">加载中...</div></div>`;
+        await this.loadAnnouncements();
+    },
+
+    async loadAnnouncements() {
+        try {
+            const r = await fetch(`${API.BASE_URL}/api/admin/announcements?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+            const d = await r.json();
+            const el = document.getElementById('announce-list-card');
+            if (!d?.ok || !d.announcements?.length) {
+                el.innerHTML = `<div class="card-header"><h3>历史公告</h3></div><div class="empty-state">暂无公告</div>`;
+                return;
+            }
+            el.innerHTML = `<div class="card-header"><h3>历史公告</h3></div>` + d.announcements.map(a => `
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--border)">
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all">${Utils.escapeHtml(a.content)}</div>
+                        <div style="font-size:10px;color:var(--text-tertiary);margin-top:4px">${a.created_at?.slice(0,16)||''} · ID:${a.id}</div>
+                    </div>
+                    <button class="abtn danger" style="padding:2px 8px;font-size:10px;margin-left:8px;flex-shrink:0" onclick="Admin.deleteAnnounce(${a.id})">删除</button>
+                </div>
+            `).join('');
+        } catch (e) { console.error(e); }
     },
 
     async publishAnnounce() {
         const content = document.getElementById('announce-content').value.trim();
         if (!content) { Utils.showToast('请输入内容', 'error'); return; }
         const r = await this.post('/api/admin/announce', { content });
-        if (r?.ok) { Utils.showToast('已发布', 'success'); document.getElementById('announce-content').value = ''; }
+        if (r?.ok) { Utils.showToast('已发布', 'success'); document.getElementById('announce-content').value = ''; await this.loadAnnouncements(); }
+    },
+
+    async deleteAnnounce(id) {
+        if (!confirm('删除这条公告？')) return;
+        const r = await this.post('/api/admin/delete-announcement', { id });
+        if (r?.ok) { Utils.showToast('已删除', 'success'); await this.loadAnnouncements(); }
     },
 
     // ==================== 导出 ====================

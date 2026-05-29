@@ -44,6 +44,9 @@ const App = {
         if (!API.isRegistered()) {
             setTimeout(() => API.showRegisterModal(), 1500);
         }
+
+        // 检查公告
+        API.checkAnnounce();
     },
 
     loadData() {

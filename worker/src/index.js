@@ -106,6 +106,10 @@ export default {
             // GET /api/admin/user-detail/:id
             if (method === 'GET' && path.startsWith('/api/admin/user-detail/')) {
                 const uid = path.split('/api/admin/user-detail/')[1];
+                const deviceId = url.searchParams.get('deviceId') || '';
+                const password = url.searchParams.get('password') || '';
+                const admin = await requireAdmin(deviceId, password, env);
+                if (!admin) return error('无权限', 403, origin);
                 return await handleAdminUserDetail(uid, env, origin);
             }
 
@@ -137,6 +141,16 @@ export default {
             // POST /api/admin/announce
             if (method === 'POST' && path === '/api/admin/announce') {
                 return await handleAdminAnnounce(request, env, origin);
+            }
+
+            // GET /api/admin/announcements
+            if (method === 'GET' && path === '/api/admin/announcements') {
+                return await handleAdminListAnnouncements(url, env, origin);
+            }
+
+            // POST /api/admin/delete-announcement
+            if (method === 'POST' && path === '/api/admin/delete-announcement') {
+                return await handleAdminDeleteAnnouncement(request, env, origin);
             }
 
             // POST /api/admin/adjust-stats
@@ -724,6 +738,32 @@ async function handleGetAnnounce(env, origin) {
     return json({ ok: true, announce }, 200, origin);
 }
 
+// ========== 管理员：公告列表 ==========
+async function handleAdminListAnnouncements(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId');
+    const password = url.searchParams.get('password');
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const rows = await env.DB.prepare(
+        'SELECT id, content, created_at FROM announcements ORDER BY id DESC LIMIT 50'
+    ).all();
+
+    return json({ ok: true, announcements: rows.results || [] }, 200, origin);
+}
+
+// ========== 管理员：删除公告 ==========
+async function handleAdminDeleteAnnouncement(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, id } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!id) return error('缺少 id', 400, origin);
+
+    await env.DB.prepare('DELETE FROM announcements WHERE id = ?').bind(id).run();
+    return json({ ok: true }, 200, origin);
+}
+
 // ========== 管理员：手动调整用户数据 ==========
 async function handleAdminAdjustStats(request, env, origin) {
     const body = await request.json();
@@ -731,6 +771,9 @@ async function handleAdminAdjustStats(request, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
     if (!targetUserId || !bankId) return error('缺少参数', 400, origin);
+    if (answered !== undefined && (typeof answered !== 'number' || answered < 0)) return error('answered 必须为非负数', 400, origin);
+    if (correct !== undefined && (typeof correct !== 'number' || correct < 0)) return error('correct 必须为非负数', 400, origin);
+    if (duration !== undefined && (typeof duration !== 'number' || duration < 0)) return error('duration 必须为非负数', 400, origin);
 
     const now = new Date().toISOString();
     await env.DB.prepare(`
@@ -756,6 +799,7 @@ async function handleAdminChangeSyncCode(request, env, origin) {
     if (newSyncCode.length < 4 || newSyncCode.length > 8) return error('同步码4-8位', 400, origin);
 
     const code = newSyncCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4,8}$/.test(code)) return error('同步码仅支持大写字母和数字', 400, origin);
 
     // 检查新同步码是否已存在
     const exists = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(code).first();
@@ -778,6 +822,13 @@ async function handleAdminRemoveDevice(request, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
     if (!targetDeviceId) return error('缺少参数', 400, origin);
+
+    // 检查设备是否存在
+    const dev = await env.DB.prepare('SELECT user_id FROM devices WHERE device_id = ?').bind(targetDeviceId).first();
+    if (!dev) return error('设备不存在', 404, origin);
+    // 检查用户是否还有其他设备
+    const count = await env.DB.prepare('SELECT COUNT(*) as cnt FROM devices WHERE user_id = ?').bind(dev.user_id).first();
+    if (count.cnt <= 1) return error('该用户只有一个设备，无法解绑', 400, origin);
 
     await env.DB.prepare('DELETE FROM devices WHERE device_id = ?').bind(targetDeviceId).run();
 
