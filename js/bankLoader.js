@@ -26,7 +26,12 @@ const BankLoader = {
      */
     async loadBankList() {
         try {
-            const data = await API.request('/api/banks');
+            console.log('[BankLoader] 获取题库列表...');
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 5000);
+            const data = await API.request('/api/banks', { signal: controller.signal });
+            clearTimeout(timer);
+            console.log('[BankLoader] 题库列表响应:', data);
             if (data?.ok && data.banks) return data.banks;
         } catch (e) {
             console.warn('[BankLoader] 获取题库列表失败:', e.message);

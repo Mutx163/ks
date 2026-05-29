@@ -79,13 +79,16 @@ const API = {
 
     async request(path, options = {}) {
         try {
-            const res = await fetch(this.BASE_URL + path, {
+            const url = this.BASE_URL + path;
+            console.log('[API] 请求:', url);
+            const res = await fetch(url, {
                 headers: { 'Content-Type': 'application/json' },
                 ...options
             });
+            console.log('[API] 响应:', res.status, res.ok);
             const data = await res.json();
             if (!res.ok) {
-                console.warn('[API]', data.error || '请求失败');
+                console.warn('[API] 错误:', data.error || '请求失败');
                 return null;
             }
             return data;
