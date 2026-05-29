@@ -428,6 +428,33 @@
     transform: scale(1.15);
 }
 
+.btn-ai {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid var(--primary);
+    border-radius: 16px;
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.btn-ai:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.btn-ai svg {
+    width: 14px;
+    height: 14px;
+}
+
 .question-body {
     padding: var(--space-5);
 }

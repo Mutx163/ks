@@ -505,6 +505,7 @@ const Quiz = {
                     </div>
                     <div class="question-actions">
                         ${question.category ? `<span class="question-category">${Utils.escapeHtml(question.category)}</span>` : ''}
+                        <button class="btn-ai" onclick="Quiz.openAIAnalysis(${question.id})" title="AI解析" aria-label="AI解析">${Utils.icon('sparkles')} AI</button>
                         ${!isReviewMode ? `<button class="btn-bookmark ${Storage.isBookmarked(this.state.bankId, question.id) ? 'active' : ''}" onclick="Quiz.toggleBookmark(${question.id})" title="收藏" aria-label="收藏此题">${Storage.isBookmarked(this.state.bankId, question.id) ? Utils.icon('star', 'filled') : Utils.icon('star')}</button>` : ''}
                     </div>
                 </div>
@@ -1142,6 +1143,38 @@ const Quiz = {
         const isBookmarked = Storage.toggleBookmark(this.state.bankId, questionId);
         Utils.showToast(isBookmarked ? '已收藏' : '已取消收藏', 'success', 1500);
         this.renderQuestion();
+    },
+
+    /**
+     * 打开 AI 解析页面
+     * @param {number} questionId - 题目 ID
+     */
+    openAIAnalysis(questionId) {
+        const question = this.state.questions.find((q) => q.id === questionId);
+        if (!question) return;
+
+        // 构建搜索关键词：题目内容 + 选项（如果有）
+        let keyword = question.question;
+        if (question.options && question.options.length > 0) {
+            keyword += ' ' + question.options.join(' ');
+        }
+
+        // 清理关键词：移除 markdown 标记、多余空格
+        keyword = keyword
+            .replace(/```[\s\S]*?```/g, '') // 移除代码块
+            .replace(/`[^`]*`/g, '') // 移除行内代码
+            .replace(/\$[^$]*\$/g, '') // 移除 LaTeX 公式
+            .replace(/[#*_~\[\]()]/g, '') // 移除 markdown 符号
+            .replace(/\s+/g, ' ') // 合并空格
+            .trim();
+
+        // 截取前 200 字符避免 URL 过长
+        if (keyword.length > 200) {
+            keyword = keyword.substring(0, 200);
+        }
+
+        const url = `https://metaso.cn/?q=${encodeURIComponent(keyword)}`;
+        window.open(url, '_blank');
     },
 
     prevQuestion() {
