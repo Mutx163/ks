@@ -475,10 +475,17 @@ const Admin = {
 
     async getWithAuth(path, pwd) {
         try {
-            const r = await fetch(API.BASE_URL + path, { headers: { 'X-Admin-Password': pwd, 'X-Admin-Device-Id': API.getDeviceId() } });
+            const url = API.BASE_URL + path;
+            console.log('[Admin] GET:', url);
+            const r = await fetch(url, { headers: { 'X-Admin-Password': pwd, 'X-Admin-Device-Id': API.getDeviceId() } });
+            console.log('[Admin] Response:', r, 'type:', typeof r, 'isResponse:', r instanceof Response, 'ok:', r?.ok, 'status:', r?.status);
+            if (!r || typeof r.json !== 'function') {
+                console.error('[Admin] 非标准 Response:', r);
+                return { ok: false, error: '无效的响应对象' };
+            }
             if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
             return await r.json();
-        } catch (e) { return { ok: false, error: e.message }; }
+        } catch (e) { console.error('[Admin] 请求异常:', e); return { ok: false, error: e.message }; }
     },
 
     fmtN(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; },
