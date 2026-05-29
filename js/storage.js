@@ -578,11 +578,13 @@ const Storage = {
     getGlobalStats() {
         const banks = this.getBanks();
         const progress = this.getProgress();
+        const history = this.getHistory();
 
         let totalQuestions = 0;
         let totalAnswered = 0;
         let totalCorrect = 0;
         let totalWrong = 0;
+        let totalDuration = 0;
 
         banks.forEach((bank) => {
             totalQuestions += bank.questions?.length || bank.questionCount || 0;
@@ -592,12 +594,18 @@ const Storage = {
             totalWrong += bankProgress.wrong || 0;
         });
 
+        // 计算总学习时长（秒）
+        history.forEach((record) => {
+            totalDuration += record.duration || 0;
+        });
+
         return {
             bankCount: banks.length,
             totalQuestions,
             totalAnswered,
             totalCorrect,
             totalWrong,
+            totalDuration,
             accuracy: totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0
         };
     },

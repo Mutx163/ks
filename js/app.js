@@ -193,6 +193,15 @@ const App = {
         const circumference = 2 * Math.PI * 34; // r=34
         const offset = circumference - (accuracy / 100) * circumference;
 
+        // 格式化学习时长
+        const formatDuration = (seconds) => {
+            if (seconds < 60) return `${seconds}秒`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟`;
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            return mins > 0 ? `${hours}小时${mins}分钟` : `${hours}小时`;
+        };
+
         el.innerHTML = `
             <div class="stats-grid">
                 <div class="stat-card stat-card-compact">
@@ -206,6 +215,10 @@ const App = {
                 <div class="stat-card stat-card-compact">
                     <div class="stat-label">已答题数</div>
                     <div class="stat-value success">${Utils.formatNumber(stats.totalAnswered)}</div>
+                </div>
+                <div class="stat-card stat-card-compact">
+                    <div class="stat-label">学习时长</div>
+                    <div class="stat-value">${formatDuration(stats.totalDuration || 0)}</div>
                 </div>
                 <div class="stat-card stat-card-accuracy">
                     <div class="stat-label">正确率</div>
