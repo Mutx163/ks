@@ -1203,6 +1203,12 @@ const Quiz = {
             case 'felo':
                 url = `https://felo.ai/search?q=${encodedKeyword}`;
                 break;
+            case 'andi':
+                url = `https://andisearch.com/?q=${encodedKeyword}`;
+                break;
+            case 'baidu':
+                url = `https://www.baidu.com/s?wd=${encodedKeyword}`;
+                break;
             case 'custom':
                 if (customEngine && customEngine.includes('{keyword}')) {
                     url = customEngine.replace('{keyword}', encodedKeyword);

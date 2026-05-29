@@ -743,6 +743,8 @@ const App = {
             <select id="setting-ai-engine">
                 <option value="metaso" ${aiEngine === 'metaso' ? 'selected' : ''}>秘塔搜索 (metaso.cn)</option>
                 <option value="felo" ${aiEngine === 'felo' ? 'selected' : ''}>Felo AI (felo.ai)</option>
+                <option value="andi" ${aiEngine === 'andi' ? 'selected' : ''}>Andi Search (andisearch.com)</option>
+                <option value="baidu" ${aiEngine === 'baidu' ? 'selected' : ''}>百度搜索 (baidu.com)</option>
                 <option value="custom" ${aiEngine === 'custom' ? 'selected' : ''}>自定义引擎</option>
             </select>
             <div id="custom-engine-wrap" style="display: ${aiEngine === 'custom' ? 'block' : 'none'}; margin-top: 8px;">
