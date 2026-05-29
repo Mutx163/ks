@@ -2,11 +2,24 @@
 
 /* ===== 加载骨架屏 ===== */
 #loading-skeleton {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     animation: fadeIn 0.3s ease;
 }
 
 #loading-skeleton.hidden {
     display: none;
+}
+
+#loading-skeleton .skel-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .skel-hero {
@@ -92,29 +105,6 @@
     30% { opacity: 1; }
 }
 
-.skel-card {
-    height: 140px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    position: relative;
-    overflow: hidden;
-}
-
-.skel-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(102,126,234,0.12), transparent);
-    animation: skel-shimmer 1.5s infinite;
-}
-
-@keyframes skel-shimmer {
-    to { transform: translateX(100%); }
-}
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(8px); }
