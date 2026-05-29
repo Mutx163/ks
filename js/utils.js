@@ -458,7 +458,7 @@ const Utils = {
      * @param {string} [options.size] - 尺寸：'sm' | 'md' | 'lg'
      * @returns {HTMLElement} 模态框元素
      */
-    showModal({ title, content, buttons = [], size = 'md', onClose }) {
+    showModal({ title, content, buttons = [], size = 'md', closable = true, onClose }) {
         const id = 'modal-' + this.generateId();
         const sizeClass = size === 'sm' ? 'modal-sm' : size === 'lg' ? 'modal-lg' : '';
 
@@ -469,12 +469,14 @@ const Utils = {
             })
             .join('');
 
+        const closeBtnHtml = closable ? '<button class="modal-close" data-modal-close aria-label="关闭">×</button>' : '';
+
         const modalHtml = `
             <div class="modal-overlay show" id="${id}">
                 <div class="modal-content ${sizeClass}">
                     <div class="modal-header">
                         <h3 class="modal-title">${title}</h3>
-                        <button class="modal-close" data-modal-close aria-label="关闭">×</button>
+                        ${closeBtnHtml}
                     </div>
                     <div class="modal-body">${content}</div>
                     <div class="modal-footer">${buttonsHtml}</div>
@@ -502,25 +504,25 @@ const Utils = {
             }
         });
 
-        // 关闭按钮
-        const closeBtn = overlay.querySelector('[data-modal-close]');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', close);
+        // 关闭按钮（仅 closable 模式）
+        if (closable) {
+            const closeBtn = overlay.querySelector('[data-modal-close]');
+            if (closeBtn) closeBtn.addEventListener('click', close);
+
+            // 点击遮罩关闭
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) close();
+            });
+
+            // Escape 键关闭
+            const handleEscape = (e) => {
+                if (e.key === 'Escape') {
+                    document.removeEventListener('keydown', handleEscape);
+                    close();
+                }
+            };
+            document.addEventListener('keydown', handleEscape);
         }
-
-        // 点击遮罩关闭
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) close();
-        });
-
-        // Escape 键关闭
-        const handleEscape = (e) => {
-            if (e.key === 'Escape') {
-                document.removeEventListener('keydown', handleEscape);
-                close();
-            }
-        };
-        document.addEventListener('keydown', handleEscape);
 
         return overlay;
     }

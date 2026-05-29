@@ -343,6 +343,7 @@ const API = {
 
             Utils.showModal({
                 title: '🏆 加入排行榜',
+                closable: false,
                 content: `
                     <div style="margin-bottom: 16px;">
                         <p style="color: var(--text-secondary); margin-bottom: 12px;">
@@ -416,14 +417,7 @@ const API = {
                             });
                         }
                     },
-                    {
-                        label: '以后再说',
-                        class: 'btn-ghost',
-                        onClick: (modal) => {
-                            modal.remove();
-                            resolve(false);
-                        }
-                    }
+                    // 无跳过按钮，必须注册或绑定
                 ],
                 size: 'sm'
             });
