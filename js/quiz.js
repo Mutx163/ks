@@ -1222,59 +1222,7 @@ const Quiz = {
                 break;
         }
 
-        this.showAISearchPanel(url);
-    },
-
-    /**
-     * 显示 AI 搜索浮窗
-     */
-    showAISearchPanel(url) {
-        // 移除已有的浮窗
-        const existing = document.getElementById('ai-search-panel');
-        if (existing) existing.remove();
-
-        const panel = document.createElement('div');
-        panel.id = 'ai-search-panel';
-        panel.className = 'ai-search-panel';
-        panel.innerHTML = `
-            <div class="ai-search-header">
-                <span>AI 搜索</span>
-                <div class="ai-search-actions">
-                    <button onclick="window.open('${url}', '_blank')" title="新窗口打开">${Utils.icon('external-link')}</button>
-                    <button onclick="Quiz.closeAISearchPanel()" title="关闭">${Utils.icon('x')}</button>
-                </div>
-            </div>
-            <iframe src="${url}" class="ai-search-iframe"></iframe>
-        `;
-        document.body.appendChild(panel);
-        Utils.initIcons();
-
-        // 点击遮罩关闭
-        panel.addEventListener('click', (e) => {
-            if (e.target === panel) {
-                this.closeAISearchPanel();
-            }
-        });
-
-        // ESC 关闭
-        const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                this.closeAISearchPanel();
-                document.removeEventListener('keydown', escHandler);
-            }
-        };
-        document.addEventListener('keydown', escHandler);
-    },
-
-    /**
-     * 关闭 AI 搜索浮窗
-     */
-    closeAISearchPanel() {
-        const panel = document.getElementById('ai-search-panel');
-        if (panel) {
-            panel.classList.add('closing');
-            setTimeout(() => panel.remove(), 200);
-        }
+        window.open(url, '_blank');
     },
 
     prevQuestion() {
