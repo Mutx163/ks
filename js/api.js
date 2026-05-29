@@ -8,6 +8,8 @@
  *   进度变更 → 定时推送进度到云端（防抖 5 秒）
  */
 
+import StorageMod from './storage.js';
+
 const API = {
     BASE_URL: 'https://ks-api.mutx163.workers.dev',
 
@@ -167,7 +169,7 @@ const API = {
         const data = await this.request(`/api/cloud-data/${this.getDeviceId()}`);
         if (!data || !data.ok) return;
 
-        const Storage = window.Storage;
+        const Storage = StorageMod;
         if (!Storage) return;
 
         // 合并设置（云端优先，但保留本地特有的字段）
@@ -189,7 +191,7 @@ const API = {
      * 推送所有本地数据到云端
      */
     async pushAll() {
-        const Storage = window.Storage;
+        const Storage = StorageMod;
         if (!Storage) return;
 
         // 推送设置
@@ -259,7 +261,7 @@ const API = {
      * 收集本地答题统计数据（用于绑定时合并到云端）
      */
     _collectLocalStats() {
-        const Storage = window.Storage;
+        const Storage = StorageMod;
         if (!Storage) return [];
         const progress = Storage.getProgress();
         const banks = Storage.getBanks();
@@ -283,7 +285,7 @@ const API = {
      * 合并云端进度到本地（取各 bankId 的较大值）
      */
     _mergeProgress(cloudProgress) {
-        const Storage = window.Storage;
+        const Storage = StorageMod;
         if (!Storage) return;
         const local = Storage.getProgress();
         let changed = false;
