@@ -18,7 +18,6 @@ const App = {
 
     async init() {
         window._pageStartTime = window._pageStartTime || Date.now();
-        BankLoader.removeDeprecatedBanks(new Set(['engineering-mechanics', '工程力学']));
         await BankLoader.loadAllBuiltinBanks();
 
         // 云同步（静默，3秒超时，失败不影响本地）
@@ -149,32 +148,44 @@ const App = {
     async loadAnnouncement() {
         const el = document.getElementById('smart-banner');
         if (!el) return;
+        const CACHE_KEY = 'ks_cached_announce';
+
+        // 从缓存恢复
+        const cached = (() => { try { return localStorage.getItem(CACHE_KEY); } catch { return null; } })();
+        if (cached) this._renderAnnounceWrap(el, cached);
+
         try {
-            const data = await API.request('/api/announce');
-            console.log('[公告]', data);
-            if (data?.ok && data.announce?.content) {
-                const text = Utils.escapeHtml(data.announce.content.replace(/\n/g, ' '));
-                el.innerHTML = `
-                    <div class="announce-banner">
-                        <div class="announce-badge">公告</div>
-                        <div class="announce-scroll-wrap" id="announce-scroll-wrap">
-                            <div class="announce-scroll-text" id="announce-scroll-text">${text}</div>
-                        </div>
-                    </div>
-                `;
-                el.style.display = '';
-                // 判断是否需要滚动
-                requestAnimationFrame(() => {
-                    const wrap = document.getElementById('announce-scroll-wrap');
-                    const txt = document.getElementById('announce-scroll-text');
-                    if (wrap && txt && txt.scrollWidth > wrap.clientWidth) {
-                        wrap.classList.add('overflow');
-                    }
-                });
-            } else {
+            // 用 POST 请求（与注册/同步同模式，绕过校园网对 GET 的限制）
+            const d = await API.request('/api/announce', { method: 'POST' });
+            if (d?.ok && d.announce?.content) {
+                const text = Utils.escapeHtml(d.announce.content.replace(/\n/g, ' '));
+                try { localStorage.setItem(CACHE_KEY, text); } catch {}
+                this._renderAnnounceWrap(el, text);
+            } else if (!cached) {
                 el.style.display = 'none';
             }
-        } catch { el.style.display = 'none'; }
+        } catch {
+            if (!cached) el.style.display = 'none';
+        }
+    },
+
+    _renderAnnounceWrap(el, text) {
+        el.innerHTML = `
+            <div class="announce-banner">
+                <div class="announce-badge">公告</div>
+                <div class="announce-scroll-wrap" id="announce-scroll-wrap">
+                    <div class="announce-scroll-text" id="announce-scroll-text">${text}</div>
+                </div>
+            </div>
+        `;
+        el.style.display = '';
+        requestAnimationFrame(() => {
+            const wrap = document.getElementById('announce-scroll-wrap');
+            const txt = document.getElementById('announce-scroll-text');
+            if (wrap && txt && txt.scrollWidth > wrap.clientWidth) {
+                wrap.classList.add('overflow');
+            }
+        });
     },
 
     scrollToBankGrid() {

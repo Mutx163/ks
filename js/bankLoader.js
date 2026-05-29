@@ -1,17 +1,14 @@
 /**
  * 统一题库加载服务
- * 解决 app.js、quiz.js、insights.js 各自独立实现题库加载的问题
+ * 从云端 API 加载题库，支持本地缓存
  */
 
 import Storage from './storage.js';
-import { builtinBanks } from './config.js';
+import API from './api.js';
 
 const CACHE_KEY = 'quiz_cache_versions';
 
 const BankLoader = {
-    /**
-     * 获取缓存的版本信息
-     */
     _getCacheVersions() {
         try {
             return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
@@ -20,42 +17,44 @@ const BankLoader = {
         }
     },
 
-    /**
-     * 保存版本缓存
-     */
     _saveCacheVersions(versions) {
         localStorage.setItem(CACHE_KEY, JSON.stringify(versions));
     },
 
     /**
-     * 加载单个题库（带版本缓存）
-     * @param {string} filename - 题库文件名，如 'c-language.json'
-     * @returns {Promise<object|null>} - 返回题库数据或 null
+     * 从云端获取题库列表（不含题目详情）
      */
-    async loadBank(filename) {
+    async loadBankList() {
+        try {
+            const data = await API.request('/api/banks');
+            if (data?.ok && data.banks) return data.banks;
+        } catch (e) {
+            console.warn('[BankLoader] 获取题库列表失败:', e.message);
+        }
+        return [];
+    },
+
+    /**
+     * 从云端加载单个题库完整数据（带版本缓存）
+     */
+    async loadBank(bankId) {
         const cacheVersions = this._getCacheVersions();
 
         try {
-            const bankId = filename.replace('.json', '');
             const existing = Storage.getBank(bankId);
-
-            // 如果已有完整数据且版本匹配，直接返回缓存
             if (existing && existing.questions && cacheVersions[bankId] === existing.version) {
                 return existing;
             }
 
-            const response = await fetch(`banks/${filename}`);
-            if (!response.ok) {
-                console.error(`Failed to load ${filename}: HTTP ${response.status}`);
+            const data = await API.request(`/api/bank/${bankId}`);
+            if (!data?.ok || !data.bank) {
+                console.error('[BankLoader] 加载题库失败:', bankId);
                 return null;
             }
 
-            const bank = await response.json();
-
-            // 检查是否需要更新：无此题库、版本不同、或内存中没有完整题目
+            const bank = data.bank;
             const localBank = Storage.getBank(bank.id);
-            const needsUpdate =
-                !localBank || localBank.version !== bank.version || !localBank.questions;
+            const needsUpdate = !localBank || localBank.version !== bank.version || !localBank.questions;
 
             if (needsUpdate) {
                 Storage.addBank(bank);
@@ -65,52 +64,39 @@ const BankLoader = {
 
             return bank;
         } catch (e) {
-            console.error(`Failed to load ${filename}:`, e);
+            console.error('[BankLoader] 加载题库异常:', bankId, e);
             return null;
         }
     },
 
     /**
-     * 加载所有内置题库（带版本缓存）
-     * @returns {Promise<object[]>} - 返回成功加载的题库数组
+     * 加载所有题库
      */
     async loadAllBuiltinBanks() {
-        const results = await Promise.all(
-            builtinBanks.map(filename => this.loadBank(filename))
-        );
+        const list = await this.loadBankList();
+        if (!list.length) {
+            console.warn('[BankLoader] 无可用题库');
+            return [];
+        }
+        const results = await Promise.all(list.map(b => this.loadBank(b.id)));
         return results.filter(Boolean);
     },
 
     /**
      * 按 ID 加载指定题库
-     * @param {string} bankId - 题库 ID
-     * @returns {Promise<object|null>} - 返回题库数据或 null
      */
     async loadBankById(bankId) {
-        // 先检查内存缓存
         const existing = Storage.getBank(bankId);
         if (existing && existing.questions) {
             return existing;
         }
-
-        // 遍历内置题库文件，加载后匹配 ID
-        for (const filename of builtinBanks) {
-            const bank = await this.loadBank(filename);
-            if (bank && bank.id === bankId) {
-                return bank;
-            }
-        }
-
-        console.error(`Bank not found: ${bankId}`);
-        return null;
+        return await this.loadBank(bankId);
     },
 
     /**
      * 移除废弃题库并清理相关数据
-     * @param {Set<string>} deprecatedIds - 废弃题库 ID 集合
      */
     removeDeprecatedBanks(deprecatedIds) {
-        // 清除 Storage 中的题库数据
         Storage.getBanks().forEach((bank) => {
             if (deprecatedIds.has(bank.id) || deprecatedIds.has(bank.name)) {
                 deprecatedIds.add(bank.id);
@@ -119,13 +105,11 @@ const BankLoader = {
 
         deprecatedIds.forEach((bankId) => Storage.removeBank(bankId));
 
-        // 清除历史记录
         const history = Storage.getHistory().filter(
             (record) => !deprecatedIds.has(record.bankId) && !deprecatedIds.has(record.bankName)
         );
         Storage.set(Storage.KEYS.HISTORY, history);
 
-        // 清除会话状态
         const sessions = Storage.get(Storage.KEYS.SESSION) || {};
         for (const key of Object.keys(sessions)) {
             const [bankId] = key.split(':');
@@ -135,7 +119,6 @@ const BankLoader = {
         }
         Storage.set(Storage.KEYS.SESSION, sessions);
 
-        // 清除版本缓存
         const cacheVersions = this._getCacheVersions();
         deprecatedIds.forEach((bankId) => {
             delete cacheVersions[bankId];
