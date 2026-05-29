@@ -26,7 +26,8 @@ const Admin = {
         const err = document.getElementById('login-error');
         err.style.display = 'none';
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(pwd)}`);
+            const r = await fetch(`${API.BASE_URL}/api/admin/users`, { headers: { 'X-Admin-Password': pwd, 'X-Admin-Device-Id': API.getDeviceId() } });
+            if (!r.ok) { err.textContent = `服务器错误 ${r.status}`; err.style.display = 'block'; return; }
             const d = await r.json();
             if (d.ok) {
                 sessionStorage.setItem('admin_pwd', pwd);
@@ -47,7 +48,7 @@ const Admin = {
 
     async loadAll() {
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/users?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+            const r = await this.get('/api/admin/users');
             const d = await r.json();
             if (!d.ok) { sessionStorage.removeItem('admin_pwd'); location.reload(); return; }
             this.users = d.users;
@@ -79,7 +80,7 @@ const Admin = {
         const el = document.getElementById('sec-overview');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/overview?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+            const r = await this.get('/api/admin/overview');
             const d = await r.json();
             if (!d.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
 
@@ -176,7 +177,7 @@ const Admin = {
     async detail(uid) {
         const p = document.getElementById('detail-panel');
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/user-detail/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+            const r = await this.get(`/api/admin/user-detail/${uid}`);
             const d = await r.json();
             if (!d?.ok) return;
             const u = d.user, ta = d.stats.reduce((s, x) => s + x.answered, 0), tc = d.stats.reduce((s, x) => s + x.correct, 0), td = d.stats.reduce((s, x) => s + x.duration, 0);
@@ -194,7 +195,7 @@ const Admin = {
                     <div class="d-item"><div class="dl">时长</div><div class="dv">${this.fmtDur(td)}</div></div>
                     <div class="d-item"><div class="dl">题库</div><div class="dv">${d.stats.length}个</div></div>
                 </div>
-                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">设备列表</div>${d.devices.map(x=>{const jsd=Utils.jsSafe(x.device_id);return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis">${x.device_id}</code><span style="color:var(--text-tertiary)">${x.bound_at?.slice(0,10)||''}</span><button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="Admin.removeDevice('${jsd}','${jsu}')">解绑</button></div>`;}).join('')}`:''}
+                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">设备列表</div>${d.devices.map(x=>{const jsd=Utils.jsSafe(x.device_id);return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis">${Utils.escapeHtml(x.device_id)}</code><span style="color:var(--text-tertiary)">${x.bound_at?.slice(0,10)||''}</span><button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="Admin.removeDevice('${jsd}','${jsu}')">解绑</button></div>`;}).join('')}`:''}
                 ${d.stats.length?`<div style="font-size:11px;color:var(--text-tertiary);margin:8px 0 4px">题库明细</div><table style="font-size:11px"><thead><tr><th style="text-align:left;padding:4px 6px">题库</th><th style="text-align:right;padding:4px 6px">答题</th><th style="text-align:right;padding:4px 6px">正确</th><th style="text-align:right;padding:4px 6px">正确率</th><th style="text-align:right;padding:4px 6px">时长</th></tr></thead><tbody>${d.stats.map(s=>{const a=s.answered>0?Math.round(s.correct/s.answered*100):0;return`<tr><td style="padding:4px 6px">${Utils.escapeHtml(s.bank_name||s.bank_id)}</td><td style="text-align:right;padding:4px 6px">${s.answered}</td><td style="text-align:right;padding:4px 6px">${s.correct}</td><td style="text-align:right;padding:4px 6px">${a}%</td><td style="text-align:right;padding:4px 6px">${this.fmtDur(s.duration)}</td></tr>`}).join('')}</tbody></table>`:''}
                 <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
                     <button class="abtn primary" onclick="Admin.editUser('${jsu}','${jsn}',${u.is_admin?1:0})">编辑信息</button>
@@ -311,8 +312,7 @@ const Admin = {
     // ==================== 查看云端数据 ====================
 
     async viewCloudData(uid) {
-        const r = await fetch(`${API.BASE_URL}/api/admin/user-cloud-data/${uid}?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
-        const d = await r.json();
+        const d = await this.get(`/api/admin/user-cloud-data/${uid}`);
         if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
 
         const settingsStr = Object.keys(d.settings).length ? JSON.stringify(d.settings, null, 2) : '无';
@@ -360,7 +360,7 @@ const Admin = {
         const el = document.getElementById('sec-banks');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/banks?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+            const r = await this.get('/api/admin/banks');
             const d = await r.json();
             if (!d.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
             el.innerHTML = d.banks.length === 0 ? '<div class="empty-state">暂无数据</div>' : `
@@ -383,7 +383,7 @@ const Admin = {
         const el = document.getElementById('sec-activity');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/activity?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
+            const r = await this.get('/api/admin/activity');
             const d = await r.json();
             if (!d.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
             el.innerHTML = d.activity.length === 0 ? '<div class="empty-state">暂无记录</div>' : `
@@ -391,7 +391,7 @@ const Admin = {
                     <div class="card-header"><h3>最近活跃</h3><span class="count">50条</span></div>
                     <div class="timeline">${d.activity.map(a => `
                         <div class="tl-item"><div class="tl-dot"></div><div class="tl-body">
-                            <div class="tl-title"><b>${Utils.escapeHtml(a.initials)}</b> ${a.bank_name||''} · ${a.answered}题 · 正确${a.correct}</div>
+                            <div class="tl-title"><b>${Utils.escapeHtml(a.initials)}</b> ${Utils.escapeHtml(a.bank_name||'')} · ${a.answered}题 · 正确${a.correct}</div>
                             <div class="tl-sub">${this.fmtDur(a.duration)} · ${a.updated_at?.slice(0,16)||''}</div>
                         </div></div>
                     `).join('')}</div>
@@ -417,10 +417,9 @@ const Admin = {
 
     async loadAnnouncements() {
         try {
-            const r = await fetch(`${API.BASE_URL}/api/admin/announcements?deviceId=${API.getDeviceId()}&password=${encodeURIComponent(this.password)}`);
-            const d = await r.json();
+            const d = await this.get('/api/admin/announcements');
             const el = document.getElementById('announce-list-card');
-            if (!d?.ok || !d.announcements?.length) {
+            if (!d || !d.ok || !d.announcements?.length) {
                 el.innerHTML = `<div class="card-header"><h3>历史公告</h3></div><div class="empty-state">暂无公告</div>`;
                 return;
             }
@@ -467,8 +466,17 @@ const Admin = {
     async post(path, body) {
         try {
             const r = await fetch(API.BASE_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body }) });
+            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
             return await r.json();
-        } catch { return null; }
+        } catch (e) { return { ok: false, error: e.message }; }
+    },
+
+    async get(path) {
+        try {
+            const r = await fetch(API.BASE_URL + path, { headers: { 'X-Admin-Password': this.password, 'X-Admin-Device-Id': API.getDeviceId() } });
+            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
+            return await r.json();
+        } catch (e) { return { ok: false, error: e.message }; }
     },
 
     fmtN(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; },
