@@ -468,87 +468,106 @@ const Admin = {
         document.getElementById('bank-questions-list').innerHTML = this._renderQuestionList(bankId, qs);
     },
 
-    // 添加单题
+    // ==================== 题目编辑器 ====================
+
+    _editorHTML(bankId, q, isNew) {
+        const type = q?.type || 'single';
+        const answer = q?.answer || '';
+        const opts = (q?.options || []).join('\n');
+        const diff = q?.difficulty || 1;
+
+        return `
+        <div class="qe-tabs">
+            <button class="qe-tab active" onclick="Admin._switchEditorTab('edit')" id="qe-tab-edit">编辑</button>
+            <button class="qe-tab" onclick="Admin._switchEditorTab('preview')" id="qe-tab-preview">预览</button>
+        </div>
+        <div class="qe-body">
+            <!-- 编辑区 -->
+            <div class="qe-panel active" id="qe-panel-edit">
+                <div class="qe-row">
+                    <div class="qe-field">
+                        <label>题型</label>
+                        <select id="eq-type" onchange="Admin._onTypeChange()">
+                            <option value="single" ${type==='single'?'selected':''}>单选题</option>
+                            <option value="multi" ${type==='multi'?'selected':''}>多选题</option>
+                            <option value="judge" ${type==='judge'?'selected':''}>判断题</option>
+                            <option value="essay" ${type==='essay'?'selected':''}>简答题</option>
+                        </select>
+                    </div>
+                    <div class="qe-field">
+                        <label>难度</label>
+                        <div class="qe-stars" id="eq-diff-stars">
+                            ${[1,2,3].map(i => `<span class="qe-star ${i<=diff?'on':''}" onclick="Admin._setDiff(${i})">★</span>`).join('')}
+                        </div>
+                        <input type="hidden" id="eq-difficulty" value="${diff}">
+                    </div>
+                </div>
+
+                <div class="qe-field">
+                    <label>分类</label>
+                    <input id="eq-category" value="${Utils.escapeHtml(q?.category||'')}" placeholder="如: 编程指令、坐标系">
+                </div>
+
+                <div class="qe-field">
+                    <label>题目内容</label>
+                    <textarea id="eq-question" rows="3" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q?.question||'')}</textarea>
+                </div>
+
+                <div class="qe-field" id="eq-options-wrap" ${type==='judge'||type==='essay'?'style=display:none':''}>
+                    <label>选项 <span class="qe-hint">每行一个，自动编号</span></label>
+                    <textarea id="eq-options" rows="5" placeholder="A. 选项1\nB. 选项2\nC. 选项3\nD. 选项4" oninput="Admin._preview()">${Utils.escapeHtml(opts)}</textarea>
+                </div>
+
+                <div class="qe-field" id="eq-answer-section">
+                    <label>答案</label>
+                    <div class="qe-answer-btns" id="eq-answer-btns" ${type==='judge'||type==='essay'?'style=display:none':''}>
+                        ${'ABCDEFGH'.split('').map(l => `<button type="button" class="qe-ans-btn ${(answer+'').includes(l)?'active':''}" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
+                    </div>
+                    <div class="qe-judge-btns" id="eq-judge-wrap" ${type==='judge'?'':'style=display:none'}>
+                        <button type="button" class="qe-judge-btn ${answer===true?'active':''}" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
+                        <button type="button" class="qe-judge-btn ${answer===false?'active':''}" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
+                    </div>
+                    <input type="hidden" id="eq-answer" value="${Utils.escapeHtml(String(answer))}">
+                </div>
+
+                <div class="qe-field">
+                    <label>解析 <span class="qe-hint">可选</span></label>
+                    <textarea id="eq-explanation" rows="3" placeholder="答案解析..." oninput="Admin._preview()">${Utils.escapeHtml(q?.explanation||'')}</textarea>
+                </div>
+            </div>
+
+            <!-- 预览区 -->
+            <div class="qe-panel" id="qe-panel-preview">
+                <div id="eq-preview"></div>
+            </div>
+        </div>
+        <div class="qe-footer">
+            <span class="qe-info">${isNew ? '新题目' : 'ID: ' + q.id}</span>
+            <div class="qe-actions">
+                <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
+                <button class="mp" onclick="${isNew ? `Admin.saveNewQuestion('${bankId}')` : `Admin.saveEditQuestion('${bankId}',${q.id})`}">${isNew ? '添加' : '保存'}</button>
+            </div>
+        </div>`;
+    },
+
     addQuestion(bankId) {
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box" style="max-width:700px;max-height:85vh;overflow-y:auto;padding:0">
-                    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-                        <h3 style="margin:0">添加题目</h3>
+                <div class="qe-modal">
+                    <div class="qe-header">
+                        <h3>添加题目</h3>
                         <button class="close-btn" onclick="this.closest('.modal-mask').remove()">✕</button>
                     </div>
-                    <div style="display:flex;gap:0">
-                        <div style="flex:1;padding:16px 20px;border-right:1px solid var(--border);overflow-y:auto;max-height:70vh">
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-                                <div>
-                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题型</label>
-                                    <select id="eq-type" style="width:100%" onchange="Admin._onTypeChange()"><option value="single">单选题</option><option value="multi">多选题</option><option value="judge">判断题</option><option value="essay">简答题</option></select>
-                                </div>
-                                <div>
-                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">难度</label>
-                                    <div id="eq-diff-stars" style="line-height:32px">${[1,2,3].map(i => `<span class="diff-star ${i===1?'active':''}" onclick="Admin._setDiff(${i})" style="cursor:pointer;font-size:18px;color:${i===1?'#f59e0b':'var(--text-tertiary)'}">★</span>`).join('')}</div>
-                                    <input type="hidden" id="eq-difficulty" value="1">
-                                </div>
-                            </div>
-                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">分类</label>
-                            <input id="eq-category" style="margin-bottom:12px" placeholder="如: 编程指令">
-
-                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题目内容</label>
-                            <textarea id="eq-question" rows="3" style="margin-bottom:12px" placeholder="输入题目内容..." oninput="Admin._preview()"></textarea>
-
-                            <div id="eq-options-wrap" style="margin-bottom:12px">
-                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">选项</label>
-                                <textarea id="eq-options" rows="5" placeholder="A. 选项1\nB. 选项2\nC. 选项3\nD. 选项4" oninput="Admin._preview()"></textarea>
-                            </div>
-
-                            <div id="eq-answer-wrap">
-                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">答案</label>
-                                <div id="eq-answer-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-                                    ${'ABCDEFGH'.split('').map(l => `<button type="button" class="abtn" style="padding:4px 12px;min-width:36px" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
-                                </div>
-                                <div id="eq-judge-wrap" style="display:none;gap:8px;margin-bottom:8px">
-                                    <button type="button" class="abtn" style="padding:6px 20px" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
-                                    <button type="button" class="abtn" style="padding:6px 20px" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
-                                </div>
-                                <input type="hidden" id="eq-answer" value="">
-                            </div>
-
-                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">解析</label>
-                            <textarea id="eq-explanation" rows="3" placeholder="答案解析（可选）" oninput="Admin._preview()"></textarea>
-                        </div>
-
-                        <div style="flex:1;padding:16px 20px;background:var(--bg);overflow-y:auto;max-height:70vh">
-                            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">实时预览</div>
-                            <div id="eq-preview"></div>
-                        </div>
-                    </div>
-                    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
-                        <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
-                        <button class="mp" onclick="Admin.saveNewQuestion('${bankId}')">添加题目</button>
-                    </div>
+                    ${this._editorHTML(bankId, null, true)}
                 </div>
             </div>`;
         this._preview();
     },
 
+
     async saveNewQuestion(bankId) {
-        const type = document.getElementById('eq-type').value;
-        const optionsRaw = document.getElementById('eq-options').value.trim();
-        const options = optionsRaw ? optionsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
-        let answer = document.getElementById('eq-answer').value;
-        if (type === 'judge') answer = answer === 'true';
-
-        const question = {
-            type,
-            category: document.getElementById('eq-category').value.trim(),
-            difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
-            question: document.getElementById('eq-question').value.trim(),
-            options,
-            answer,
-            explanation: document.getElementById('eq-explanation').value.trim()
-        };
-
-        if (!question.question) { Utils.showToast('题目内容不能为空', 'error'); return; }
+        const question = this._collectQuestion();
+        if (!question) return;
 
         const r = await this.post(`/api/admin/bank/${bankId}/question`, { question });
         if (r?.ok) {
@@ -560,86 +579,45 @@ const Admin = {
         }
     },
 
-    // 编辑单题
-    async editQuestion(bankId, qid) {
-        const d = await this.get(`/api/admin/bank/${bankId}`);
-        if (!d?.ok) return;
-        const q = (d.bank.questions || []).find(x => x.id === qid);
-        if (!q) { Utils.showToast('题目不存在', 'error'); return; }
+    async saveEditQuestion(bankId, qid) {
+        const question = this._collectQuestion();
+        if (!question) return;
 
-        const opts = (q.options || []).join('\n');
-        const diffStars = [1,2,3].map(i => `<span class="diff-star ${i<=(q.difficulty||1)?'active':''}" onclick="Admin._setDiff(${i})" style="cursor:pointer;font-size:18px;color:${i<=(q.difficulty||1)?'#f59e0b':'var(--text-tertiary)'}">★</span>`).join('');
+        const r = await this.put(`/api/admin/bank/${bankId}/question/${qid}`, { question });
+        if (r?.ok) {
+            Utils.showToast('已保存', 'success');
+            document.querySelector('.modal-mask')?.remove();
+            this.viewBank(bankId);
+        } else {
+            Utils.showToast(r?.error || '保存失败', 'error');
+        }
+    },
 
-        document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box" style="max-width:700px;max-height:85vh;overflow-y:auto;padding:0">
-                    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-                        <h3 style="margin:0">编辑题目 #${qid}</h3>
-                        <button class="close-btn" onclick="this.closest('.modal-mask').remove()">✕</button>
-                    </div>
-                    <div style="display:flex;gap:0">
-                        <!-- 左侧编辑 -->
-                        <div style="flex:1;padding:16px 20px;border-right:1px solid var(--border);overflow-y:auto;max-height:70vh">
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-                                <div>
-                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题型</label>
-                                    <select id="eq-type" style="width:100%" onchange="Admin._onTypeChange()"><option value="single" ${q.type==='single'?'selected':''}>单选题</option><option value="multi" ${q.type==='multi'?'selected':''}>多选题</option><option value="judge" ${q.type==='judge'?'selected':''}>判断题</option><option value="essay" ${q.type==='essay'?'selected':''}>简答题</option></select>
-                                </div>
-                                <div>
-                                    <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">难度</label>
-                                    <div id="eq-diff-stars" style="line-height:32px">${diffStars}</div>
-                                    <input type="hidden" id="eq-difficulty" value="${q.difficulty||1}">
-                                </div>
-                            </div>
-                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">分类</label>
-                            <input id="eq-category" value="${Utils.escapeHtml(q.category||'')}" style="margin-bottom:12px" placeholder="如: 编程指令">
+    _collectQuestion() {
+        const type = document.getElementById('eq-type').value;
+        const optionsRaw = document.getElementById('eq-options').value.trim();
+        const options = optionsRaw ? optionsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+        let answer = document.getElementById('eq-answer').value;
+        if (type === 'judge') answer = answer === 'true' || answer === true;
 
-                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">题目内容</label>
-                            <textarea id="eq-question" rows="3" style="margin-bottom:12px" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q.question||'')}</textarea>
+        const question = {
+            type,
+            category: document.getElementById('eq-category').value.trim(),
+            difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
+            question: document.getElementById('eq-question').value.trim(),
+            options,
+            answer,
+            explanation: document.getElementById('eq-explanation').value.trim()
+        };
 
-                            <div id="eq-options-wrap" style="margin-bottom:12px;${q.type==='judge'||q.type==='essay'?'display:none':''}">
-                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">选项 <span style="font-size:10px;color:var(--text-tertiary)">（每行一个，自动编号）</span></label>
-                                <textarea id="eq-options" rows="5" placeholder="A. 选项1\nB. 选项2\nC. 选项3\nD. 选项4" oninput="Admin._preview()">${Utils.escapeHtml(opts)}</textarea>
-                            </div>
-
-                            <div id="eq-answer-wrap">
-                                <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">答案</label>
-                                <div id="eq-answer-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;${q.type==='judge'||q.type==='essay'?'display:none':''}">
-                                    ${'ABCDEFGH'.split('').map(l => `<button type="button" class="abtn ${(q.answer||'').includes(l)?'primary':''}" style="padding:4px 12px;min-width:36px" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
-                                </div>
-                                <div id="eq-judge-wrap" style="display:${q.type==='judge'?'flex':'none'};gap:8px;margin-bottom:8px">
-                                    <button type="button" class="abtn ${q.answer===true?'primary':''}" style="padding:6px 20px" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
-                                    <button type="button" class="abtn ${q.answer===false?'primary':''}" style="padding:6px 20px" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
-                                </div>
-                                <input type="hidden" id="eq-answer" value="${Utils.escapeHtml(String(q.answer||''))}">
-                            </div>
-
-                            <label style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;display:block">解析</label>
-                            <textarea id="eq-explanation" rows="3" placeholder="答案解析（可选）" oninput="Admin._preview()">${Utils.escapeHtml(q.explanation||'')}</textarea>
-                        </div>
-
-                        <!-- 右侧预览 -->
-                        <div style="flex:1;padding:16px 20px;background:var(--bg);overflow-y:auto;max-height:70vh">
-                            <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">实时预览</div>
-                            <div id="eq-preview"></div>
-                        </div>
-                    </div>
-                    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-                        <span style="font-size:11px;color:var(--text-tertiary)">ID: ${qid} · 修改后将更新版本号</span>
-                        <div style="display:flex;gap:8px">
-                            <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
-                            <button class="mp" onclick="Admin.saveEditQuestion('${bankId}',${qid})">保存修改</button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        this._preview();
+        if (!question.question) { Utils.showToast('题目内容不能为空', 'error'); return null; }
+        return question;
     },
 
     _setDiff(n) {
         document.getElementById('eq-difficulty').value = n;
-        document.querySelectorAll('#eq-diff-stars .diff-star').forEach((s, i) => {
-            s.style.color = i < n ? '#f59e0b' : 'var(--text-tertiary)';
+        document.querySelectorAll('#eq-diff-stars .qe-star').forEach((s, i) => {
+            s.className = i < n ? 'qe-star on' : 'qe-star';
         });
         this._preview();
     },
@@ -664,15 +642,15 @@ const Admin = {
         ansEl.value = ans;
         'ABCDEFGH'.split('').forEach(l => {
             const btn = document.getElementById('eq-ans-' + l);
-            if (btn) btn.className = ans.includes(l) ? 'abtn primary' : 'abtn';
+            if (btn) btn.className = ans.includes(l) ? 'qe-ans-btn active' : 'qe-ans-btn';
         });
         this._preview();
     },
 
     _setJudge(val) {
         document.getElementById('eq-answer').value = val;
-        document.getElementById('eq-judge-true').className = val === true ? 'abtn primary' : 'abtn';
-        document.getElementById('eq-judge-false').className = val === false ? 'abtn primary' : 'abtn';
+        document.getElementById('eq-judge-true').className = val === true ? 'qe-judge-btn active' : 'qe-judge-btn';
+        document.getElementById('eq-judge-false').className = val === false ? 'qe-judge-btn active' : 'qe-judge-btn';
         this._preview();
     },
 
@@ -686,356 +664,42 @@ const Admin = {
         const explanation = document.getElementById('eq-explanation').value;
         const difficulty = parseInt(document.getElementById('eq-difficulty').value) || 1;
         const category = document.getElementById('eq-category').value;
+        const typeLabel = {single:'单选',multi:'多选',judge:'判断',essay:'简答'}[type] || type;
 
-        let html = '';
-        if (category) html += `<div style="font-size:10px;color:var(--accent-primary);margin-bottom:4px">${Utils.escapeHtml(category)}</div>`;
-        html += `<div style="font-size:10px;color:var(--text-tertiary);margin-bottom:8px">${'★'.repeat(difficulty)}${'☆'.repeat(3-difficulty)} · ${type==='single'?'单选':type==='multi'?'多选':type==='judge'?'判断':'简答'}</div>`;
-        html += `<div style="font-size:13px;line-height:1.6;margin-bottom:10px">${Utils.escapeHtml(question) || '<span style="color:var(--text-tertiary)">题目内容...</span>'}</div>`;
+        let html = '<div class="qe-preview-card">';
+        html += '<div class="qe-preview-meta">';
+        if (category) html += `<span class="qe-preview-tag">${Utils.escapeHtml(category)}</span>`;
+        html += `<span class="qe-preview-tag type">${typeLabel}</span>`;
+        html += `<span class="qe-preview-tag">${'★'.repeat(difficulty)}${'☆'.repeat(3-difficulty)}</span>`;
+        html += '</div>';
+        html += `<div class="qe-preview-question">${Utils.escapeHtml(question) || '<span style="color:var(--text-tertiary)">题目内容...</span>'}</div>`;
 
         if (type === 'judge') {
-            html += `<div style="display:flex;gap:8px;margin-bottom:8px"><span style="padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">✓ 正确</span><span style="padding:4px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px">✗ 错误</span></div>`;
-            html += `<div style="font-size:12px;color:var(--text-secondary)">答案: <b>${answer === 'true' ? '✓ 正确' : answer === 'false' ? '✗ 错误' : '未设置'}</b></div>`;
+            html += '<div style="display:flex;gap:8px;margin-bottom:8px">';
+            html += `<div class="qe-preview-opt ${answer===true?'selected':''}">✓ 正确</div>`;
+            html += `<div class="qe-preview-opt ${answer===false?'selected':''}">✗ 错误</div>`;
+            html += '</div>';
         } else if (type !== 'essay') {
             options.forEach((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
-                const isSelected = (answer || '').includes(letter);
-                html += `<div style="padding:6px 10px;margin-bottom:4px;border:1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border)'};border-radius:var(--radius);font-size:12px;background:${isSelected ? 'rgba(102,126,234,0.1)' : 'var(--bg-card)'}">${Utils.escapeHtml(opt)}</div>`;
+                const sel = (answer||'').includes(letter);
+                html += `<div class="qe-preview-opt ${sel?'selected':''}">${Utils.escapeHtml(opt)}</div>`;
             });
+        }
+
+        if (answer && type !== 'judge') {
+            html += `<div class="qe-preview-answer">答案: <b>${Utils.escapeHtml(String(answer))}</b></div>`;
         }
 
         if (explanation) {
-            html += `<div style="margin-top:10px;padding:8px 10px;background:var(--bg-card);border-radius:var(--radius);border-left:3px solid var(--accent-primary)"><div style="font-size:10px;color:var(--text-tertiary);margin-bottom:4px">解析</div><div style="font-size:12px;line-height:1.5;color:var(--text-secondary)">${Utils.escapeHtml(explanation)}</div></div>`;
+            html += '<div class="qe-preview-explain">';
+            html += '<div class="qe-preview-explain-label">解析</div>';
+            html += `<div class="qe-preview-explain-text">${Utils.escapeHtml(explanation)}</div>`;
+            html += '</div>';
         }
 
+        html += '</div>';
         el.innerHTML = html;
-    },
-
-    async saveEditQuestion(bankId, qid) {
-        const type = document.getElementById('eq-type').value;
-        const optionsRaw = document.getElementById('eq-options').value.trim();
-        const options = optionsRaw ? optionsRaw.split('\n').map(s => s.trim()).filter(Boolean) : [];
-        let answer = document.getElementById('eq-answer').value.trim();
-        if (type === 'judge') answer = answer === 'true';
-
-        const question = {
-            type,
-            category: document.getElementById('eq-category').value.trim(),
-            difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
-            question: document.getElementById('eq-question').value.trim(),
-            options,
-            answer,
-            explanation: document.getElementById('eq-explanation').value.trim()
-        };
-
-        const r = await this.put(`/api/admin/bank/${bankId}/question/${qid}`, { question });
-        if (r?.ok) {
-            Utils.showToast('已保存', 'success');
-            document.querySelector('.modal-mask')?.remove();
-            this.viewBank(bankId);
-        } else {
-            Utils.showToast(r?.error || '保存失败', 'error');
-        }
-    },
-
-    // 删除单题
-    async deleteQuestion(bankId, qid) {
-        if (!confirm(`确定删除题目 #${qid}？`)) return;
-        const r = await this.post(`/api/admin/bank/${bankId}/question/${qid}`, {});
-        if (r?.ok) { Utils.showToast('已删除', 'success'); this.viewBank(bankId); }
-    },
-
-    // 上传/替换题库
-    uploadBank(existingId) {
-        document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box" style="max-width:500px">
-                    <h3>${existingId ? '替换题库 ' + existingId : '上传题库'}</h3>
-                    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">JSON格式，含 id, name, questions 字段</p>
-                    <input type="file" id="upload-bank-file" accept=".json" style="margin:12px 0">
-                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.doUploadBank('${existingId||''}')">上传</button></div>
-                </div>
-            </div>`;
-    },
-
-    async doUploadBank(existingId) {
-        const file = document.getElementById('upload-bank-file').files[0];
-        if (!file) { Utils.showToast('请选择文件', 'error'); return; }
-
-        try {
-            const text = await file.text();
-            const data = JSON.parse(text);
-            if (!data.id || !data.name || !data.questions) {
-                Utils.showToast('JSON格式错误，需要 id, name, questions', 'error'); return;
-            }
-
-            const r = await this.post('/api/admin/import-bank', {
-                id: existingId || data.id,
-                name: data.name,
-                description: data.description || '',
-                category: data.category || '',
-                questions: data.questions
-            });
-
-            if (r?.ok) {
-                Utils.showToast(`已导入 ${r.count} 题，版本 v${r.version}`, 'success', 3000);
-                document.querySelector('.modal-mask')?.remove();
-                this.renderBanks();
-            } else {
-                Utils.showToast(r?.error || '导入失败', 'error');
-            }
-        } catch (e) {
-            Utils.showToast('文件解析失败: ' + e.message, 'error');
-        }
-    },
-
-    // 新建题库
-    createBank() {
-        document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box">
-                    <h3>新建题库</h3>
-                    <label>题库ID（英文，如 math-basic）</label><input id="cb-id" placeholder="c-language">
-                    <label>题库名称</label><input id="cb-name" placeholder="C语言基础">
-                    <label>描述</label><input id="cb-desc" placeholder="题库描述（可选）">
-                    <label>分类</label><input id="cb-cat" placeholder="如: 计算机">
-                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.doCreateBank()">创建</button></div>
-                </div>
-            </div>`;
-    },
-
-    async doCreateBank() {
-        const id = document.getElementById('cb-id').value.trim();
-        const name = document.getElementById('cb-name').value.trim();
-        if (!id || !name) { Utils.showToast('ID和名称必填', 'error'); return; }
-
-        const r = await this.post('/api/admin/import-bank', {
-            id, name,
-            description: document.getElementById('cb-desc').value.trim(),
-            category: document.getElementById('cb-cat').value.trim(),
-            questions: []
-        });
-
-        if (r?.ok) {
-            Utils.showToast('题库已创建', 'success');
-            document.querySelector('.modal-mask')?.remove();
-            this.renderBanks();
-        }
-    },
-
-    // 查看修改历史
-    async viewBankHistory(bankId) {
-        const d = await this.get(`/api/admin/bank/${bankId}/history`);
-        if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
-
-        const rows = d.history || [];
-        document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box" style="max-width:500px;max-height:70vh;overflow-y:auto">
-                    <h3>修改历史 - ${bankId}</h3>
-                    ${rows.length === 0 ? '<div class="empty-state">暂无记录</div>' : rows.map(r => `
-                        <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
-                            <div style="display:flex;justify-content:space-between">
-                                <span style="color:var(--text)">${r.action}: ${Utils.escapeHtml(r.detail||'')}</span>
-                                <span style="color:var(--text-tertiary);font-size:10px">${r.created_at?.slice(0,16)||''}</span>
-                            </div>
-                            <div style="font-size:10px;color:var(--text-tertiary)">操作人: ${r.operator||'-'}</div>
-                        </div>
-                    `).join('')}
-                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
-                </div>
-            </div>`;
-    },
-
-    // ==================== 工具 ====================
-
-    async post(path, body) {
-        try {
-            const r = await fetch(API.BASE_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body }) });
-            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
-            return await r.json();
-        } catch (e) { return { ok: false, error: e.message }; }
-    },
-
-    async put(path, body) {
-        try {
-            const r = await fetch(API.BASE_URL + path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body }) });
-            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
-            return await r.json();
-        } catch (e) { return { ok: false, error: e.message }; }
-    },
-
-    // ==================== 活跃 ====================
-
-    async renderActivity() {
-        const el = document.getElementById('sec-activity');
-        el.innerHTML = '<div class="loading">加载中...</div>';
-        try {
-            const d = await this.get('/api/admin/activity');
-            if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
-            el.innerHTML = d.activity.length === 0 ? '<div class="empty-state">暂无记录</div>' : `
-                <div class="card">
-                    <div class="card-header"><h3>最近活跃</h3><span class="count">50条</span></div>
-                    <div class="timeline">${d.activity.map(a => `
-                        <div class="tl-item"><div class="tl-dot"></div><div class="tl-body">
-                            <div class="tl-title"><b>${Utils.escapeHtml(a.initials)}</b> ${Utils.escapeHtml(a.bank_name||'')} · ${a.answered}题 · 正确${a.correct}</div>
-                            <div class="tl-sub">${this.fmtDur(a.duration)} · ${a.updated_at?.slice(0,16)||''}</div>
-                        </div></div>
-                    `).join('')}</div>
-                </div>`;
-        } catch (e) { el.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
-    },
-
-    // ==================== 公告 ====================
-
-    async renderAnnounce() {
-        document.getElementById('sec-announce').innerHTML = `
-            <div class="card">
-                <div class="card-header"><h3>发布公告</h3></div>
-                <div class="card-body" style="padding:12px">
-                    <p style="color:var(--text-tertiary);font-size:12px;margin-bottom:8px">用户打开网站时弹出（每次会话一次）</p>
-                    <div class="announce-input"><textarea id="announce-content" placeholder="输入公告内容..."></textarea></div>
-                    <button class="btn-login" style="max-width:160px;padding:8px" onclick="Admin.publishAnnounce()">发布公告</button>
-                </div>
-            </div>
-            <div class="card" id="announce-list-card" style="margin-top:12px">
-                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-                    <h3>历史公告</h3>
-                    <select id="announce-sort" onchange="Admin.loadAnnouncements()" style="font-size:11px;padding:3px 6px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);color:var(--text)">
-                        <option value="newest">最新优先</option>
-                        <option value="oldest">最早优先</option>
-                    </select>
-                </div>
-                <div class="empty-state">加载中...</div>
-            </div>`;
-        await this.loadAnnouncements();
-    },
-
-    async loadAnnouncements() {
-        try {
-            const d = await this.get('/api/admin/announcements');
-            const el = document.getElementById('announce-list-card');
-            if (!d || !d.ok || !d.announcements?.length) {
-                el.innerHTML = `<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3>历史公告</h3></div><div class="empty-state">暂无公告</div>`;
-                return;
-            }
-            const sort = document.getElementById('announce-sort')?.value || 'newest';
-            const items = [...d.announcements];
-            if (sort === 'oldest') items.reverse();
-            el.innerHTML = `<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><h3>历史公告</h3><select id="announce-sort" onchange="Admin.loadAnnouncements()" style="font-size:11px;padding:3px 6px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);color:var(--text)"><option value="newest" ${sort==='newest'?'selected':''}>最新优先</option><option value="oldest" ${sort==='oldest'?'selected':''}>最早优先</option></select></div>` + items.map(a => `
-                <div style="display:flex;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--border);gap:8px">
-                    <div style="flex:1;min-width:0">
-                        <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all">${Utils.escapeHtml(a.content)}</div>
-                        <div style="font-size:10px;color:var(--text-tertiary);margin-top:4px">${a.created_at?.slice(0,16)||''} · ID:${a.id}</div>
-                    </div>
-                    <div style="display:flex;gap:4px;flex-shrink:0">
-                        <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.editAnnounce(${a.id},this.closest('[data-content]').dataset.content)" data-content="${Utils.escapeHtml(a.content).replace(/"/g,'&quot;')}">编辑</button>
-                        <button class="abtn danger" style="padding:2px 8px;font-size:10px" onclick="Admin.deleteAnnounce(${a.id})">删除</button>
-                    </div>
-                </div>
-            `).join('');
-        } catch (e) { console.error(e); }
-    },
-
-    async publishAnnounce() {
-        const content = document.getElementById('announce-content').value.trim();
-        if (!content) { Utils.showToast('请输入内容', 'error'); return; }
-        const r = await this.post('/api/admin/announce', { content });
-        if (r?.ok) { Utils.showToast('已发布', 'success'); document.getElementById('announce-content').value = ''; await this.loadAnnouncements(); }
-    },
-
-    async deleteAnnounce(id) {
-        if (!confirm('删除这条公告？')) return;
-        const r = await this.post('/api/admin/delete-announcement', { id });
-        if (r?.ok) { Utils.showToast('已删除', 'success'); await this.loadAnnouncements(); }
-    },
-
-    editAnnounce(id, content) {
-        const decoded = content.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-        document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box">
-                    <h3>编辑公告 #${id}</h3>
-                    <label>公告内容</label>
-                    <textarea id="edit-announce-content" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);font-size:13px;resize:vertical">${decoded}</textarea>
-                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="mp" onclick="Admin.saveAnnounce(${id})">保存</button></div>
-                </div>
-            </div>`;
-    },
-
-    async saveAnnounce(id) {
-        const content = document.getElementById('edit-announce-content').value.trim();
-        if (!content) { Utils.showToast('内容不能为空', 'error'); return; }
-        const r = await this.post('/api/admin/edit-announcement', { id, content });
-        if (r?.ok) { Utils.showToast('已更新', 'success'); document.querySelector('.modal-mask')?.remove(); await this.loadAnnouncements(); }
-    },
-
-    // ==================== 导出 CSV ====================
-
-    exportCSV() {
-        const rows = [['同步码', '姓名', '管理员', '注册时间', '设备数', '答题数', '正确数', '正确率', '学习时长(秒)']];
-        this.users.forEach(u => {
-            const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
-            rows.push([u.id, u.initials, u.is_admin ? '是' : '否', u.created_at?.slice(0,10) || '', u.device_count, u.total_answered, u.total_correct, acc + '%', u.total_duration]);
-        });
-        const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-        const bom = '\uFEFF';
-        const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `用户数据_${new Date().toISOString().slice(0,10)}.csv`;
-        a.click(); URL.revokeObjectURL(url);
-        Utils.showToast('已导出', 'success');
-    },
-
-    // ==================== 导出 ====================
-
-    exportCSV() {
-        const csv = ['同步码,姓名,设备数,答题数,正确数,正确率,时长,注册,状态'];
-        this.users.forEach(u => {
-            const a = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
-            csv.push(`${u.id},${u.initials},${u.device_count},${u.total_answered},${u.total_correct},${a}%,${u.total_duration},${u.created_at?.slice(0,10)||''},${u.banned?'封禁':'正常'}`);
-        });
-        const blob = new Blob(['\ufeff' + csv.join('\n')], { type: 'text/csv;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `城科卷王_${new Date().toISOString().slice(0,10)}.csv`; a.click();
-    },
-
-    // ==================== 工具 ====================
-
-    async post(path, body) {
-        try {
-            const r = await fetch(API.BASE_URL + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body }) });
-            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
-            return await r.json();
-        } catch (e) { return { ok: false, error: e.message }; }
-    },
-
-    async get(path) {
-        return this.getWithAuth(path, this.password);
-    },
-
-    async getWithAuth(path, pwd) {
-        try {
-            const url = API.BASE_URL + path;
-            console.log('[Admin] GET:', url);
-            const r = await fetch(url, { headers: { 'X-Admin-Password': pwd, 'X-Admin-Device-Id': API.getDeviceId() } });
-            console.log('[Admin] Response:', r, 'type:', typeof r, 'isResponse:', r instanceof Response, 'ok:', r?.ok, 'status:', r?.status);
-            if (!r || typeof r.json !== 'function') {
-                console.error('[Admin] 非标准 Response:', r);
-                return { ok: false, error: '无效的响应对象' };
-            }
-            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
-            return await r.json();
-        } catch (e) { console.error('[Admin] 请求异常:', e); return { ok: false, error: e.message }; }
-    },
-
-    fmtN(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; },
-    fmtDur(s) {
-        if (!s || s < 60) return (s || 0) + '秒';
-        if (s < 3600) return Math.floor(s / 60) + '分';
-        return Math.floor(s / 3600) + '时' + Math.floor((s % 3600) / 60) + '分';
     }
 };
 
-window.Admin = Admin;
-Admin.init();
