@@ -164,9 +164,11 @@ const App = {
         const cached = (() => { try { return localStorage.getItem(CACHE_KEY); } catch { return null; } })();
         if (cached) { this._renderAnnounceWrap(el, cached); shown = true; }
 
-        // 尝试云 API（POST + 空 body，与注册/同步完全一致的请求结构）
+        // 尝试云 API
         try {
-            const d = await API.request('/api/announce', { method: 'POST', body: '{}' });
+            console.log('[公告] 请求中...');
+            const d = await API.request('/api/announce');
+            console.log('[公告] 响应:', JSON.stringify(d));
             if (d?.ok && d.announce?.content) {
                 const text = Utils.escapeHtml(d.announce.content.replace(/\n/g, ' '));
                 try { localStorage.setItem(CACHE_KEY, text); } catch {}
