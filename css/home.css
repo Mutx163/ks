@@ -19,19 +19,6 @@
     gap: var(--space-3);
 }
 
-.home-logo-icon {
-    width: 40px;
-    height: 40px;
-    background: var(--primary);
-    border-radius: var(--radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: 700;
-    font-size: var(--font-size-xl);
-}
-
 .home-logo-text h1 {
     font-size: var(--font-size-xl);
     font-weight: 600;
@@ -856,12 +843,6 @@
 
     .home-logo-text p {
         display: none;
-    }
-    .home-logo-icon {
-        width: 30px;
-        height: 30px;
-        font-size: 14px;
-        border-radius: 6px;
     }
     .home-logo-text h1 {
         font-size: 15px;

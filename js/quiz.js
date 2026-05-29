@@ -1453,12 +1453,12 @@ const Quiz = {
                 }
             }
 
-            // 方向键切换题目（上/左 = 上一题，下/右 = 下一题）
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            // Alt+方向键切换题目
+            if (e.key === 'ArrowLeft' && e.altKey) {
                 e.preventDefault();
                 this.prevQuestion();
             }
-            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            if (e.key === 'ArrowRight' && e.altKey) {
                 e.preventDefault();
                 this.nextQuestion();
             }
