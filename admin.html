@@ -6,6 +6,7 @@
         <title>管理后台 - 城科卷王</title>
         <link rel="stylesheet" href="css/base.css" />
         <link rel="stylesheet" href="css/admin.css" />
+        <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" async defer></script>
     </head>
     <body>
         <!-- 登录页 -->
@@ -58,6 +59,13 @@
         <div id="modal-root"></div>
 
         <script type="module" src="js/admin.js"></script>
+        <script>
+            setTimeout(function() {
+                if (!window.Admin) {
+                    document.getElementById('login-page').innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;max-width:400px;margin:80px auto"><h3>模块加载失败</h3><p style="margin-top:12px;font-size:13px">请打开 F12 控制台查看红色错误</p><p style="margin-top:8px;font-size:12px;color:#888">常见原因：网络问题或浏览器不支持 ES Module</p></div>';
+                }
+            }, 5000);
+        </script>
         <script src="js/debug.js"></script>
     </body>
 </html>
