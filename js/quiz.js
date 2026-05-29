@@ -355,7 +355,7 @@ const Quiz = {
             if (hint) hint.textContent = text;
         };
 
-        if (!question) {
+        if (!question || this.state.isFinished) {
             setSubmitHidden(true);
             setHint('');
             return;
