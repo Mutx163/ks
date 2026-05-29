@@ -26,7 +26,7 @@ const Admin = {
         const err = document.getElementById('login-error');
         err.style.display = 'none';
         try {
-            const d = await this.get('/api/admin/users');
+            const d = await this.getWithAuth('/api/admin/users', pwd);
             if (d && d.ok) {
                 sessionStorage.setItem('admin_pwd', pwd);
                 this.password = pwd;
@@ -470,8 +470,12 @@ const Admin = {
     },
 
     async get(path) {
+        return this.getWithAuth(path, this.password);
+    },
+
+    async getWithAuth(path, pwd) {
         try {
-            const r = await fetch(API.BASE_URL + path, { headers: { 'X-Admin-Password': this.password, 'X-Admin-Device-Id': API.getDeviceId() } });
+            const r = await fetch(API.BASE_URL + path, { headers: { 'X-Admin-Password': pwd, 'X-Admin-Device-Id': API.getDeviceId() } });
             if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
             return await r.json();
         } catch (e) { return { ok: false, error: e.message }; }
