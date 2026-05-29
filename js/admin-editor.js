@@ -98,8 +98,9 @@ export function initEditor(Admin) {
                         <label>题型</label>
                         <select id="eq-type" onchange="Admin._onTypeChange()">
                             <option value="single" ${type==='single'?'selected':''}>单选题</option>
-                            <option value="multi" ${type==='multi'?'selected':''}>多选题</option>
+                            <option value="multiple" ${type==='multiple'||type==='multi'?'selected':''}>多选题</option>
                             <option value="judge" ${type==='judge'?'selected':''}>判断题</option>
+                            <option value="fill" ${type==='fill'?'selected':''}>填空题</option>
                             <option value="essay" ${type==='essay'?'selected':''}>简答题</option>
                         </select>
                     </div>
