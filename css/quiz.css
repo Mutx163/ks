@@ -1164,12 +1164,14 @@
     /* 题目卡片 */
     .question-header {
         padding: var(--space-3) var(--space-4);
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         gap: 4px;
     }
     .question-meta {
         gap: 4px;
         flex-wrap: wrap;
+        flex: 1;
+        min-width: 0;
     }
     .question-number {
         font-size: 12px;
