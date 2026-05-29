@@ -78,9 +78,8 @@ const Admin = {
         const el = document.getElementById('sec-overview');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const r = await this.get('/api/admin/overview');
-            const d = await r.json();
-            if (!d.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+            const d = await this.get('/api/admin/overview');
+            if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
 
             const o = d.overview;
             const total = this.users.reduce((s, u) => s + u.total_answered, 0);
@@ -175,8 +174,7 @@ const Admin = {
     async detail(uid) {
         const p = document.getElementById('detail-panel');
         try {
-            const r = await this.get(`/api/admin/user-detail/${uid}`);
-            const d = await r.json();
+            const d = await this.get(`/api/admin/user-detail/${uid}`);
             if (!d?.ok) return;
             const u = d.user, ta = d.stats.reduce((s, x) => s + x.answered, 0), tc = d.stats.reduce((s, x) => s + x.correct, 0), td = d.stats.reduce((s, x) => s + x.duration, 0);
             const n = Utils.escapeHtml(u.initials);
@@ -358,9 +356,8 @@ const Admin = {
         const el = document.getElementById('sec-banks');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const r = await this.get('/api/admin/banks');
-            const d = await r.json();
-            if (!d.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+            const d = await this.get('/api/admin/banks');
+            if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
             el.innerHTML = d.banks.length === 0 ? '<div class="empty-state">暂无数据</div>' : `
                 <div class="card">
                     <div class="card-header"><h3>题库统计</h3><span class="count">${d.banks.length}个</span></div>
@@ -381,9 +378,8 @@ const Admin = {
         const el = document.getElementById('sec-activity');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const r = await this.get('/api/admin/activity');
-            const d = await r.json();
-            if (!d.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+            const d = await this.get('/api/admin/activity');
+            if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
             el.innerHTML = d.activity.length === 0 ? '<div class="empty-state">暂无记录</div>' : `
                 <div class="card">
                     <div class="card-header"><h3>最近活跃</h3><span class="count">50条</span></div>
