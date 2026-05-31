@@ -441,11 +441,22 @@ const API = {
     /**
      * 显示同步码面板（查看/复制同步码）
      */
-    showAccountPanel() {
+    async showAccountPanel() {
         const Utils = window.Utils;
         if (!Utils) return;
         const code = this.getSyncCode();
-        const initials = this.getInitials();
+        let initials = this.getInitials();
+
+        // 实时从云端获取最新用户名
+        if (code) {
+            try {
+                const data = await this.request(`/api/cloud-data/${this.getDeviceId()}`);
+                if (data?.ok && data.user?.initials) {
+                    initials = data.user.initials;
+                    localStorage.setItem(this.KEYS.INITIALS, initials);
+                }
+            } catch {}
+        }
 
         const content = code ? `
             <div style="text-align: center; margin-bottom: 16px;">
