@@ -183,6 +183,12 @@ export default {
                 return await handleAdminGetBank(bankId, url, env, origin);
             }
 
+            // POST /api/admin/bank/:id/import-questions
+            if (method === 'POST' && path.match(/\/api\/admin\/bank\/[^/]+\/import-questions$/)) {
+                const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
+                return await handleAdminImportQuestions(bankId, request, env, origin);
+            }
+
             // POST /api/admin/bank/:id/question
             if (method === 'POST' && path.match(/\/api\/admin\/bank\/[^/]+\/question$/)) {
                 const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
@@ -1008,6 +1014,61 @@ async function handleAdminGetBank(bankId, url, env, origin) {
 }
 
 // 管理员：添加单题
+async function handleAdminImportQuestions(bankId, request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, questions: newQuestions } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!Array.isArray(newQuestions) || newQuestions.length === 0) return error('缺少题目数组', 400, origin);
+
+    const bank = await env.DB.prepare('SELECT questions_json, version FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    let questions = [];
+    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+
+    const maxId = questions.reduce((max, q) => Math.max(max, q.id || 0), 0);
+    let added = 0;
+    const now = new Date().toISOString();
+
+    newQuestions.forEach((q, i) => {
+        if (!q.question) return; // 跳过无效题目
+        const question = {
+            id: maxId + added + 1,
+            type: q.type || 'single',
+            category: q.category || '',
+            tags: q.tags || [],
+            difficulty: q.difficulty || 1,
+            question: q.question,
+            options: q.options || [],
+            answer: q.answer,
+            explanation: q.explanation || ''
+        };
+        // 规范化选项：去除 A. B. C. 前缀
+        if (question.options.length > 0) {
+            question.options = question.options.map(opt => {
+                return String(opt).replace(/^[A-Z][.、。\s]+/, '').trim();
+            });
+        }
+        // 规范化答案：数组转字符串
+        if (Array.isArray(question.answer)) {
+            question.answer = question.answer.join('');
+        }
+        questions.push(question);
+        added++;
+    });
+
+    await env.DB.prepare(
+        'UPDATE banks SET questions_json = ?, question_count = ?, version = version + 1, updated_at = ? WHERE id = ?'
+    ).bind(JSON.stringify(questions), questions.length, now, bankId).run();
+
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)' 
+    ).bind(bankId, 'batch_import', `批量导入 ${added} 题`, admin.id, now).run();
+
+    return json({ ok: true, added, total: questions.length }, 200, origin);
+}
+
 async function handleAdminAddQuestion(bankId, request, env, origin) {
     const body = await request.json();
     const { deviceId, password, question } = body;

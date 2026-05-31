@@ -55,6 +55,7 @@ export function initBanks(Admin) {
                         <h3>${Utils.escapeHtml(b.name)} <span style="font-size:11px;color:var(--text-tertiary)">${qs.length}题 · v${b.version}</span></h3>
                         <div style="display:flex;gap:6px">
                             <button class="abtn primary" style="padding:4px 12px" onclick="Admin.addQuestion('${bankId}')">添加题目</button>
+                            <button class="abtn" style="padding:4px 12px" onclick="Admin.importQuestions('${bankId}')">批量导入</button>
                             <button class="abtn" style="padding:4px 12px" onclick="Admin.viewBankHistory('${bankId}')">修改历史</button>
                             <button class="abtn" style="padding:4px 12px" onclick="document.getElementById('bank-detail-panel').innerHTML=''">收起</button>
                         </div>
@@ -165,5 +166,92 @@ export function initBanks(Admin) {
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
                 </div>
             </div>`;
+    };
+
+    // 批量导入题目
+    Admin.importQuestions = function(bankId) {
+        const example = JSON.stringify([
+            {
+                type: "single",
+                question: "题目内容？",
+                options: ["选项A", "选项B", "选项C", "选项D"],
+                answer: "A",
+                explanation: "解析内容",
+                category: "分类",
+                difficulty: 1
+            },
+            {
+                type: "multiple",
+                question: "多选题内容？",
+                options: ["选项A", "选项B", "选项C"],
+                answer: "AB",
+                explanation: "解析",
+                category: "分类",
+                difficulty: 2
+            },
+            {
+                type: "judge",
+                question: "判断题内容？",
+                answer: true,
+                explanation: "解析",
+                category: "分类",
+                difficulty: 1
+            },
+            {
+                type: "fill",
+                question: "填空题：___是正确的。",
+                answer: "答案内容",
+                explanation: "解析",
+                category: "分类",
+                difficulty: 2
+            }
+        ], null, 2);
+
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:600px">
+                    <h3>批量导入题目</h3>
+                    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:8px">
+                        粘贴JSON数组格式的题目数据。支持题型：single/multiple/judge/fill/essay<br>
+                        选项可带字母前缀（如 "A. xxx"），会自动去除。答案可用字符串（"AB"）或数组（["A","B"]）。
+                    </p>
+                    <textarea id="import-json" rows="15" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);font-size:12px;font-family:monospace;resize:vertical;box-sizing:border-box" placeholder='${example}'></textarea>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                        <span style="font-size:11px;color:var(--text-tertiary)" id="import-status"></span>
+                        <div class="modal-actions" style="margin:0">
+                            <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
+                            <button class="mp" onclick="Admin.doImportQuestions('${bankId}')">导入</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.getElementById('import-json').focus();
+    };
+
+    Admin.doImportQuestions = async function(bankId) {
+        const textarea = document.getElementById('import-json');
+        const statusEl = document.getElementById('import-status');
+        let questions;
+
+        try {
+            questions = JSON.parse(textarea.value.trim());
+            if (!Array.isArray(questions)) {
+                statusEl.textContent = '❌ 请输入JSON数组格式';
+                return;
+            }
+        } catch (e) {
+            statusEl.textContent = '❌ JSON格式错误: ' + e.message;
+            return;
+        }
+
+        statusEl.textContent = '导入中...';
+        const r = await this.post(`/api/admin/bank/${bankId}/import-questions`, { questions });
+        if (r?.ok) {
+            Utils.showToast(`成功导入 ${r.added} 题，题库共 ${r.total} 题`, 'success', 3000);
+            document.querySelector('.modal-mask')?.remove();
+            this.viewBank(bankId);
+        } else {
+            statusEl.textContent = '❌ ' + (r?.error || '导入失败');
+        }
     };
 }

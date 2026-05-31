@@ -1,7 +1,7 @@
 /**
  * 管理后台 - 题目编辑器
  */
-import Utils from './utils.js';
+import Utils from '../utils.js';
 
 export function initEditor(Admin) {
 
@@ -40,42 +40,6 @@ export function initEditor(Admin) {
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
 
-        // 构建选项输入框
-        let optionsHTML = '';
-        if (isChoice) {
-            const letters = 'ABCDEFGH';
-            optionsHTML = opts.map((opt, i) => `
-                <div class="qe-opt-row" data-idx="${i}">
-                    <span class="qe-opt-letter">${letters[i] || '?'}</span>
-                    <input class="qe-opt-input" value="${Utils.escapeHtml(opt)}" placeholder="选项${letters[i] || (i+1)}" oninput="Admin._preview()">
-                    <button class="qe-opt-del" onclick="Admin._removeOption(${i})" title="删除">✕</button>
-                </div>
-            `).join('');
-            // 至少显示4个空选项
-            for (let i = opts.length; i < 4; i++) {
-                optionsHTML += `
-                    <div class="qe-opt-row" data-idx="${i}">
-                        <span class="qe-opt-letter">${letters[i]}</span>
-                        <input class="qe-opt-input" value="" placeholder="选项${letters[i]}" oninput="Admin._preview()">
-                        <button class="qe-opt-del" onclick="Admin._removeOption(${i})" title="删除">✕</button>
-                    </div>`;
-            }
-        }
-
-        // 答案显示
-        let answerDisplay = '';
-        if (isJudge) {
-            answerDisplay = `<div class="qe-judge-btns" id="eq-judge-wrap">
-                <button type="button" class="qe-judge-btn ${answer===true?'active':''}" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
-                <button type="button" class="qe-judge-btn ${answer===false?'active':''}" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
-            </div>`;
-        } else if (isChoice) {
-            const letters = 'ABCDEFGH';
-            answerDisplay = `<div class="qe-answer-btns" id="eq-answer-btns">
-                ${letters.split('').map(l => `<button type="button" class="qe-ans-btn ${String(answer||'').includes(l)?'active':''}" onclick="Admin._toggleAnswer('${l}')" id="eq-ans-${l}">${l}</button>`).join('')}
-            </div>`;
-        }
-
         // 规范化答案为字符串
         let answerStr = '';
         if (type === 'judge') {
@@ -84,6 +48,33 @@ export function initEditor(Admin) {
             answerStr = answer.join('');
         } else {
             answerStr = String(answer || '');
+        }
+
+        // 构建选项列表
+        let optionsHTML = '';
+        if (isChoice) {
+            const letters = 'ABCDEFGH';
+            const allOpts = [...opts];
+            // 确保至少4个选项
+            while (allOpts.length < 4) allOpts('');
+            optionsHTML = allOpts.map((opt, i) => {
+                const letter = letters[i];
+                const selected = answerStr.includes(letter);
+                return `<div class="qe-opt-item ${selected ? 'selected' : ''}" data-letter="${letter}" onclick="Admin._selectOption('${letter}')">
+                    <span class="qe-opt-indicator ${type === 'multiple' || type === 'multi' ? 'checkbox' : 'radio'}">${selected ? (type === 'multiple' || type === 'multi' ? '☑' : '●') : (type === 'multiple' || type === 'multi' ? '☐' : '○')}</span>
+                    <span class="qe-opt-letter">${letter}.</span>
+                    <input class="qe-opt-input" value="${Utils.escapeHtml(opt)}" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
+                    <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>
+                </div>`;
+            }).join('');
+        }
+
+        // 填空/简答题答案区
+        let fillAnswerHTML = '';
+        if (isEssay) {
+            fillAnswerHTML = `<div class="qe-fill-wrap">
+                <textarea id="eq-fill-answer" rows="3" placeholder="输入参考答案..." oninput="Admin._preview()">${Utils.escapeHtml(answerStr)}</textarea>
+            </div>`;
         }
 
         return `
@@ -121,15 +112,22 @@ export function initEditor(Admin) {
                     <textarea id="eq-question" rows="3" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q?.question||'')}</textarea>
                 </div>
                 <div class="qe-field" id="eq-options-wrap" style="${isChoice?'':'display:none'}">
-                    <label>选项</label>
-                    <div id="eq-options-list">${optionsHTML}</div>
+                    <label>选项 <span class="qe-hint">点击选项设为答案</span></label>
+                    <div class="qe-opt-list" id="eq-options-list">${optionsHTML}</div>
                     <button type="button" class="qe-add-opt" onclick="Admin._addOption()">+ 添加选项</button>
                 </div>
-                <div class="qe-field">
+                <div class="qe-field" id="eq-judge-wrap" style="${isJudge?'':'display:none'}">
                     <label>答案</label>
-                    ${answerDisplay}
-                    <input type="hidden" id="eq-answer" value="${Utils.escapeHtml(answerStr)}">
+                    <div class="qe-judge-btns">
+                        <button type="button" class="qe-judge-btn ${answerStr==='true'?'active':''}" onclick="Admin._setJudge(true)" id="eq-judge-true">✓ 正确</button>
+                        <button type="button" class="qe-judge-btn ${answerStr==='false'?'active':''}" onclick="Admin._setJudge(false)" id="eq-judge-false">✗ 错误</button>
+                    </div>
                 </div>
+                <div class="qe-field" id="eq-fill-wrap" style="${isEssay?'':'display:none'}">
+                    <label>参考答案</label>
+                    ${fillAnswerHTML}
+                </div>
+                <input type="hidden" id="eq-answer" value="${Utils.escapeHtml(answerStr)}">
                 <div class="qe-field">
                     <label>解析 <span class="qe-hint">可选</span></label>
                     <textarea id="eq-explanation" rows="3" placeholder="答案解析..." oninput="Admin._preview()">${Utils.escapeHtml(q?.explanation||'')}</textarea>
@@ -146,29 +144,73 @@ export function initEditor(Admin) {
         </div>`;
     };
 
+    // 选择/取消选择选项作为答案
+    Admin._selectOption = function(letter) {
+        const type = document.getElementById('eq-type').value;
+        const ansEl = document.getElementById('eq-answer');
+        let ans = ansEl.value;
+
+        if (type === 'single') {
+            // 单选：点击选中，再次点击取消
+            ans = ans === letter ? '' : letter;
+        } else {
+            // 多选：切换选中状态
+            ans = ans.includes(letter) ? ans.replace(letter, '') : (ans + letter);
+        }
+        // 排序答案
+        ans = ans.split('').sort().join('');
+        ansEl.value = ans;
+
+        // 更新UI
+        document.querySelectorAll('#eq-options-list .qe-opt-item').forEach(item => {
+            const l = item.dataset.letter;
+            const selected = ans.includes(l);
+            item.className = `qe-opt-item ${selected ? 'selected' : ''}`;
+            const indicator = item.querySelector('.qe-opt-indicator');
+            if (type === 'multiple' || type === 'multi') {
+                indicator.textContent = selected ? '☑' : '☐';
+            } else {
+                indicator.textContent = selected ? '●' : '○';
+            }
+        });
+        this._preview();
+    };
+
     Admin._addOption = function() {
         const list = document.getElementById('eq-options-list');
         const idx = list.children.length;
         const letter = 'ABCDEFGH'[idx] || '?';
+        const type = document.getElementById('eq-type').value;
+        const isMulti = type === 'multiple' || type === 'multi';
         const row = document.createElement('div');
-        row.className = 'qe-opt-row';
-        row.dataset.idx = idx;
-        row.innerHTML = `<span class="qe-opt-letter">${letter}</span><input class="qe-opt-input" value="" placeholder="选项${letter}" oninput="Admin._preview()"><button class="qe-opt-del" onclick="Admin._removeOption(${idx})" title="删除">✕</button>`;
+        row.className = 'qe-opt-item';
+        row.dataset.letter = letter;
+        row.onclick = () => Admin._selectOption(letter);
+        row.innerHTML = `<span class="qe-opt-indicator ${isMulti ? 'checkbox' : 'radio'}">${isMulti ? '☐' : '○'}</span>
+            <span class="qe-opt-letter">${letter}.</span>
+            <input class="qe-opt-input" value="" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
+            <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>`;
         list.appendChild(row);
         this._preview();
     };
 
-    Admin._removeOption = function(idx) {
+    Admin._removeOption = function(btn) {
         const list = document.getElementById('eq-options-list');
         if (list.children.length <= 2) { Utils.showToast('至少保留2个选项', 'error'); return; }
-        list.children[idx]?.remove();
+        btn.closest('.qe-opt-item').remove();
         // 重新编号
+        const letters = 'ABCDEFGH';
         Array.from(list.children).forEach((row, i) => {
-            row.dataset.idx = i;
-            row.querySelector('.qe-opt-letter').textContent = 'ABCDEFGH'[i] || '?';
-            row.querySelector('.qe-opt-input').placeholder = `选项${'ABCDEFGH'[i] || (i+1)}`;
-            row.querySelector('.qe-opt-del').onclick = () => Admin._removeOption(i);
+            row.dataset.letter = letters[i];
+            row.querySelector('.qe-opt-letter').textContent = letters[i] + '.';
+            row.onclick = () => Admin._selectOption(letters[i]);
+            row.querySelector('.qe-opt-del').onclick = (e) => { e.stopPropagation(); Admin._removeOption(row.querySelector('.qe-opt-del')); };
         });
+        // 更新答案（移除不存在的字母）
+        const ansEl = document.getElementById('eq-answer');
+        const maxLetter = letters[list.children.length - 1];
+        let ans = ansEl.value.split('').filter(l => l <= maxLetter).join('');
+        ansEl.value = ans;
         this._preview();
     };
 
@@ -191,30 +233,47 @@ export function initEditor(Admin) {
     Admin._onTypeChange = function() {
         const type = document.getElementById('eq-type').value;
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
-        document.getElementById('eq-options-wrap').style.display = isChoice ? '' : 'none';
-        document.getElementById('eq-answer-btns') && (document.getElementById('eq-answer-btns').style.display = isChoice ? '' : 'none');
-        document.getElementById('eq-judge-wrap') && (document.getElementById('eq-judge-wrap').style.display = type === 'judge' ? 'flex' : 'none');
-        document.getElementById('eq-answer').value = '';
-        this._preview();
-    };
+        const isJudge = type === 'judge';
+        const isEssay = type === 'essay' || type === 'fill';
 
-    Admin._toggleAnswer = function(letter) {
-        const type = document.getElementById('eq-type').value;
-        const ansEl = document.getElementById('eq-answer');
-        let ans = ansEl.value;
-        if (type === 'single') { ans = letter; }
-        else { ans = ans.includes(letter) ? ans.replace(letter, '') : (ans + letter); }
-        ansEl.value = ans;
-        'ABCDEFGH'.split('').forEach(l => {
-            const btn = document.getElementById('eq-ans-' + l);
-            if (btn) btn.className = ans.includes(l) ? 'qe-ans-btn active' : 'qe-ans-btn';
-        });
+        document.getElementById('eq-options-wrap').style.display = isChoice ? '' : 'none';
+        document.getElementById('eq-judge-wrap').style.display = isJudge ? '' : 'none';
+        document.getElementById('eq-fill-wrap').style.display = isEssay ? '' : 'none';
+
+        // 重置答案
+        document.getElementById('eq-answer').value = '';
+        if (isEssay) {
+            document.getElementById('eq-fill-answer').value = '';
+        }
+
+        // 如果切换到选择题，重建选项
+        if (isChoice) {
+            const list = document.getElementById('eq-options-list');
+            const currentOpts = [];
+            list.querySelectorAll('.qe-opt-input').forEach(inp => {
+                if (inp.value.trim()) currentOpts.push(inp.value.trim());
+            });
+            // 重新渲染选项
+            const letters = 'ABCDEFGH';
+            const isMulti = type === 'multiple' || type === 'multi';
+            list.innerHTML = currentOpts.map((opt, i) => `
+                <div class="qe-opt-item" data-letter="${letters[i]}" onclick="Admin._selectOption('${letters[i]}')">
+                    <span class="qe-opt-indicator ${isMulti ? 'checkbox' : 'radio'}">${isMulti ? '☐' : '○'}</span>
+                    <span class="qe-opt-letter">${letters[i]}.</span>
+                    <input class="qe-opt-input" value="${Utils.escapeHtml(opt)}" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
+                    <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>
+                </div>
+            `).join('');
+            // 确保至少4个选项
+            while (list.children.length < 4) this._addOption();
+        }
+
         this._preview();
     };
 
     Admin._setJudge = function(val) {
         const boolVal = val === true || val === 'true';
-        document.getElementById('eq-answer').value = boolVal;
+        document.getElementById('eq-answer').value = boolVal ? 'true' : 'false';
         document.getElementById('eq-judge-true').className = boolVal ? 'qe-judge-btn active' : 'qe-judge-btn';
         document.getElementById('eq-judge-false').className = !boolVal ? 'qe-judge-btn active' : 'qe-judge-btn';
         this._preview();
@@ -223,7 +282,10 @@ export function initEditor(Admin) {
     Admin._collectQuestion = function() {
         const type = document.getElementById('eq-type').value;
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
-        // 从输入框收集选项
+        const isJudge = type === 'judge';
+        const isEssay = type === 'essay' || type === 'fill';
+
+        // 收集选项
         let options = [];
         if (isChoice) {
             document.querySelectorAll('#eq-options-list .qe-opt-input').forEach(inp => {
@@ -231,8 +293,16 @@ export function initEditor(Admin) {
                 if (v) options.push(v);
             });
         }
-        let answer = document.getElementById('eq-answer').value;
-        if (isJudge) answer = answer === 'true' || answer === true;
+
+        // 收集答案
+        let answer = '';
+        if (isJudge) {
+            answer = document.getElementById('eq-answer').value === 'true';
+        } else if (isEssay) {
+            answer = document.getElementById('eq-fill-answer')?.value?.trim() || '';
+        } else {
+            answer = document.getElementById('eq-answer').value;
+        }
 
         const question = {
             type,
@@ -280,6 +350,8 @@ export function initEditor(Admin) {
         const category = document.getElementById('eq-category').value;
         const typeLabel = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答'}[type] || type;
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
+        const isJudge = type === 'judge';
+        const isEssay = type === 'essay' || type === 'fill';
 
         // 收集选项
         let options = [];
@@ -288,6 +360,12 @@ export function initEditor(Admin) {
                 const v = inp.value.trim();
                 if (v) options.push(v);
             });
+        }
+
+        // 填空题答案
+        let fillAnswer = '';
+        if (isEssay) {
+            fillAnswer = document.getElementById('eq-fill-answer')?.value || '';
         }
 
         let html = '<div class="qe-preview-card">';
@@ -299,19 +377,23 @@ export function initEditor(Admin) {
         html += `<div class="qe-preview-question">${Utils.escapeHtml(question) || '<span style="color:var(--text-tertiary)">题目内容...</span>'}</div>`;
 
         if (isJudge) {
-            html += '<div style="display:flex;gap:8px;margin-bottom:8px">';
-            html += `<div class="qe-preview-opt ${answer===true?'selected':''}">✓ 正确</div>`;
-            html += `<div class="qe-preview-opt ${answer===false?'selected':''}">✗ 错误</div>`;
+            html += '<div class="qe-preview-opts">';
+            html += `<div class="qe-preview-opt ${answer==='true'?'selected':''}">✓ 正确</div>`;
+            html += `<div class="qe-preview-opt ${answer==='false'?'selected':''}">✗ 错误</div>`;
             html += '</div>';
         } else if (isChoice) {
+            html += '<div class="qe-preview-opts">';
             options.forEach((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const sel = (answer||'').includes(letter);
                 html += `<div class="qe-preview-opt ${sel?'selected':''}"><b>${letter}.</b> ${Utils.escapeHtml(opt)}</div>`;
             });
+            html += '</div>';
+        } else if (isEssay && fillAnswer) {
+            html += `<div class="qe-preview-answer"><b>参考答案：</b>${Utils.escapeHtml(fillAnswer)}</div>`;
         }
 
-        if (answer && !isJudge) {
+        if (answer && !isJudge && !isEssay) {
             html += `<div class="qe-preview-answer">答案: <b>${Utils.escapeHtml(String(answer))}</b></div>`;
         }
         if (explanation) {
