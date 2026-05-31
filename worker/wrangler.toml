@@ -1,6 +1,7 @@
 name = "ks-api"
 main = "src/index.js"
 compatibility_date = "2024-12-01"
+account_id = "29384b90082af8364a4570c7da0b0549"
 
 # D1 数据库绑定
 [[d1_databases]]
