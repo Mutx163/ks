@@ -1123,7 +1123,6 @@
         font-size: 14px;
     }
     /* 隐藏次要按钮文字，只显示图标 */
-    #btn-history span,
     #btn-import span {
         display: none;
     }
