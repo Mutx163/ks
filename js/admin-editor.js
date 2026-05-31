@@ -119,8 +119,8 @@ export function initEditor(Admin) {
                 <div class="qe-field" id="eq-judge-wrap" style="${isJudge?'':'display:none'}">
                     <label>答案</label>
                     <div class="qe-judge-btns">
-                        <button type="button" class="qe-judge-btn ${answerStr==='true'?'active':''}" onclick="Admin._setJudge(true)" id="eq-judge-true">⭕ 正确</button>
-                        <button type="button" class="qe-judge-btn ${answerStr==='false'?'active':''}" onclick="Admin._setJudge(false)" id="eq-judge-false">❌ 错误</button>
+                        <button type="button" class="qe-judge-btn ${answerStr==='true'?'active':''}" onclick="Admin._setJudge(true)" id="eq-judge-true">正确</button>
+                        <button type="button" class="qe-judge-btn ${answerStr==='false'?'active':''}" onclick="Admin._setJudge(false)" id="eq-judge-false">错误</button>
                     </div>
                 </div>
                 <div class="qe-field" id="eq-fill-wrap" style="${isEssay?'':'display:none'}">
@@ -378,8 +378,8 @@ export function initEditor(Admin) {
 
         if (isJudge) {
             html += '<div class="qe-preview-opts">';
-            html += `<div class="qe-preview-opt ${answer==='true'?'selected':''}">⭕ 正确</div>`;
-            html += `<div class="qe-preview-opt ${answer==='false'?'selected':''}">❌ 错误</div>`;
+            html += `<div class="qe-preview-opt ${answer==='true'?'selected':''}">正确</div>`;
+            html += `<div class="qe-preview-opt ${answer==='false'?'selected':''}">错误</div>`;
             html += '</div>';
         } else if (isChoice) {
             html += '<div class="qe-preview-opts">';
