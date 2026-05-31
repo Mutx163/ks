@@ -673,11 +673,11 @@ const Quiz = {
         return `
             <div class="judge-options" role="radiogroup" aria-label="判断选项">
                 <div class="judge-option ${isSubmitted && question.answer === true ? 'correct' : ''} ${isSubmitted && userAnswer === true && question.answer !== true ? 'wrong' : ''} ${!isSubmitted && userAnswer === true ? 'selected' : ''} ${isSubmitted ? 'disabled' : ''}" data-answer="true" role="radio" aria-checked="${userAnswer === true}" tabindex="0">
-                    <span class="judge-option-icon">✓</span>
+                    <span class="judge-option-icon"></span>
                     <span>正确</span>
                 </div>
                 <div class="judge-option ${isSubmitted && question.answer === false ? 'correct' : ''} ${isSubmitted && userAnswer === false && question.answer !== false ? 'wrong' : ''} ${!isSubmitted && userAnswer === false ? 'selected' : ''} ${isSubmitted ? 'disabled' : ''}" data-answer="false" role="radio" aria-checked="${userAnswer === false}" tabindex="0">
-                    <span class="judge-option-icon">✕</span>
+                    <span class="judge-option-icon"></span>
                     <span>错误</span>
                 </div>
             </div>
