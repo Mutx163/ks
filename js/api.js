@@ -186,6 +186,15 @@ const API = {
         const Storage = StorageMod;
         if (!Storage) return;
 
+        // 同步用户名（云端为准）
+        if (data.user?.initials) {
+            const localInitials = localStorage.getItem(this.KEYS.INITIALS);
+            if (localInitials !== data.user.initials) {
+                localStorage.setItem(this.KEYS.INITIALS, data.user.initials);
+                console.log('[Sync] 用户名已同步:', data.user.initials);
+            }
+        }
+
         // 合并设置（云端优先，但保留本地特有的字段）
         if (data.settings && Object.keys(data.settings).length > 0) {
             const localSettings = Storage.getSettings();
