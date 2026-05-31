@@ -174,6 +174,11 @@ const App = {
                 try { localStorage.setItem(CACHE_KEY, text); } catch {}
                 this._renderAnnounceWrap(el, text);
                 return;
+            } else {
+                // 没有公告时清除缓存
+                try { localStorage.removeItem(CACHE_KEY); } catch {}
+                if (!shown) el.style.display = 'none';
+                return;
             }
         } catch {}
 
