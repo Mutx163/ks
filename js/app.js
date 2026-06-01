@@ -765,6 +765,7 @@ const App = {
         const settings = Storage.getSettings();
         const fontSize = settings.fontSize || 16;
         const answerMode = settings.answerMode || 'normal';
+        const swipeEnabled = settings.swipeNavigation !== false;
         const aiEngine = settings.aiEngine || 'metaso';
         const customAiEngine = settings.customAiEngine || '';
 
@@ -784,6 +785,13 @@ const App = {
                 <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
                 <option value="instant" ${answerMode === 'instant' ? 'selected' : ''}>即时判断 - 点击即判不自动跳</option>
             </select>
+            <label>左右滑动</label>
+            <label class="toggle-label">
+                <input type="checkbox" id="setting-swipe" ${swipeEnabled ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+                <span>滑动切换题目</span>
+            </label>
+
             <label>AI 搜索引擎</label>
             <select id="setting-ai-engine">
                 <option value="metaso" ${aiEngine === 'metaso' ? 'selected' : ''}>秘塔搜索 (metaso.cn)</option>
@@ -817,8 +825,11 @@ const App = {
                             Utils.applyFontSize(size);
                         }
 
+                        const newSwipe = modal.querySelector('#setting-swipe').checked;
+
                         Storage.updateSettings({
                             answerMode: newAnswerMode,
+                            swipeNavigation: newSwipe,
                             aiEngine: newAiEngine,
                             customAiEngine: newCustomEngine
                         });
