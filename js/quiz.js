@@ -164,6 +164,23 @@ const Quiz = {
             this.state.questionTimes = session.questionTimes || {};
             this.state.optionOrderCache = session.optionOrderCache || {};
             this.state.savedOrderIds = session.questionOrderIds || null;
+
+            // 恢复随机/乱序模式的题目顺序，保证进度不丢失
+            if (this.state.savedOrderIds &&
+                (this.state.mode === 'random' || this.state.mode === 'shuffle_options')) {
+                const orderMap = new Map(
+                    this.state.savedOrderIds.map((id, i) => [id, i])
+                );
+                this.state.questions.sort((a, b) => {
+                    const oa = orderMap.get(a.id);
+                    const ob = orderMap.get(b.id);
+                    if (oa !== undefined && ob !== undefined) return oa - ob;
+                    return 0;
+                });
+            }
+        } else if (this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
+            // 首次进入随机模式：保存当前打乱顺序
+            this.state.savedOrderIds = this.state.questions.map((q) => q.id);
         }
     },
 
