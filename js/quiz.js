@@ -1189,6 +1189,7 @@ const Quiz = {
             this.state.currentIndex++;
             this.state.questionStartTime = Date.now();
             this.saveSession();
+            this._markStatsDirty();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => {
@@ -1398,6 +1399,7 @@ const Quiz = {
             this.state.currentIndex--;
             this.state.questionStartTime = Date.now();
             this.saveSession();
+            this._markStatsDirty();
             this.render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => {

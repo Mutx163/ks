@@ -672,7 +672,7 @@
         "习题2-10"
       ],
       "difficulty": 2,
-      "question": "关于下面的程序，正确的说法是（ ）。\n```c\n#include stdio.h\nint main(){\n    float a = b = 2, result;\n    result = a / b;\n    printf(\"result = %f\\n\", result);\n    return 0;\n}\n```",
+      "question": "关于下面的程序，正确的说法是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    float a = b = 2, result;\n    result = a / b;\n    printf(\"result = %f\\n\", result);\n    return 0;\n}\n```",
       "options": [
         "A. 程序可正常编译，结果为 result = 1.000000",
         "B. 共有 1 处语法错误",
@@ -2196,7 +2196,7 @@
         "26"
       ],
       "difficulty": 2,
-      "question": "执行以下程序后的输出结果是（ ）。\n```c\n#include <stdio.h> int main(){ int a=10; a=(3*5, a+4); printf(\"a=%d\\n\", a); return 0; }\n```",
+      "question": "执行以下程序后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a=10;\n    a=(3*5, a+4);\n    printf(\"a=%d\\n\", a);\n    return 0;\n}\n```",
       "options": [
         "A. a=10",
         "B. a=14",
@@ -2385,7 +2385,7 @@
         "35"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的结果是（ ）。\n```c\n#include <stdio.h> int main(){ int a=2,b=2,c=2; printf(\"%d\\n\", a/b%c); return 0; }\n```",
+      "question": "以下程序运行后的结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a=2,b=2,c=2;\n    printf(\"%d\\n\", a/b%c);\n    return 0;\n}\n```",
       "options": [
         "A. 0",
         "B. 1",
@@ -2532,7 +2532,7 @@
         "42"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h> int main(){ int a=1,b=0; printf(\"%d,\", b=a+b); printf(\"%d\", a=2*b); }\n```",
+      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a=1,b=0;\n    printf(\"%d,\", b=a+b);\n    printf(\"%d\", a=2*b);\n}\n```",
       "options": [
         "A. 0,0",
         "B. 1,0",
@@ -2553,7 +2553,7 @@
         "43"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h> int main(){ int k=011; printf(\"%d\\n\", k++); return 0; }\n```",
+      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int k=011;\n    printf(\"%d\\n\", k++);\n    return 0;\n}\n```",
       "options": [
         "A. 12",
         "B. 11",
@@ -2595,7 +2595,7 @@
         "45"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h> int main(){ int a,b,d=25; a=d/10%9; b=a+-1; printf(\"%d,%d\\n\", a,b); return 0; }\n```",
+      "question": "以下程序运行后输出的结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a,b,d=25;\n    a=d/10%9;\n    b=a+-1;\n    printf(\"%d,%d\\n\", a,b);\n    return 0;\n}\n```",
       "options": [
         "A. 6,1",
         "B. 2,1",
@@ -2637,7 +2637,7 @@
         "47"
       ],
       "difficulty": 2,
-      "question": "程序如下，以下叙述中正确的是（ ）。\n```c\n#include <stdio.h> int main(){ char a1='M', a2='m'; printf(\"%c\\n\", (a1,a2)); return 0; }\n```",
+      "question": "程序如下，以下叙述中正确的是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    char a1='M', a2='m';\n    printf(\"%c\\n\", (a1,a2));\n    return 0;\n}\n```",
       "options": [
         "A. 程序输出大写字母 M",
         "B. 程序输出小写字母 m",
@@ -3174,7 +3174,7 @@
         "1"
       ],
       "difficulty": 2,
-      "question": "下列程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i,a=0,b=0;\n  for(i=1;i<10;i++){\n    if(i%2==0){ a++; continue; }\n    b++;\n  }\n  printf(\"a=%d,b=%d\",a,b);\n  return 0;\n}\n```",
+      "question": "下列程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i,a=0,b=0;\n    for(i=1;i<10;i++){\n        if(i%2==0){ a++; continue; }\n        b++;\n    }\n    printf(\"a=%d,b=%d\",a,b);\n    return 0;\n}\n\n```",
       "options": [
         "A. a=4,b=4",
         "B. a=4,b=5",
@@ -3237,7 +3237,7 @@
         "4"
       ],
       "difficulty": 2,
-      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int y=9;\n  for(;y>0;y--)\n    if(y%3==0)\n      printf(\"%d\",--y);\n  return 0;\n}\n```",
+      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int y=9;\n    for(;y>0;y--)\n        if(y%3==0)\n            printf(\"%d\",--y);\n    return 0;\n}\n\n```",
       "options": [
         "A. 741",
         "B. 963",
@@ -3300,7 +3300,7 @@
         "7"
       ],
       "difficulty": 2,
-      "question": "若程序执行时的输入数据是2473<回车>，则下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int cs;\n  while((cs=getchar())!='\\n'){\n    switch(cs-'2'){\n      case 0:\n      case 1: putchar(cs+4);\n      case 2: putchar(cs+4); break;\n      case 3: putchar(cs+3);\n      default: putchar(cs+2);\n    }\n  }\n  return 0;\n}\n```",
+      "question": "若程序执行时的输入数据是2473<回车>，则下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int cs;\n    while((cs=getchar())!='\\n'){\n        switch(cs-'2'){\n            case 0:\n            case 1: putchar(cs+4);\n            case 2: putchar(cs+4); break;\n            case 3: putchar(cs+3);\n            default: putchar(cs+2);\n        }\n    }\n    return 0;\n}\n\n```",
       "options": [
         "A. 668977",
         "B. 668966",
@@ -3321,7 +3321,7 @@
         "8"
       ],
       "difficulty": 2,
-      "question": "以下程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int a,i;\n  a=0;\n  for(i=1;i<5;i++)\n    switch(i){\n      case 0:\n      case 3:a+=2;\n      case 1:\n      case 2:a+=3;\n      default:a+=5;\n    }\n  printf(\"%d\\n\",a);\n  return 0;\n}\n```",
+      "question": "以下程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a,i;\n    a=0;\n    for(i=1;i<5;i++)\n        switch(i){\n            case 0:\n            case 3:a+=2;\n            case 1:\n            case 2:a+=3;\n            default:a+=5;\n        }\n    printf(\"%d\\n\",a);\n    return 0;\n}\n\n```",
       "options": [
         "A. 31",
         "B. 13",
@@ -3342,7 +3342,7 @@
         "9"
       ],
       "difficulty": 2,
-      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i,j,m=55;\n  for(i=1;i<=3;i++)\n    for(j=3;j<=i;j++)\n      m=m%j;\n  printf(\"%d\\n\",m);\n  return 0;\n}\n```",
+      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i,j,m=55;\n    for(i=1;i<=3;i++)\n        for(j=3;j<=i;j++)\n            m=m%j;\n    printf(\"%d\\n\",m);\n    return 0;\n}\n\n```",
       "options": [
         "A. 0",
         "B. 1",
@@ -3363,7 +3363,7 @@
         "10"
       ],
       "difficulty": 2,
-      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i;\n  for(i='a';i<'f';i++,i++)\n    printf(\"%c\",i-'a'+'A');\n  printf(\"\\n\");\n  return 0;\n}\n```",
+      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i;\n    for(i='a';i<'f';i++,i++)\n        printf(\"%c\",i-'a'+'A');\n    printf(\"\\n\");\n    return 0;\n}\n\n```",
       "options": [
         "A. ACE",
         "B. BDF",
@@ -3384,7 +3384,7 @@
         "11"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int k=5,n=0;\n  do{\n    switch(k){\n      case 1:\n      case 3:n+=1;k--;break;\n      default:n=0;k--;\n      case 2:\n      case 4:n+=2;k--;break;\n    }\n    printf(\"%d\",n);\n  }while(k>0&&n<5);\n  return 0;\n}\n```",
+      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int k=5,n=0;\n    do{\n        switch(k){\n            case 1:\n            case 3:n+=1;k--;break;\n            default:n=0;k--;\n            case 2:\n            case 4:n+=2;k--;break;\n        }\n        printf(\"%d\",n);\n    }while(k>0&&n<5);\n    return 0;\n}\n\n```",
       "options": [
         "A. 235",
         "B. 0235",
@@ -3405,7 +3405,7 @@
         "12"
       ],
       "difficulty": 2,
-      "question": "下面程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int n=9;\n  while(n>6){\n    n--;\n    printf(\"%d\",n);\n  }\n  return 0;\n}\n```",
+      "question": "下面程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int n=9;\n    while(n>6){\n        n--;\n        printf(\"%d\",n);\n    }\n    return 0;\n}\n\n```",
       "options": [
         "A. 987",
         "B. 876",
@@ -3426,7 +3426,7 @@
         "13"
       ],
       "difficulty": 2,
-      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int x=0,y=0,i;\n  for(i=1;;++i){\n    if(i%2==0){ x++; continue; }\n    if(i%5==0){ y++; break; }\n  }\n  printf(\"%d,%d\",x,y);\n  return 0;\n}\n```",
+      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int x=0,y=0,i;\n    for(i=1;;++i){\n        if(i%2==0){ x++; continue; }\n        if(i%5==0){ y++; break; }\n    }\n    printf(\"%d,%d\",x,y);\n    return 0;\n}\n\n```",
       "options": [
         "A. 2,1",
         "B. 2,2",
@@ -3447,7 +3447,7 @@
         "14"
       ],
       "difficulty": 2,
-      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int x=8;\n  for(;x>0;x--){\n    if(x%3){\n      printf(\"%d,\",x--);\n      continue;\n    }\n    printf(\"%d,\",--x);\n  }\n  return 0;\n}\n```",
+      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int x=8;\n    for(;x>0;x--){\n        if(x%3){\n            printf(\"%d,\",x--);\n            continue;\n        }\n        printf(\"%d,\",--x);\n    }\n    return 0;\n}\n\n```",
       "options": [
         "A. 7,4,2,",
         "B. 8,7,5,2,",
@@ -3489,7 +3489,7 @@
         "16"
       ],
       "difficulty": 2,
-      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int k=0,m=0,i,j;\n  for(i=0;i<2;i++){\n    for(j=0;j<3;j++)\n      k++;\n    k-=j;\n  }\n  m=i+j;\n  printf(\"k=%d,m=%d\",k,m);\n  return 0;\n}\n```",
+      "question": "以下程序的运行结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int k=0,m=0,i,j;\n    for(i=0;i<2;i++){\n        for(j=0;j<3;j++)\n            k++;\n        k-=j;\n    }\n    m=i+j;\n    printf(\"k=%d,m=%d\",k,m);\n    return 0;\n}\n\n```",
       "options": [
         "A. k=0,m=3",
         "B. k=0,m=5",
@@ -3531,7 +3531,7 @@
         "18"
       ],
       "difficulty": 2,
-      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i=6;\n  while(i--)\n    printf(\"%d\",--i);\n  printf(\"\\n\");\n  return 0;\n}\n```",
+      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i=6;\n    while(i--)\n        printf(\"%d\",--i);\n    printf(\"\\n\");\n    return 0;\n}\n\n```",
       "options": [
         "A. 531",
         "B. 420",
@@ -3552,7 +3552,7 @@
         "19"
       ],
       "difficulty": 2,
-      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int a=0,b=0,c=0,i;\n  for(i=0;i<4;i++)\n    switch(i){\n      case 0:a=i++;\n      case 1:b=i++;\n      case 2:c=i++;\n      case 3:i++;\n    }\n  printf(\"%d,%d,%d,%d\\n\",a,b,c,i);\n  return 0;\n}\n```",
+      "question": "下述程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a=0,b=0,c=0,i;\n    for(i=0;i<4;i++)\n        switch(i){\n            case 0:a=i++;\n            case 1:b=i++;\n            case 2:c=i++;\n            case 3:i++;\n        }\n    printf(\"%d,%d,%d,%d\\n\",a,b,c,i);\n    return 0;\n}\n\n```",
       "options": [
         "A. 0,1,3,4",
         "B. 1,2,3,4",
@@ -3615,7 +3615,7 @@
         "22"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int k=5,n=0;\n  do{\n    switch(k){\n      case 1:\n      case 3:n+=1;break;\n      default:n=0;k--;\n      case 2:\n      case 4:n+=2;k--;break;\n    }\n    printf(\"%d\",n);\n  }while(k>0&&n<5);\n  return 0;\n}\n```",
+      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int k=5,n=0;\n    do{\n        switch(k){\n            case 1:\n            case 3:n+=1;break;\n            default:n=0;k--;\n            case 2:\n            case 4:n+=2;k--;break;\n        }\n        printf(\"%d\",n);\n    }while(k>0&&n<5);\n    return 0;\n}\n\n```",
       "options": [
         "A. 2345",
         "B. 0235",
@@ -3636,7 +3636,7 @@
         "23"
       ],
       "difficulty": 2,
-      "question": "下列程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i,j;\n  for(i=1;i<4;i++){\n    for(j=i;j<4;j++)\n      printf(\"%d*%d=%d \",i,j,i*j);\n    printf(\"\\n\");\n  }\n  return 0;\n}\n```",
+      "question": "下列程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i,j;\n    for(i=1;i<4;i++){\n        for(j=i;j<4;j++)\n            printf(\"%d*%d=%d \",i,j,i*j);\n        printf(\"\\n\");\n    }\n    return 0;\n}\n\n```",
       "options": [
         "A. 第1行：1*1=1 1*2=2 1*3=3；第2行：2*2=4 2*3=6；第3行：3*3=9",
         "B. 第1行：1*1=1 1*2=2 1*3=3；第2行：2*1=2 2*2=4；第3行：3*3=9",
@@ -3657,7 +3657,7 @@
         "24"
       ],
       "difficulty": 2,
-      "question": "执行以下程序时输入1234567890<回车>，则其中while循环体将执行（ ）次。\n```c\n#include <stdio.h>\nint main(){\n  char ch;\n  while((ch=getchar())=='0')\n    printf(\"#\");\n  return 0;\n}\n```",
+      "question": "执行以下程序时输入1234567890<回车>，则其中while循环体将执行（ ）次。\n```c\n#include <stdio.h>\nint main(){\n    char ch;\n    while((ch=getchar())=='0')\n        printf(\"#\");\n    return 0;\n}\n\n```",
       "options": [
         "A. 10",
         "B. 0",
@@ -3678,7 +3678,7 @@
         "25"
       ],
       "difficulty": 2,
-      "question": "下列程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int k=5;\n  while(-k)\n    printf(\"%d\",k-=3);\n  printf(\"\\n\");\n  return 0;\n}\n```",
+      "question": "下列程序的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int k=5;\n    while(-k)\n        printf(\"%d\",k-=3);\n    printf(\"\\n\");\n    return 0;\n}\n\n```",
       "options": [
         "A. 1",
         "B. 2",
@@ -3699,7 +3699,7 @@
         "26"
       ],
       "difficulty": 2,
-      "question": "以下程序执行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i;\n  for(i=1;i<=40;i++){\n    if(i++%5==0)\n      if(++i%8==0)\n        printf(\"%d\",i);\n  }\n  printf(\"\\n\");\n  return 0;\n}\n```",
+      "question": "以下程序执行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i;\n    for(i=1;i<=40;i++){\n        if(i++%5==0)\n            if(++i%8==0)\n                printf(\"%d\",i);\n    }\n    printf(\"\\n\");\n    return 0;\n}\n\n```",
       "options": [
         "A. 5",
         "B. 24",
@@ -3720,7 +3720,7 @@
         "27"
       ],
       "difficulty": 2,
-      "question": "有以下程序，若运行时从键盘输入：18,11<回车>，则程序输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int a,b;\n  printf(\"Enter a,b:\");\n  scanf(\"%d,%d\",&a,&b);\n  while(a!=b){\n    while(a>b) a-=b;\n    while(b>a) b-=a;\n  }\n  printf(\"%3d%3d\\n\",a,b);\n  return 0;\n}\n```",
+      "question": "有以下程序，若运行时从键盘输入：18,11<回车>，则程序输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int a,b;\n    printf(\"Enter a,b:\");\n    scanf(\"%d,%d\",&a,&b);\n    while(a!=b){\n        while(a>b) a-=b;\n        while(b>a) b-=a;\n    }\n    printf(\"%3d%3d\\n\",a,b);\n    return 0;\n}\n\n```",
       "options": [
         "A. 1  1",
         "B. 1  2",
@@ -3762,7 +3762,7 @@
         "29"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int y=10;\n  while(y--);\n  printf(\"y=%d\\n\",y);\n  return 0;\n}\n```",
+      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int y=10;\n    while(y--);\n    printf(\"y=%d\\n\",y);\n    return 0;\n}\n\n```",
       "options": [
         "A. y=0",
         "B. y=-1",
@@ -3804,7 +3804,7 @@
         "31"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i,j,x=0;\n  for(i=0;i<2;i++){\n    x++;\n    for(j=0;j<=3;j++){\n      if(j%2) continue;\n      x++;\n    }\n    x++;\n  }\n  printf(\"x=%d\\n\",x);\n  return 0;\n}\n```",
+      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i,j,x=0;\n    for(i=0;i<2;i++){\n        x++;\n        for(j=0;j<=3;j++){\n            if(j%2) continue;\n            x++;\n        }\n        x++;\n    }\n    printf(\"x=%d\\n\",x);\n    return 0;\n}\n\n```",
       "options": [
         "A. x=4",
         "B. x=8",
@@ -3846,7 +3846,7 @@
         "33"
       ],
       "difficulty": 2,
-      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int k=5,n=0;\n  while(k>0){\n    switch(k){\n      default: break;\n      case 1: n+=k;\n      case 2:\n      case 3: n+=k;\n    }\n    k--;\n  }\n  printf(\"%d\\n\",n);\n  return 0;\n}\n```",
+      "question": "以下程序运行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int k=5,n=0;\n    while(k>0){\n        switch(k){\n            default: break;\n            case 1: n+=k;\n            case 2:\n            case 3: n+=k;\n        }\n        k--;\n    }\n    printf(\"%d\\n\",n);\n    return 0;\n}\n\n```",
       "options": [
         "A. 0",
         "B. 4",
@@ -3888,7 +3888,7 @@
         "35"
       ],
       "difficulty": 2,
-      "question": "以下程序输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i;\n  for(i=0;i<3;i++)\n    switch(i){\n      case 0: printf(\"%d\", i);\n      case 2: printf(\"%d\", i);\n      default: printf(\"%d\", i);\n    }\n  return 0;\n}\n```",
+      "question": "以下程序输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i;\n    for(i=0;i<3;i++)\n        switch(i){\n            case 0: printf(\"%d\", i);\n            case 2: printf(\"%d\", i);\n            default: printf(\"%d\", i);\n        }\n    return 0;\n}\n\n```",
       "options": [
         "A. 022111",
         "B. 021021",
@@ -3909,7 +3909,7 @@
         "36"
       ],
       "difficulty": 2,
-      "question": "以下程序输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i=0,s=0;\n  for(;;){\n    if(i==3||i==5) continue;\n    if(i==6) break;\n    i++;\n    s+=i;\n  }\n  printf(\"%d\\n\", s);\n  return 0;\n}\n```",
+      "question": "以下程序输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i=0,s=0;\n    for(;;){\n        if(i==3||i==5) continue;\n        if(i==6) break;\n        i++;\n        s+=i;\n    }\n    printf(\"%d\\n\", s);\n    return 0;\n}\n\n```",
       "options": [
         "A. 10",
         "B. 13",
@@ -3951,7 +3951,7 @@
         "38"
       ],
       "difficulty": 2,
-      "question": "以下程序执行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int x=0,y=5,z=3;\n  while(z-->0 && ++x<5)\n    y=y-1;\n  printf(\"%d,%d,%d\\n\", x,y,z);\n  return 0;\n}\n```",
+      "question": "以下程序执行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int x=0,y=5,z=3;\n    while(z-->0 && ++x<5)\n        y=y-1;\n    printf(\"%d,%d,%d\\n\", x,y,z);\n    return 0;\n}\n\n```",
       "options": [
         "A. 3,2,0",
         "B. 3,2,-1",
@@ -3972,7 +3972,7 @@
         "39"
       ],
       "difficulty": 2,
-      "question": "以下程序执行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n  int i,n=0;\n  for(i=2;i<5;i++){\n    do{\n      if(i%3) continue;\n      n++;\n    }while(!i);\n    n++;\n  }\n  printf(\"n=%d\\n\", n);\n  return 0;\n}\n```",
+      "question": "以下程序执行后的输出结果是（ ）。\n```c\n#include <stdio.h>\nint main(){\n    int i,n=0;\n    for(i=2;i<5;i++){\n        do{\n            if(i%3) continue;\n            n++;\n        }while(!i);\n        n++;\n    }\n    printf(\"n=%d\\n\", n);\n    return 0;\n}\n\n```",
       "options": [
         "A. n=5",
         "B. n=2",
