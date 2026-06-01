@@ -788,21 +788,23 @@ const Quiz = {
     },
 
     renderEssayInput(question, isSubmitted, userAnswer) {
-        const answerText = userAnswer?.text || userAnswer || '';
+        const answerText = (userAnswer?.text || '').trim();
         const selfCorrect = userAnswer?.selfCorrect;
+        const isReviewMode = this.state.isReviewMode;
 
+        // 背题模式：默认不显示输入区，由 renderExplanation 显示答案
+        if (isReviewMode) return '';
+
+        // 已自评：结果横幅由 renderExplanation 显示，这里只展示用户回答文本
         if (isSubmitted && selfCorrect !== undefined) {
-            return `
-                <div style="margin-top:var(--space-4)">
-                    <div class="result-banner ${selfCorrect ? 'correct' : 'wrong'}">
-                        <span class="result-banner-icon">${selfCorrect ? '🎉' : '😔'}</span>
-                        <span class="result-banner-text">${selfCorrect ? '回答正确！' : '回答错误'}</span>
-                    </div>
-                    ${answerText ? `<div style="margin:12px 0;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm)"><strong>你的回答：</strong><br>${Utils.escapeHtml(answerText)}</div>` : ''}
+            return answerText ? `
+                <div style="margin-top:var(--space-4);padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm)">
+                    <strong>你的回答：</strong><br>${Utils.escapeHtml(answerText)}
                 </div>
-            `;
+            ` : '';
         }
 
+        // 已提交但未自评：显示自评按钮
         if (isSubmitted) {
             return `
                 <div style="margin-top:var(--space-4)">
@@ -815,13 +817,11 @@ const Quiz = {
         }
 
         return `
-            <div style="margin-top:var(--space-4)">
-                <textarea class="essay-input" id="essay-input" rows="5" 
-                          placeholder="输入你的回答（可选）..."
-                          aria-label="简答题回答">${Utils.escapeHtml(answerText)}</textarea>
-                <div style="margin-top:8px;display:flex;gap:8px">
-                    <button class="btn btn-secondary btn-sm" onclick="Quiz.submitEssay(${question.id})">📖 查看参考答案</button>
-                </div>
+            <div style="margin-top:var(--space-4);text-align:center">
+                <button class="btn btn-primary" style="padding:10px 32px;font-size:15px" onclick="Quiz.submitEssay(${question.id})">
+                    📖 一键查看答案
+                </button>
+                <div style="margin-top:6px;font-size:12px;color:var(--text-tertiary)">点击按钮查看参考答案与解析</div>
             </div>
         `;
     },
@@ -1044,10 +1044,8 @@ const Quiz = {
         const question = this.state.questions.find((q) => q.id === questionId);
         if (!question) return;
 
-        const editor = document.getElementById('essay-input');
-        const text = editor ? editor.value.trim() : '';
         this.recordQuestionTime();
-        this.state.answers[questionId] = { text };
+        this.state.answers[questionId] = { text: '' };
         this.state.submitted[questionId] = true;
         this.state.showExplanation[questionId] = true;
         this.saveSession();
