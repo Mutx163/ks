@@ -2624,7 +2624,7 @@
         "D. 调用 getchar 函数读入字符时，可以从键盘上输入字符所对应的 ASCII 码"
       ],
       "answer": "B",
-      "explanation": "本题考查输入输出与表达式。正确答案是 B。图片中 C 项疑似为“十二进制”（非“十进制”），据此 C 错；B 为教材语境下正确项。",
+      "explanation": "本题考查输入输出与表达式。正确答案是 B。",
       "source": "夸克扫描王_该函数使用输出(14).jpeg",
       "id": 125,
       "memoryAid": "putchar函数要stdio，头文件包含不能忘"
@@ -2784,7 +2784,7 @@
         "4"
       ],
       "difficulty": 2,
-      "question": "有以下程序段，其输出结果是（ ）。int a,b,c; a=10; b=50; c=30; if(a>b) a=b,b=c; c=a; printf(\"a=%d b=%d c=%d\\n\", a,b,c);",
+      "question": "有以下程序段，其输出结果是（ ）。\n```c\nint a,b,c;\na=10;\nb=50;\nc=30;\nif(a>b) a=b,b=c;\nc=a;\nprintf(\"a=%d b=%d c=%d\\n\", a,b,c);\n```",
       "options": [
         "A. a=10 b=50 c=10",
         "B. a=10 b=50 c=30",
@@ -2805,7 +2805,7 @@
         "5"
       ],
       "difficulty": 2,
-      "question": "执行以下程序段后，x 的值为（ ）。int a=14,b=15,x; char c='A'; x=(a&&b)&&(c<'B');",
+      "question": "执行以下程序段后，x 的值为（ ）。\n```c\nint a=14,b=15,x;\nchar c='A';\nx=(a&&b)&&(c<'B');\n```",
       "options": [
         "A. true",
         "B. 1",
