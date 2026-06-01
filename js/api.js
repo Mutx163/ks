@@ -258,15 +258,19 @@ const API = {
     /**
      * 立即推送答题数据到云端
      * @param {object} stats - { bankId, bankName, answered, correct, duration }
+     * @returns {Promise|null} 请求结果，异常时不会抛出（内部 catch）
      */
     pushStats(stats) {
-        if (!this.isRegistered()) return;
-        this.request('/api/sync', {
+        if (!this.isRegistered()) return null;
+        return this.request('/api/sync', {
             method: 'POST',
             body: JSON.stringify({
                 deviceId: this.getDeviceId(),
                 ...stats
             })
+        }).catch(e => {
+            console.warn('[API] pushStats 失败:', e.message);
+            return null;
         });
     },
 

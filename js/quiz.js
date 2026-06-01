@@ -37,8 +37,14 @@ const Quiz = {
         answerMode: 'normal',
         filterType: 'all',
         isReviewMode: false,
+        _reviewDurationSaved: 0, // 背题模式已记录的学习时长（秒）
         isNavigating: false,
-        optionOrderCache: {}
+        optionOrderCache: {},
+        _statsDirty: false,       // 是否有待上报的答题数据
+        _statsTimer: null,        // 防抖上报定时器
+        _lastPushAnswered: 0,     // 上次已推送的答题数（用于计算增量）
+        _lastPushCorrect: 0,      // 上次已推送的正确数
+        _lastPushDuration: 0      // 上次已推送的时长
     },
 
     async init() {
@@ -107,6 +113,13 @@ const Quiz = {
             return;
         }
 
+        // 检查注册状态，未注册跳回首页
+        if (!API.isRegistered()) {
+            Utils.showToast('请先在首页注册后再刷题', 'error');
+            setTimeout(() => window.location.href = 'index.html', 1500);
+            return;
+        }
+
         this.restoreSession();
         this.state.startTime = Date.now();
         this.state.questionStartTime = Date.now();
@@ -123,6 +136,10 @@ const Quiz = {
 
         // 追踪：开始刷题
         Tracker.startQuiz(this.state.bankId, this.state.bank?.name || '', this.state.mode, this.state.questions.length);
+
+        // 页面关闭/刷新前刷新待上报数据
+        this._beforeUnloadHandler = () => this._flushStatsSync();
+        window.addEventListener('beforeunload', this._beforeUnloadHandler);
     },
 
     updateTimerDisplay() {
@@ -173,6 +190,25 @@ const Quiz = {
 
         // 云同步：推送进度（防抖）
         API.pushProgress(Storage.getProgress());
+
+        // 背题模式：每30秒自动保存一次学习时长
+        this._saveReviewDuration();
+    },
+
+    /**
+     * 背题模式：保存当前已积累的学习时长到总时长（增量）
+     * 每页切换/每30秒自动调用，确保不点完成直接关页面也不会丢时长
+     */
+    _saveReviewDuration() {
+        if (!this.state.isReviewMode || !this.state.startTime) return;
+
+        const elapsed = Math.round((Date.now() - this.state.startTime) / 1000);
+        const lastSaved = this.state._reviewDurationSaved || 0;
+
+        if (elapsed > lastSaved) {
+            Storage.addDuration(elapsed - lastSaved);
+            this.state._reviewDurationSaved = elapsed;
+        }
     },
 
     async loadBankFromJson() {
@@ -1058,6 +1094,9 @@ const Quiz = {
             isCorrect
         );
 
+        // 云端上报：防抖 5s，累积后统一推送
+        this._markStatsDirty();
+
         this.renderQuestion();
         this.renderFooter();
 
@@ -1489,6 +1528,9 @@ const Quiz = {
         const resultIcon = isExam ? (passed ? '🎉' : '😞') : '🎉';
         const resultTitle = isExam ? (passed ? '考试通过！' : '未通过考试') : '答题完成！';
 
+        // 背题模式：结束前补齐剩余时长
+        this._saveReviewDuration();
+
         Storage.addHistory({
             bankId: this.state.bankId,
             bankName: this.state.bank.name,
@@ -1535,14 +1577,31 @@ const Quiz = {
         });
         Tracker.questionHeatmap(this.state.bankId, this.state.bank.name, heatmapData);
 
-        // 云同步：推送答题数据到云端
-        API.pushStats({
-            bankId: this.state.bankId,
-            bankName: this.state.bank.name,
-            answered: submittedIds.length,
-            correct: correctCount,
-            duration: duration
-        });
+        // 清除防抖定时器，标记已清理
+        if (this.state._statsTimer) {
+            clearTimeout(this.state._statsTimer);
+            this.state._statsTimer = null;
+        }
+        this.state._statsDirty = false;
+
+        // 仅推送尚未上报过的增量（防抖可能已推送部分数据）
+        const dAnswered = submittedIds.length - (this.state._lastPushAnswered || 0);
+        const dCorrect = correctCount - (this.state._lastPushCorrect || 0);
+        const dDuration = duration - (this.state._lastPushDuration || 0);
+
+        if (dAnswered > 0 || dCorrect > 0 || dDuration > 0) {
+            this.state._lastPushAnswered = submittedIds.length;
+            this.state._lastPushCorrect = correctCount;
+            this.state._lastPushDuration = duration;
+
+            API.pushStats({
+                bankId: this.state.bankId,
+                bankName: this.state.bank.name,
+                answered: dAnswered,
+                correct: dCorrect,
+                duration: dDuration
+            });
+        }
 
         const container = document.getElementById('question-container');
         container.innerHTML = `
@@ -1640,6 +1699,126 @@ const Quiz = {
 
         this.render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    /**
+     * 标记有脏数据，启动防抖定时器（5s）
+     */
+    _markStatsDirty() {
+        this.state._statsDirty = true;
+        if (this.state._statsTimer) return; // 已有定时器等待
+        this.state._statsTimer = setTimeout(() => {
+            this._flushStatsNow();
+        }, 5000);
+    },
+
+    /**
+     * 立即推送累积的脏数据，清除定时器
+     * 使用 fetch 的 keepalive 确保页面关闭时请求也能发出
+     */
+    _flushStatsNow() {
+        if (this.state._statsTimer) {
+            clearTimeout(this.state._statsTimer);
+            this.state._statsTimer = null;
+        }
+        if (!this.state._statsDirty) return;
+        this.state._statsDirty = false;
+
+        const submittedIds = Object.keys(this.state.submitted);
+        if (submittedIds.length === 0) return;
+
+        const correctCount = submittedIds.filter((qId) => {
+            const q = this.state.questions.find((q) => q.id == qId);
+            return q && this.checkAnswer(q);
+        }).length;
+        const duration = this.state.startTime
+            ? Math.round((Date.now() - this.state.startTime) / 1000)
+            : 0;
+
+        // 计算增量：Worker 端是累加逻辑，只能发送新增的部分
+        const dAnswered = submittedIds.length - (this.state._lastPushAnswered || 0);
+        const dCorrect = correctCount - (this.state._lastPushCorrect || 0);
+        const dDuration = duration - (this.state._lastPushDuration || 0);
+
+        if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) return;
+
+        this.state._lastPushAnswered = submittedIds.length;
+        this.state._lastPushCorrect = correctCount;
+        this.state._lastPushDuration = duration;
+
+        API.pushStats({
+            bankId: this.state.bankId,
+            bankName: this.state.bank?.name || '',
+            answered: dAnswered,
+            correct: dCorrect,
+            duration: dDuration
+        });
+    },
+
+    /**
+     * 同步刷新（用于 beforeunload 场景，不能用 fetch
+     * 因为现代浏览器在 unload 时可能丢弃 fetch Promise）
+     */
+    _flushStatsSync() {
+        if (!this.state._statsDirty) return;
+
+        const submittedIds = Object.keys(this.state.submitted);
+        if (submittedIds.length === 0) return;
+
+        const correctCount = submittedIds.filter((qId) => {
+            const q = this.state.questions.find((q) => q.id == qId);
+            return q && this.checkAnswer(q);
+        }).length;
+        const duration = this.state.startTime
+            ? Math.round((Date.now() - this.state.startTime) / 1000)
+            : 0;
+
+        // 计算增量
+        const dAnswered = submittedIds.length - (this.state._lastPushAnswered || 0);
+        const dCorrect = correctCount - (this.state._lastPushCorrect || 0);
+        const dDuration = duration - (this.state._lastPushDuration || 0);
+
+        if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) {
+            this.state._statsDirty = false;
+            return;
+        }
+
+        this.state._lastPushAnswered = submittedIds.length;
+        this.state._lastPushCorrect = correctCount;
+        this.state._lastPushDuration = duration;
+
+        this.state._statsDirty = false;
+        if (this.state._statsTimer) {
+            clearTimeout(this.state._statsTimer);
+            this.state._statsTimer = null;
+        }
+
+        // 优先用 sendBeacon（保证页面关闭时请求发出）
+        if (navigator.sendBeacon && API.isRegistered()) {
+            const data = JSON.stringify({
+                deviceId: API.getDeviceId(),
+                bankId: this.state.bankId,
+                bankName: this.state.bank?.name || '',
+                answered: dAnswered,
+                correct: dCorrect,
+                duration: dDuration
+            });
+            try {
+                navigator.sendBeacon(API.BASE_URL + '/api/sync', data);
+                return;
+            } catch (e) {
+                console.warn('[Quiz] sendBeacon 失败:', e.message);
+            }
+        }
+
+        // fallback: 走普通 fetch
+        API.pushStats({
+            bankId: this.state.bankId,
+            bankName: this.state.bank?.name || '',
+            answered: dAnswered,
+            correct: dCorrect,
+            duration: dDuration
+        });
     },
 
     goHome() {

@@ -388,7 +388,8 @@ code {
     font-size: 0.9em;
 }
 
-pre {
+pre,
+pre[class*="language-"] {
     background: #263238;
     color: #eeffff;
     padding: var(--space-4);
@@ -396,14 +397,19 @@ pre {
     font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
     font-size: 14px;
     line-height: 1.5;
-    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: hidden;
     margin: var(--space-3) 0;
 }
 
-pre code {
+pre code,
+pre[class*="language-"] code[class*="language-"] {
     background: none;
     color: inherit;
     padding: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 /* ================= Toast ================= */

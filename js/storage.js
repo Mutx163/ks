@@ -532,7 +532,8 @@ const Storage = {
         this.set(this.KEYS.HISTORY, history);
 
         // 累加总学习时长（独立于 history 的裁剪）
-        if (record.duration && record.duration > 0) {
+        // 背题模式已由 _saveReviewDuration 增量保存，避免重复
+        if (record.duration && record.duration > 0 && record.mode !== 'review') {
             this.addDuration(record.duration);
         }
     },
