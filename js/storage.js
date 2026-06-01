@@ -40,6 +40,7 @@ const Storage = {
                 showAnswer: true, // 答题后显示答案
                 autoNext: false, // 自动下一题
                 randomOrder: false, // 随机顺序
+                swipeNavigation: true, // 左右滑动切换题目
                 fontSize: 16, // 字体大小
                 theme: 'auto' // 主题：auto|light|dark
             });
@@ -574,6 +575,7 @@ const Storage = {
                 showAnswer: true,
                 autoNext: false,
                 randomOrder: false,
+                swipeNavigation: true,
                 fontSize: 16
             }
         );
