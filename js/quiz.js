@@ -155,7 +155,6 @@ const Quiz = {
         const session = Storage.getSession(this.state.bankId, this.state.mode);
         if (session && session.currentIndex < this.state.questions.length) {
             this.state.currentIndex = session.currentIndex || 0;
-            // answerMode 不从 session 恢复，始终使用设置中的最新值
             if (this.state.mode !== 'review') {
                 this.state.answers = session.answers || {};
                 this.state.submitted = session.submitted || {};
@@ -165,7 +164,6 @@ const Quiz = {
             this.state.optionOrderCache = session.optionOrderCache || {};
             this.state.savedOrderIds = session.questionOrderIds || null;
 
-            // 恢复随机/乱序模式的题目顺序，保证进度不丢失
             if (this.state.savedOrderIds &&
                 (this.state.mode === 'random' || this.state.mode === 'shuffle_options')) {
                 const orderMap = new Map(
@@ -179,8 +177,14 @@ const Quiz = {
                 });
             }
         } else if (this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
-            // 首次进入随机模式：保存当前打乱顺序
             this.state.savedOrderIds = this.state.questions.map((q) => q.id);
+        }
+
+        // 恢复已上报位置，防止页面刷新后重复计数
+        if (session) {
+            this.state._lastPushAnswered = session.lastPushAnswered || 0;
+            this.state._lastPushCorrect = session.lastPushCorrect || 0;
+            this.state._lastPushDuration = session.lastPushDuration || 0;
         }
     },
 
@@ -202,7 +206,11 @@ const Quiz = {
             showExplanation: this.state.showExplanation,
             questionTimes: this.state.questionTimes,
             optionOrderCache: this.state.optionOrderCache,
-            questionOrderIds
+            questionOrderIds,
+            // 已上报位置，页面刷新后避免重复计数
+            lastPushAnswered: this.state._lastPushAnswered,
+            lastPushCorrect: this.state._lastPushCorrect,
+            lastPushDuration: this.state._lastPushDuration
         });
 
         // 云同步：推送进度（防抖）
