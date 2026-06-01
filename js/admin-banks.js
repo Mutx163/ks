@@ -29,7 +29,7 @@ export function initBanks(Admin) {
                                 <td>${b.question_count}</td>
                                 <td>${Utils.escapeHtml(b.category||'-')}</td>
                                 <td>v${b.version}</td>
-                                <td style="font-size:11px">${b.updated_at?.slice(0,16)||'-'}</td>
+                                <td style="font-size:11px">${Admin.fmtTime(b.updated_at)||'-'}</td>
                                 <td>
                                     <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.viewBank('${b.id}')">管理</button>
                                     <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.uploadBank('${b.id}')">替换</button>
@@ -158,7 +158,7 @@ export function initBanks(Admin) {
                         <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
                             <div style="display:flex;justify-content:space-between">
                                 <span>${r.action}: ${Utils.escapeHtml(r.detail||'')}</span>
-                                <span style="color:var(--text-tertiary);font-size:10px">${r.created_at?.slice(0,16)||''}</span>
+                                <span style="color:var(--text-tertiary);font-size:10px">${Admin.fmtTime(r.created_at)||''}</span>
                             </div>
                             <div style="font-size:10px;color:var(--text-tertiary)">操作人: ${r.operator||'-'}</div>
                         </div>

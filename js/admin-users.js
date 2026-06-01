@@ -49,7 +49,7 @@ export function initUsers(Admin) {
             <td><b>${u.total_answered}</b></td>
             <td><div class="acc-bar"><span>${acc}%</span><div class="bar"><div class="fill" style="width:${acc}%;background:${c}"></div></div></div></td>
             <td>${this.fmtDur(u.total_duration)}</td>
-            <td>${u.created_at?.slice(0, 10) || '-'}</td>
+            <td>${Admin.fmtDate(u.created_at) || '-'}</td>
             <td>${u.banned ? '<span class="badge b-ban">封禁</span>' : '<span style="color:#22c55e">正常</span>'}</td>
             <td style="white-space:nowrap">
                 <button class="abtn primary" onclick="Admin.detail('${jsu}')">详情</button>
@@ -75,14 +75,14 @@ export function initUsers(Admin) {
             p.innerHTML = `
                 <div class="dh"><h3>${n} <span class="code">${u.id}</span>${u.is_admin?' <span class="badge b-admin">管理</span>':''}${u.banned?' <span class="badge b-ban">封禁</span>':''}</h3><button class="close-btn" onclick="this.closest('.detail').classList.remove('show')">✕</button></div>
                 <div class="d-grid">
-                    <div class="d-item"><div class="dl">注册</div><div class="dv">${u.created_at?.slice(0,16)||'-'}</div></div>
+                    <div class="d-item"><div class="dl">注册</div><div class="dv">${Admin.fmtTime(u.created_at)||'-'}</div></div>
                     <div class="d-item"><div class="dl">设备</div><div class="dv">${d.devices.length}台</div></div>
                     <div class="d-item"><div class="dl">答题</div><div class="dv">${ta}</div></div>
                     <div class="d-item"><div class="dl">正确率</div><div class="dv">${ta>0?Math.round(tc/ta*100):0}%</div></div>
                     <div class="d-item"><div class="dl">时长</div><div class="dv">${this.fmtDur(td)}</div></div>
                     <div class="d-item"><div class="dl">题库</div><div class="dv">${d.stats.length}个</div></div>
                 </div>
-                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">设备列表</div>${d.devices.map(x=>{const jsd=Utils.jsSafe(x.device_id);return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis">${Utils.escapeHtml(x.device_id)}</code><span style="color:var(--text-tertiary)">${x.bound_at?.slice(0,10)||''}</span><button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="Admin.removeDevice('${jsd}','${jsu}')">解绑</button></div>`;}).join('')}`:''}
+                ${d.devices.length?`<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">设备列表</div>${d.devices.map(x=>{const jsd=Utils.jsSafe(x.device_id);return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-hover);border-radius:4px;margin-bottom:3px;font-size:11px"><code style="color:var(--text-tertiary);flex:1;overflow:hidden;text-overflow:ellipsis">${Utils.escapeHtml(x.device_id)}</code><span style="color:var(--text-tertiary)">${Admin.fmtDate(x.bound_at)||''}</span><button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="Admin.removeDevice('${jsd}','${jsu}')">解绑</button></div>`;}).join('')}`:''}
                 ${d.stats.length?`<div style="font-size:11px;color:var(--text-tertiary);margin:8px 0 4px">题库明细</div><table style="font-size:11px"><thead><tr><th style="text-align:left;padding:4px 6px">题库</th><th style="text-align:right;padding:4px 6px">答题</th><th style="text-align:right;padding:4px 6px">正确</th><th style="text-align:right;padding:4px 6px">正确率</th><th style="text-align:right;padding:4px 6px">时长</th></tr></thead><tbody>${d.stats.map(s=>{const a=s.answered>0?Math.round(s.correct/s.answered*100):0;return`<tr><td style="padding:4px 6px">${Utils.escapeHtml(s.bank_name||s.bank_id)}</td><td style="text-align:right;padding:4px 6px">${s.answered}</td><td style="text-align:right;padding:4px 6px">${s.correct}</td><td style="text-align:right;padding:4px 6px">${a}%</td><td style="text-align:right;padding:4px 6px">${this.fmtDur(s.duration)}</td></tr>`}).join('')}</tbody></table>`:''}
                 <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
                     <button class="abtn primary" onclick="Admin.editUser('${jsu}','${jsn}',${u.is_admin?1:0})">编辑信息</button>
@@ -221,7 +221,7 @@ export function initUsers(Admin) {
         const rows = [['同步码', '姓名', '管理员', '注册时间', '设备数', '答题数', '正确数', '正确率', '学习时长(秒)']];
         this.users.forEach(u => {
             const acc = u.total_answered > 0 ? Math.round(u.total_correct / u.total_answered * 100) : 0;
-            rows.push([u.id, u.initials, u.is_admin ? '是' : '否', u.created_at?.slice(0,10) || '', u.device_count, u.total_answered, u.total_correct, acc + '%', u.total_duration]);
+            rows.push([u.id, u.initials, u.is_admin ? '是' : '否', Admin.fmtDate(u.created_at) || '', u.device_count, u.total_answered, u.total_correct, acc + '%', u.total_duration]);
         });
         const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });

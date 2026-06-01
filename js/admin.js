@@ -110,7 +110,7 @@ const Admin = {
                 </div>
                 <div class="card">
                     <div class="card-header"><h3>近7天注册趋势</h3></div>
-                    <div class="trend-chart">${o.weekTrend.map(w => `<div class="trend-bar" style="height:${Math.max(w.cnt/maxCnt*60,3)}px"><span class="trend-value">${w.cnt}</span><span class="trend-label">${w.day.slice(5)}</span></div>`).join('') || '<div class="empty-state">暂无数据</div>'}</div>
+                    <div class="trend-chart">${o.weekTrend.map(w => `<div class="trend-bar" style="height:${Math.max(w.cnt/maxCnt*60,3)}px"><span class="trend-value">${w.cnt}</span><span class="trend-label">${(this.fmtDate(w.day)||'').slice(5)}</span></div>`).join('') || '<div class="empty-state">暂无数据</div>'}</div>
                 </div>`;
             Utils.initIcons?.();
         } catch (e) { el.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
@@ -130,7 +130,7 @@ const Admin = {
                     <div class="timeline">${d.activity.map(a => `
                         <div class="tl-item"><div class="tl-dot"></div><div class="tl-body">
                             <div class="tl-title"><b>${Utils.escapeHtml(a.initials)}</b> ${Utils.escapeHtml(a.bank_name||'')} · ${a.answered}题 · 正确${a.correct}</div>
-                            <div class="tl-sub">${this.fmtDur(a.duration)} · ${a.updated_at?.slice(0,16)||''}</div>
+                            <div class="tl-sub">${this.fmtDur(a.duration)} · ${this.fmtTime(a.updated_at)}</div>
                         </div></div>
                     `).join('')}</div>
                 </div>`;
@@ -167,7 +167,27 @@ const Admin = {
     },
 
     fmtN(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n; },
-    fmtDur(s) { if (!s || s < 60) return (s || 0) + '秒'; if (s < 3600) return Math.floor(s / 60) + '分'; return (s / 3600).toFixed(1) + '时'; }
+    fmtDur(s) { if (!s || s < 60) return (s || 0) + '秒'; if (s < 3600) return Math.floor(s / 60) + '分'; return (s / 3600).toFixed(1) + '时'; },
+    /** 将 UTC ISO 字符串转为北京时间显示 */
+    fmtTime(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            const bj = new Date(d.getTime() + 8 * 3600000);
+            return bj.toISOString().replace('T', ' ').slice(0, 16);
+        } catch { return iso; }
+    },
+    /** UTC ISO 转北京时间日期 */
+    fmtDate(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            const bj = new Date(d.getTime() + 8 * 3600000);
+            return bj.toISOString().slice(0, 10);
+        } catch { return iso; }
+    }
 };
 
 // 注册子模块

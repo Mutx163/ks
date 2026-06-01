@@ -1734,15 +1734,15 @@
         "习题3.1-4"
       ],
       "difficulty": 2,
-      "question": "若一个 int 类型的数据占 2 字节，则程序段：int x = -1; printf(\"%u,%d\", x, x); 的输出结果是（ ）。",
+      "question": "若一个 int 类型的数据占 2 字节，则程序段：int x = 1; printf(\"%u,%d\", x, x); 的输出结果是（ ）。",
       "options": [
-        "A. 65535,-1",
+        "A. 65535,1",
         "B. 1,65535",
         "C. 32767,32768",
         "D. 32768,32767"
       ],
       "answer": "A",
-      "explanation": "本题考查输入输出与表达式。正确答案是 A。图片中负号较细；若 x 为 -1，则按 16 位无符号解释为 65535。严格 C 中 printf 格式与实参类型不匹配属于未定义行为。",
+      "explanation": "本题考查输入输出与表达式。正确答案是 A。",
       "source": "夸克扫描王_该函数使用输出(9).jpeg",
       "id": 83,
       "memoryAid": "负数无符号变正数，-1输出六万五"
@@ -2889,7 +2889,7 @@
         "9"
       ],
       "difficulty": 2,
-      "question": "执行以下程序段后，输出结果是（ ）。int a=3,b=5,c=7; if(a>b) a=b; c=a; if(c!=a) c=b; printf(\"%d,%d,%d\\n\", a,b,c);",
+      "question": "执行以下程序段后，输出结果是（ ）。\n```c\nint a=3,b=5,c=7;\nif(a>b) a=b;\nc=a;\nif(c!=a) c=b;\nprintf(\"%d,%d,%d\\n\", a,b,c);\n```",
       "options": [
         "A. 程序段有语法错误",
         "B. 3,5,3",
@@ -2910,7 +2910,7 @@
         "10"
       ],
       "difficulty": 2,
-      "question": "下面程序段的输出结果是（ ）。int a=-1,b=4,k; k=(a++<=0)&&(!b--<=0); printf(\"%d,%d,%d\", k,a,b);",
+      "question": "下面程序段的输出结果是（ ）。\n```c\nint a=-1,b=4,k;\nk=(a++<=0)&&(!b--<=0);\nprintf(\"%d,%d,%d\", k,a,b);\n```",
       "options": [
         "A. 0,0,3",
         "B. 0,1,2",
@@ -2931,7 +2931,7 @@
         "11"
       ],
       "difficulty": 2,
-      "question": "程序段：int x=3,a=1; switch(x){ case 4:a++; case 3:a++; case 2:a++; case 1:a++; } printf(\"%d\", a); 的输出结果是（ ）。",
+      "question": "程序段：\n```c\nint x=3,a=1;\nswitch(x){\n    case 4:a++;\n    case 3:a++;\n    case 2:a++;\n    case 1:a++;\n}\nprintf(\"%d\", a);\n```\n的输出结果是（ ）。",
       "options": [
         "A. 1",
         "B. 2",
@@ -2952,7 +2952,7 @@
         "12"
       ],
       "difficulty": 2,
-      "question": "下面程序段的输出结果是（ ）。int n='c'; switch(n++){ default: printf(\"error\"); break; case 'a': case 'A': case 'b': case 'B': printf(\"good\"); break; case 'c': case 'C': printf(\"pass\"); case 'd': case 'D': printf(\"warn\"); }",
+      "question": "下面程序段的输出结果是（ ）。\n```c\nint n='c';\nswitch(n++){\n    default: printf(\"error\"); break;\n    case 'a': case 'A': case 'b': case 'B': printf(\"good\"); break;\n    case 'c': case 'C': printf(\"pass\");\n    case 'd': case 'D': printf(\"warn\");\n}\n```",
       "options": [
         "A. passwarn",
         "B. passerror",
@@ -2973,7 +2973,7 @@
         "13"
       ],
       "difficulty": 2,
-      "question": "下述程序段的输出结果是（ ）。int a=2,b=3,c=4,d=5; int m=2,n=2; a=(m=a>b)&&(n=c>d)+5; printf(\"%d, %d\", n,a);",
+      "question": "下述程序段的输出结果是（ ）。\n```c\nint a=2,b=3,c=4,d=5;\nint m=2,n=2;\na=(m=a>b)&&(n=c>d)+5;\nprintf(\"%d, %d\", n,a);\n```",
       "options": [
         "A. 2,5",
         "B. 0,5",
@@ -3015,7 +3015,7 @@
         "16"
       ],
       "difficulty": 1,
-      "question": "当 a=1,b=3,c=5,d=4,x=0 时，执行完下面一段程序后 x 的值是（ ）。if(a>b) if(c<d) x=1; else if(a>c) if(b<d) x=2; else x=3; else x=6; else x=7;",
+      "question": "当 a=1,b=3,c=5,d=4,x=0 时，执行完下面一段程序后 x 的值是（ ）。\n```c\nif(a>b)\n    if(c<d) x=1;\n    else\n        if(a>c)\n            if(b<d) x=2;\n            else x=3;\n    else x=6;\nelse x=7;\n```",
       "options": [
         "A. 7",
         "B. 2",

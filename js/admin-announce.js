@@ -42,7 +42,7 @@ export function initAnnounce(Admin) {
                 <div style="display:flex;align-items:flex-start;padding:8px 12px;border-bottom:1px solid var(--border);gap:8px">
                     <div style="flex:1;min-width:0">
                         <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all">${Utils.escapeHtml(a.content)}</div>
-                        <div style="font-size:10px;color:var(--text-tertiary);margin-top:4px">${a.created_at?.slice(0,16)||''} · ID:${a.id}</div>
+                        <div style="font-size:10px;color:var(--text-tertiary);margin-top:4px">${Admin.fmtTime(a.created_at)||''} · ID:${a.id}</div>
                     </div>
                     <div style="display:flex;gap:4px;flex-shrink:0">
                         <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.editAnnounce(${a.id},'${Utils.jsSafe(a.content)}')">编辑</button>
