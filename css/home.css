@@ -1,6 +1,6 @@
 /* ================= 主页样式 ================= */
 
-/* ===== 加载骨架屏 ===== */
+/* ===== 炫酷加载骨架屏 ===== */
 #loading-skeleton {
     position: fixed;
     inset: 0;
@@ -9,17 +9,49 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.3s ease;
+    overflow: hidden;
 }
 
 #loading-skeleton.hidden {
     display: none;
 }
 
+/* 粒子背景 */
+#loading-skeleton::before {
+    content: '';
+    position: absolute;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background-image:
+        radial-gradient(2px 2px at 20% 30%, var(--primary) 0%, transparent 100%),
+        radial-gradient(2px 2px at 40% 70%, #764ba2 0%, transparent 100%),
+        radial-gradient(2px 2px at 60% 20%, #f093fb 0%, transparent 100%),
+        radial-gradient(2px 2px at 80% 80%, #667eea 0%, transparent 100%),
+        radial-gradient(1px 1px at 10% 90%, var(--primary) 0%, transparent 100%),
+        radial-gradient(1px 1px at 70% 40%, #764ba2 0%, transparent 100%),
+        radial-gradient(1px 1px at 90% 10%, #f093fb 0%, transparent 100%),
+        radial-gradient(1px 1px at 50% 50%, #667eea 0%, transparent 100%);
+    background-size: 200px 200px;
+    animation: skel-particles 20s linear infinite;
+    opacity: 0.15;
+    pointer-events: none;
+}
+
+@keyframes skel-particles {
+    0% { transform: translate(0, 0); }
+    25% { transform: translate(50px, -30px); }
+    50% { transform: translate(-20px, 50px); }
+    75% { transform: translate(30px, -20px); }
+    100% { transform: translate(0, 0); }
+}
+
 #loading-skeleton .skel-hero {
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
+    z-index: 1;
 }
 
 .skel-hero {
@@ -32,83 +64,166 @@
     display: inline-block;
 }
 
-/* 底层光晕 */
+/* 外层旋转光环 */
+.skel-logo-wrap::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 140px;
+    height: 140px;
+    transform: translate(-50%, -50%) rotate(0deg);
+    border: 2px solid transparent;
+    border-top-color: var(--primary);
+    border-right-color: #764ba2;
+    border-radius: 50%;
+    animation: skel-ring 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.skel-logo-wrap::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 110px;
+    height: 110px;
+    transform: translate(-50%, -50%) rotate(0deg);
+    border: 1.5px solid transparent;
+    border-bottom-color: #f093fb;
+    border-left-color: #667eea;
+    border-radius: 50%;
+    animation: skel-ring 3s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+@keyframes skel-ring {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 底层光晕 - 增强呼吸效果 */
 .skel-logo-glow {
     position: absolute;
-    inset: 0;
-    font-size: 42px;
+    inset: -10px;
+    font-size: 48px;
     font-weight: 900;
-    letter-spacing: 6px;
+    letter-spacing: 8px;
     line-height: 1.2;
     color: transparent;
-    background: linear-gradient(135deg, #667eea, #764ba2, #f093fb, #667eea);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 30%, #f093fb 60%, #667eea 100%);
     background-size: 300% 300%;
     -webkit-background-clip: text;
     background-clip: text;
-    filter: blur(18px);
-    opacity: 0.6;
-    animation: skel-glow 3s ease-in-out infinite;
+    filter: blur(20px);
+    opacity: 0.5;
+    animation: skel-glow 2.5s ease-in-out infinite;
 }
 
-/* 主文字 - 流光渐变 */
+/* 主文字 - 立体流光 */
 .skel-logo {
     position: relative;
-    font-size: 42px;
+    font-size: 48px;
     font-weight: 900;
-    letter-spacing: 6px;
+    letter-spacing: 8px;
     line-height: 1.2;
+    text-shadow: 0 0 40px rgba(102, 126, 234, 0.15);
     color: transparent;
     background: linear-gradient(
         90deg,
         #667eea 0%,
-        #764ba2 20%,
-        #f093fb 40%,
-        #fff 50%,
-        #f093fb 60%,
-        #764ba2 80%,
+        #764ba2 15%,
+        #f093fb 30%,
+        #fff 45%,
+        #f093fb 55%,
+        #764ba2 70%,
+        #667eea 85%,
         #667eea 100%
     );
-    background-size: 200% 100%;
+    background-size: 300% 100%;
     -webkit-background-clip: text;
     background-clip: text;
-    animation: skel-flow 3s linear infinite;
+    animation: skel-flow 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 @keyframes skel-flow {
-    0% { background-position: 100% 50%; }
+    0% { background-position: 200% 50%; }
+    50% { background-position: 0% 50%; }
     100% { background-position: -100% 50%; }
 }
 
 @keyframes skel-glow {
-    0%, 100% { filter: blur(18px); opacity: 0.5; }
-    50% { filter: blur(25px); opacity: 0.8; }
+    0%, 100% { filter: blur(20px); opacity: 0.4; transform: scale(1); }
+    50% { filter: blur(30px); opacity: 0.7; transform: scale(1.05); }
 }
 
-/* 加载中... 动画 */
+/* 标语 - 打字机效果 */
 .skel-subtitle {
-    margin-top: 14px;
-    font-size: 13px;
+    margin-top: 20px;
+    font-size: 14px;
     color: var(--text-tertiary);
-    letter-spacing: 2px;
+    letter-spacing: 3px;
+    position: relative;
 }
 
-.skel-dots i {
-    font-style: normal;
-    animation: skel-blink 1.4s infinite;
+.skel-subtitle::after {
+    content: '｜';
+    margin-left: 2px;
+    animation: skel-cursor 1s step-end infinite;
 }
 
-.skel-dots i:nth-child(2) { animation-delay: 0.2s; }
-.skel-dots i:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes skel-blink {
-    0%, 60%, 100% { opacity: 0; }
-    30% { opacity: 1; }
+@keyframes skel-cursor {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
 }
 
+.skel-dots {
+    display: none;
+}
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
+.skel-features {
+    margin-top: 28px;
+    display: flex;
+    gap: 16px;
+    opacity: 0.5;
+}
+
+.skel-feature-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    background: var(--bg-hover);
+    min-width: 64px;
+    position: relative;
+    overflow: hidden;
+}
+
+.skel-feature-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+    animation: skel-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes skel-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.skel-feature-icon {
+    font-size: 20px;
+}
+
+.skel-feature-label {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    letter-spacing: 1px;
 }
 
 /* ===== 公告横幅 ===== */
