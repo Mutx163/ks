@@ -60,6 +60,10 @@ const App = {
     loadData() {
         this.state.banks = Storage.getBanks();
         this.state.stats = Storage.getGlobalStats();
+        // 恢复排序选项
+        this.state.bankSort = localStorage.getItem('quiz_bank_sort') || 'recent';
+        const sortSelect = document.getElementById('bank-sort');
+        if (sortSelect) sortSelect.value = this.state.bankSort;
     },
 
     render() {
@@ -354,11 +358,54 @@ const App = {
     },
 
     /**
+     * 排序题库
+     */
+    sortBanks(sortBy) {
+        this.state.bankSort = sortBy;
+        localStorage.setItem('quiz_bank_sort', sortBy);
+        this.renderBankGrid();
+    },
+
+    /**
+     * 获取排序后的题库列表
+     */
+    getSortedBanks() {
+        const banks = [...this.state.banks];
+        const sortBy = this.state.bankSort || localStorage.getItem('quiz_bank_sort') || 'recent';
+
+        switch (sortBy) {
+            case 'recent': {
+                const recentIds = Storage.getRecentBanks();
+                if (recentIds.length === 0) return banks;
+                const recentSet = new Set(recentIds);
+                const recent = banks.filter((b) => recentSet.has(b.id));
+                const rest = banks.filter((b) => !recentSet.has(b.id));
+                // 按最近使用顺序排序
+                recent.sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id));
+                return [...recent, ...rest];
+            }
+            case 'name':
+                return banks.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            case 'count':
+                return banks.sort((a, b) => (b.questions?.length || 0) - (a.questions?.length || 0));
+            case 'progress': {
+                return banks.sort((a, b) => {
+                    const pa = Storage.getBankStats(a.id).progress || 0;
+                    const pb = Storage.getBankStats(b.id).progress || 0;
+                    return pb - pa;
+                });
+            }
+            default:
+                return banks;
+        }
+    },
+
+    /**
      * 渲染题库网格（瘦身版）
      */
     renderBankGrid() {
         const container = document.getElementById('bank-grid');
-        const banks = this.state.banks;
+        const banks = this.getSortedBanks();
 
         if (banks.length === 0) {
             container.innerHTML = `
@@ -549,6 +596,8 @@ const App = {
      * @param {string} mode - 模式
      */
     startQuiz(bankId, mode) {
+        // 记录题库使用
+        Storage.recordBankUsage(bankId);
         const selectedType = this.state.selectedTypes[bankId] || 'all';
         const typeParam = selectedType !== 'all' ? `&type=${selectedType}` : '';
         window.location.href = `quiz.html?bank=${bankId}&mode=${mode}${typeParam}`;

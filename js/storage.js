@@ -21,7 +21,8 @@ const Storage = {
         SETTINGS: 'quiz_settings',
         HISTORY: 'quiz_history',
         BOOKMARKS: 'quiz_bookmarks',
-        SESSION: 'quiz_session' // 刷题会话状态（进度、答案等）
+        SESSION: 'quiz_session', // 刷题会话状态（进度、答案等）
+        RECENT_BANKS: 'quiz_recent_banks' // 最近使用的题库
     },
 
     /**
@@ -778,6 +779,26 @@ const Storage = {
      */
     clearAllSessions() {
         this.set(this.KEYS.SESSION, {});
+    },
+
+    /**
+     * 记录题库使用（最近使用）
+     */
+    recordBankUsage(bankId) {
+        const recent = this.get(this.KEYS.RECENT_BANKS) || [];
+        // 移除已存在的记录
+        const filtered = recent.filter((id) => id !== bankId);
+        // 添加到最前面
+        filtered.unshift(bankId);
+        // 只保留最近 20 个
+        this.set(this.KEYS.RECENT_BANKS, filtered.slice(0, 20));
+    },
+
+    /**
+     * 获取最近使用的题库 ID 列表
+     */
+    getRecentBanks() {
+        return this.get(this.KEYS.RECENT_BANKS) || [];
     },
 
     /**

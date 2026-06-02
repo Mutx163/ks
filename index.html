@@ -117,7 +117,15 @@
                         <section class="section" id="section-banks" style="display:none" aria-label="题库列表">
                             <div class="section-header">
                                 <h2 class="section-title">题库列表</h2>
-                                <span class="bank-count" id="bank-count"></span>
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <select id="bank-sort" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--bg-card);color:var(--text)" onchange="App.sortBanks(this.value)">
+                                        <option value="recent">最近使用</option>
+                                        <option value="name">名称</option>
+                                        <option value="count">题目数</option>
+                                        <option value="progress">进度</option>
+                                    </select>
+                                    <span class="bank-count" id="bank-count"></span>
+                                </div>
                             </div>
                             <div class="bank-grid" id="bank-grid">
                                 <!-- 动态渲染 -->
