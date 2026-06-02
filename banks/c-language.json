@@ -976,11 +976,11 @@
         "C. unsigned x;",
         "D. short x;"
       ],
-      "answer": "A",
-      "explanation": "本题考查数据类型与表达式。正确答案是 A。注意：按 C 语言标准，short int x; 是完全合法的变量声明，short 和 short int 等价。四个选项均为合法定义。此题可能来自 OCR 识别，原题选项可能有误。按教材出题意图选择 A。",
+      "answer": "C",
+      "explanation": "unsigned 是错误的（不完整且语法非法）。若原意为 unsigned x;，则该定义也错误，因为 unsigned 不能单独用作类型，必须写为 unsigned int x。\n\nA. short int x;：合法，短整型定义。\nB. long x;：合法，等价于 long int x;。\nC. unsigned x;：非法，缺少 int，应写 unsigned int x。\nD. short x;：合法，等价于 short int x;。",
       "source": "夸克扫描王_该函数使用输出(6).jpeg",
       "id": 46,
-      "memoryAid": "short int完全合法，short就是short int，两种写法都正确"
+      "memoryAid": "unsigned 不完整，必须写作 unsigned int"
     },
     {
       "type": "single",
@@ -4880,6 +4880,24 @@
       "source": "夸克扫描王_该函数使用输出(40).jpeg",
       "id": 237,
       "memoryAid": "sum初始为一不是零，减去一到十等于负五四，初始值错差一截，细心审题不丢分"
+    },
+    {
+      "type": "single",
+      "category": "数据类型与表达式",
+      "tags": ["补充"],
+      "difficulty": 2,
+      "question": "设 f 是实型变量，下列表达式中不是逗号表达式的是（ ）。",
+      "options": [
+        "A. f = 3.2, 1.0",
+        "B. f > 0, f < 10",
+        "C. f = 2.0, f > 0",
+        "D. f = (3.2, 1.0)"
+      ],
+      "answer": "D",
+      "explanation": "本题考查逗号表达式。逗号表达式的一般形式为 \"表达式1, 表达式2\"，其求解过程为先求表达式1，再求表达式2，整个表达式的值为表达式2的值。\n\nA、B、C 三个选项都是标准的逗号表达式。\nD 选项 \"f = (3.2, 1.0)\" 中，(3.2, 1.0) 是括号括起来的逗号表达式，整个语句是赋值表达式，将逗号表达式的值（即 1.0）赋给 f，因此整体不是逗号表达式。",
+      "source": "补充",
+      "id": 238,
+      "memoryAid": "逗号表达式不加括号，加括号的是赋值表达式"
     }
   ]
 }
