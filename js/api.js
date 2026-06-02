@@ -334,9 +334,57 @@ const API = {
                 local[bankId] = cloud;
                 changed = true;
             } else {
-                // 取各字段较大值
-                if ((cloud.answered || 0) > (l.answered || 0)) {
-                    local[bankId] = { ...l, ...cloud };
+                // 合并逐题数据（取最新时间戳）
+                const localQ = l.questions || {};
+                const cloudQ = cloud.questions || {};
+                const hasLocalQ = Object.keys(localQ).length > 0;
+                const hasCloudQ = Object.keys(cloudQ).length > 0;
+
+                if (hasCloudQ) {
+                    if (!hasLocalQ) {
+                        // 本地无逐题数据，直接用云端的
+                        l.questions = cloudQ;
+                        changed = true;
+                    } else {
+                        // 两边都有逐题数据，按题目合并（最新时间戳胜出）
+                        for (const [qid, cq] of Object.entries(cloudQ)) {
+                            const lq = localQ[qid];
+                            if (!lq) {
+                                // 本地没有这道题，直接用云端的
+                                localQ[qid] = cq;
+                                changed = true;
+                            } else {
+                                const cloudTime = cq.answeredAt ? new Date(cq.answeredAt).getTime() : 0;
+                                const localTime = lq.answeredAt ? new Date(lq.answeredAt).getTime() : 0;
+                                if (cloudTime > localTime) {
+                                    // 云端更新，但保留本地更高的 attempts
+                                    localQ[qid] = { ...cq, attempts: Math.max(cq.attempts || 0, lq.attempts || 0) };
+                                    changed = true;
+                                } else if (cloudTime === localTime && (cq.attempts || 0) > (lq.attempts || 0)) {
+                                    // 同一时间，取更高的 attempts
+                                    localQ[qid].attempts = cq.attempts;
+                                    changed = true;
+                                }
+                            }
+                        }
+                        l.questions = localQ;
+                    }
+
+                    // 从逐题数据重新计算汇总数字
+                    let answered = 0, correct = 0, wrong = 0;
+                    for (const q of Object.values(l.questions)) {
+                        answered++;
+                        if (q.correct) correct++;
+                        else wrong++;
+                    }
+                    l.answered = answered;
+                    l.correct = correct;
+                    l.wrong = wrong;
+                } else if ((cloud.answered || 0) > (l.answered || 0)) {
+                    // 云端无逐题数据但汇总更大（旧版客户端），只更新汇总
+                    l.answered = cloud.answered || l.answered;
+                    l.correct = cloud.correct || l.correct;
+                    l.wrong = cloud.wrong || l.wrong;
                     changed = true;
                 }
             }
