@@ -54,6 +54,7 @@ const Quiz = {
         this.state.filterType = params.get('type') || 'all';
         this.state.examTimeLimit = parseInt(params.get('time')) || 0;
         this.state.examPassRate = parseInt(params.get('pass')) || 60;
+        this.state.examCount = parseInt(params.get('count')) || 0;
 
         // 搜索模式关键词
         if (this.state.mode === 'search') {
@@ -297,6 +298,11 @@ const Quiz = {
                 break;
             }
             case 'exam':
+                // 按指定数量随机抽取题目
+                if (this.state.examCount > 0 && this.state.examCount < questions.length) {
+                    questions = Utils.shuffleArray(questions).slice(0, this.state.examCount);
+                }
+                break;
             case 'all':
             default:
                 break;
@@ -638,7 +644,7 @@ const Quiz = {
             text: option
         }));
 
-        if (this.state.mode !== 'shuffle_options') return normal;
+        if (this.state.mode !== 'shuffle_options' && this.state.mode !== 'exam') return normal;
 
         // 缓存乱序顺序，保证同一题目刷新/切换后顺序不变
         if (!this.state.optionOrderCache[question.id]) {

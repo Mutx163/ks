@@ -1,5 +1,9 @@
 /**
- * 排行榜页面模块
+ * 排行榜页面模块（优化版）
+ * - Top 3 领奖台展示
+ * - 进度条显示相对差距
+ * - 交错入场动画
+ * - 粘性用户卡片
  */
 
 import API from './api.js';
@@ -9,16 +13,15 @@ const LB = {
     currentSort: 'answered',
 
     async init() {
-        // 自动同步
         await API.autoSync();
 
-        // 未注册则提示
         if (!API.isRegistered()) {
             document.getElementById('lb-list').innerHTML = `
                 <div class="lb-empty">
                     <div class="lb-empty-icon">🏆</div>
-                    <p>注册后即可参与排行</p>
-                    <button class="btn btn-primary" onclick="LB.promptRegister()">注册加入</button>
+                    <div class="lb-empty-title">注册后即可参与排行</div>
+                    <p style="margin-bottom:var(--space-4);color:var(--text-secondary);">与全站同学一起比拼学习数据</p>
+                    <button class="btn btn-primary" onclick="LB.promptRegister()">立即注册加入</button>
                 </div>
             `;
             return;
@@ -29,9 +32,7 @@ const LB = {
 
     async promptRegister() {
         const ok = await API.showRegisterModal();
-        if (ok) {
-            location.reload();
-        }
+        if (ok) location.reload();
     },
 
     async switchTab(sort) {
@@ -44,14 +45,23 @@ const LB = {
 
     async loadLeaderboard() {
         const listEl = document.getElementById('lb-list');
-        listEl.innerHTML = '<div class="lb-loading">加载中...</div>';
+
+        // 加载状态
+        listEl.innerHTML = `
+            <div class="lb-loading">
+                <div class="lb-loading-spinner"></div>
+                <div>加载中...</div>
+            </div>
+        `;
 
         const data = await API.getLeaderboard(this.currentSort, 50);
         if (!data || !data.ok) {
             listEl.innerHTML = `
                 <div class="lb-empty">
                     <div class="lb-empty-icon">📡</div>
-                    <p>加载失败，请稍后重试</p>
+                    <div class="lb-empty-title">加载失败</div>
+                    <p style="color:var(--text-secondary);">请检查网络后重试</p>
+                    <button class="btn btn-secondary" style="margin-top:var(--space-3);" onclick="LB.loadLeaderboard()">重新加载</button>
                 </div>
             `;
             return;
@@ -60,46 +70,30 @@ const LB = {
         // 渲染当前用户
         this.renderCurrentUser(data.currentUser);
 
-        // 渲染排行榜
-        if (data.leaderboard.length === 0) {
+        const leaderboard = data.leaderboard || [];
+        if (leaderboard.length === 0) {
             listEl.innerHTML = `
                 <div class="lb-empty">
                     <div class="lb-empty-icon">📭</div>
-                    <p>暂无数据，成为第一个上榜的人吧！</p>
+                    <div class="lb-empty-title">暂无数据</div>
+                    <p style="color:var(--text-secondary);">成为第一个上榜的人吧！</p>
                 </div>
             `;
             return;
         }
 
-        const myCode = API.getSyncCode();
-        listEl.innerHTML = data.leaderboard.map(row => {
-            const isMe = row.syncCode === myCode;
-            const rankClass = row.rank <= 3 ? `top-${row.rank}` : '';
-            const value = this.formatValue(row);
-
-            return `
-                <div class="lb-row ${isMe ? 'is-me' : ''}">
-                    <div class="lb-rank ${rankClass}">${row.rank}</div>
-                    <div class="lb-avatar">${row.initials || '?'}</div>
-                    <div class="lb-name">
-                        ${Utils.escapeHtml(row.initials)}
-                        ${isMe ? '<span style="color:var(--primary);font-size:12px;">← 我</span>' : ''}
-                    </div>
-                    <div style="text-align:right;">
-                        <div class="lb-value">${value}</div>
-                        <div class="lb-sub">${this.formatSub(row)}</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // 描述
+        // 更新描述
         const descMap = {
-            'answered': '按总答题数排名',
-            'accuracy': '按正确率排名（答题数≥10）',
-            'duration': '按累计学习时长排名'
+            answered: '按总答题数排名',
+            accuracy: '按正确率排名（答题数≥10）',
+            duration: '按累计学习时长排名'
         };
         document.getElementById('lb-desc').textContent = descMap[this.currentSort] || '';
+
+        const myCode = API.getSyncCode();
+
+        // 全部渲染到一个列表，Top 3 通过 CSS 特殊样式区分
+        this.renderList(leaderboard, myCode);
     },
 
     renderCurrentUser(user) {
@@ -109,24 +103,86 @@ const LB = {
             return;
         }
 
+        const rankDisplay = user.rank <= 3
+            ? ['🥇', '🥈', '🥉'][user.rank - 1]
+            : `#${user.rank}`;
+
         meEl.style.display = 'flex';
         meEl.innerHTML = `
-            <div class="lb-me-rank">#${user.rank}</div>
+            <div class="lb-me-rank">${rankDisplay}</div>
             <div class="lb-me-info">
-                <div class="lb-me-name">${Utils.escapeHtml(user.initials)}（我）</div>
+                <div class="lb-me-name">
+                    ${Utils.escapeHtml(user.initials)}
+                    <span class="lb-me-badge">我的排名</span>
+                </div>
                 <div class="lb-me-stats">
-                    <span>📊 ${user.answered} 题</span>
-                    <span>🎯 ${user.accuracy}%</span>
-                    <span>⏱ ${this.formatDuration(user.duration)}</span>
+                    <span class="lb-me-stat">📊 ${user.answered} 题</span>
+                    <span class="lb-me-stat">🎯 ${user.accuracy}% 正确率</span>
+                    <span class="lb-me-stat">⏱ ${this.formatDuration(user.duration)}</span>
                 </div>
             </div>
         `;
     },
 
+    renderList(users, myCode) {
+        const listEl = document.getElementById('lb-list');
+        if (users.length === 0) {
+            listEl.innerHTML = '';
+            return;
+        }
+
+        const maxVal = this.getRawValue(users[0]);
+
+        listEl.innerHTML = users.map((row, index) => {
+            const isMe = row.syncCode === myCode;
+            const rank = row.rank;
+            const rawVal = this.getRawValue(row);
+            const barPct = maxVal > 0 ? Math.round((rawVal / maxVal) * 100) : 0;
+
+            // 排名样式
+            let rankClass = '';
+            if (rank <= 3) rankClass = `top-${rank}`;
+            else if (rank <= 10) rankClass = `rank-${rank}`;
+
+            const medalIcon = rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : '';
+            const rowClass = rank <= 3 ? `top-${rank}` : '';
+
+            return `
+                <div class="lb-row ${rowClass} ${isMe ? 'is-me' : ''}" style="animation: rowSlideIn 0.3s ease both; animation-delay: ${Math.min(index * 0.03, 0.5)}s;">
+                    <div class="lb-rank ${rankClass}">
+                        ${medalIcon || `<span class="lb-rank-num">${rank}</span>`}
+                    </div>
+                    <div class="lb-avatar">${row.initials?.charAt(0)?.toUpperCase() || '?'}</div>
+                    <div class="lb-name">
+                        ${Utils.escapeHtml(row.initials)}
+                        ${isMe ? '<span class="lb-name-tag">← 我</span>' : ''}
+                    </div>
+                    <div class="lb-value-wrap">
+                        <div class="lb-value">${this.formatValue(row)}</div>
+                        <div class="lb-sub">${this.formatSub(row)}</div>
+                    </div>
+                    <div class="lb-row-bar" style="width:${barPct}%;"></div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * 获取排序字段的原始数值（用于进度条计算）
+     */
+    getRawValue(row) {
+        switch (this.currentSort) {
+            case 'answered': return row.answered || 0;
+            case 'accuracy': return row.accuracy || 0;
+            case 'duration': return row.duration || 0;
+            default: return 0;
+        }
+    },
+
     formatValue(row) {
         switch (this.currentSort) {
-            case 'answered': return row.answered + ' 题';
-            case 'accuracy': return row.accuracy + '%';
+            case 'answered': return (row.answered || 0) + ' 题';
+            case 'accuracy': return (row.accuracy || 0) + '%';
             case 'duration': return this.formatDuration(row.duration);
             default: return '';
         }
@@ -134,9 +190,9 @@ const LB = {
 
     formatSub(row) {
         switch (this.currentSort) {
-            case 'answered': return `正确率 ${row.accuracy}%`;
-            case 'accuracy': return `${row.answered} 题`;
-            case 'duration': return `${row.answered} 题`;
+            case 'answered': return `正确率 ${row.accuracy || 0}%`;
+            case 'accuracy': return `${row.answered || 0} 题`;
+            case 'duration': return `${row.answered || 0} 题`;
             default: return '';
         }
     },

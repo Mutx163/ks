@@ -534,8 +534,11 @@ const App = {
 
         const totalQuestions = bank.questions?.length || 0;
 
+        const defaultExamCount = Math.min(totalQuestions, 20);
         const content = `
             <p style="margin-bottom: var(--space-3); color: var(--text-secondary);">题库：${Utils.escapeHtml(bank.name)}（${totalQuestions}题）</p>
+            <label>抽取题数（最多 ${totalQuestions} 题，0 表示全部）</label>
+            <input type="number" id="exam-count" value="${defaultExamCount}" min="0" max="${totalQuestions}">
             <label>考试限时（分钟，0表示不限时）</label>
             <input type="number" id="exam-time" value="60" min="0" max="300">
             <label>及格线（百分比）</label>
@@ -550,10 +553,12 @@ const App = {
                     label: '开始考试',
                     class: 'btn-primary',
                     onClick: (modal) => {
+                        const count = parseInt(modal.querySelector('#exam-count').value) || 0;
                         const timeMinutes = parseInt(modal.querySelector('#exam-time').value) || 0;
                         const passRate = parseInt(modal.querySelector('#exam-pass').value) || 60;
+                        const countParam = count > 0 ? `&count=${count}` : '';
                         const timeParam = timeMinutes > 0 ? `&time=${timeMinutes * 60}` : '';
-                        window.location.href = `quiz.html?bank=${bankId}&mode=exam${timeParam}&pass=${passRate}`;
+                        window.location.href = `quiz.html?bank=${bankId}&mode=exam${countParam}${timeParam}&pass=${passRate}`;
                     }
                 },
                 {
