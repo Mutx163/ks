@@ -211,6 +211,12 @@ export default {
                 return await handleAdminDeleteQuestion(bankId, qid, request, env, origin);
             }
 
+            // PUT /api/admin/bank/:id/settings（更新题库设置）
+            if (method === 'PUT' && path.match(/\/api\/admin\/bank\/[^/]+\/settings$/)) {
+                const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
+                return await handleAdminUpdateBankSettings(bankId, request, env, origin);
+            }
+
             // GET /api/banks（前端获取题库列表）
             if (method === 'GET' && path === '/api/banks') {
                 return await handleGetBanks(env, origin);
@@ -944,9 +950,14 @@ async function handleAdminUserCloudData(userId, url, env, origin) {
 // 前端：获取题库列表（不含题目详情）
 async function handleGetBanks(env, origin) {
     const rows = await env.DB.prepare(
-        'SELECT id, name, description, category, version, question_count, updated_at FROM banks ORDER BY name'
+        'SELECT id, name, description, category, version, question_count, allowed_modes, updated_at FROM banks ORDER BY name'
     ).all();
-    return json({ ok: true, banks: rows.results || [] }, 200, origin);
+    // 解析 allowed_modes JSON
+    const banks = (rows.results || []).map(b => ({
+        ...b,
+        allowed_modes: b.allowed_modes ? JSON.parse(b.allowed_modes) : null
+    }));
+    return json({ ok: true, banks }, 200, origin);
 }
 
 // 前端：获取题库完整数据（含题目）
@@ -967,6 +978,7 @@ async function handleGetBank(bankId, env, origin) {
             description: bank.description,
             category: bank.category,
             version: bank.version,
+            allowed_modes: bank.allowed_modes ? JSON.parse(bank.allowed_modes) : null,
             questions
         }
     }, 200, origin);
@@ -975,19 +987,20 @@ async function handleGetBank(bankId, env, origin) {
 // 管理员：导入/替换题库
 async function handleAdminImportBank(request, env, origin) {
     const body = await request.json();
-    const { deviceId, password, id, name, description, category, questions } = body;
+    const { deviceId, password, id, name, description, category, questions, allowed_modes } = body;
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
     if (!id || !name || !questions) return error('缺少参数', 400, origin);
 
     const now = new Date().toISOString();
-    const existing = await env.DB.prepare('SELECT version FROM banks WHERE id = ?').bind(id).first();
+    const existing = await env.DB.prepare('SELECT version, allowed_modes FROM banks WHERE id = ?').bind(id).first();
     const version = existing ? (existing.version || 0) + 1 : 1;
+    const modesJson = allowed_modes ? JSON.stringify(allowed_modes) : (existing?.allowed_modes || '');
 
     await env.DB.prepare(`
-        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(id, name, description || '', category || '', version, questions.length, JSON.stringify(questions), now, now).run();
+        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(id, name, description || '', category || '', version, questions.length, JSON.stringify(questions), modesJson, now, now).run();
 
     // 记录历史
     await env.DB.prepare(
@@ -1010,7 +1023,7 @@ async function handleAdminGetBank(bankId, url, env, origin) {
     let questions = [];
     try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
 
-    return json({ ok: true, bank: { ...bank, questions, questions_json: undefined } }, 200, origin);
+    return json({ ok: true, bank: { ...bank, questions, questions_json: undefined, allowed_modes: bank.allowed_modes ? JSON.parse(bank.allowed_modes) : null } }, 200, origin);
 }
 
 // 管理员：添加单题
@@ -1170,4 +1183,28 @@ async function handleAdminBankHistory(bankId, url, env, origin) {
     ).bind(bankId).all();
 
     return json({ ok: true, history: rows.results || [] }, 200, origin);
+}
+
+// 管理员：更新题库设置（allowed_modes等）
+async function handleAdminUpdateBankSettings(bankId, request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, allowed_modes } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const bank = await env.DB.prepare('SELECT id FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    const modesJson = Array.isArray(allowed_modes) ? JSON.stringify(allowed_modes) : '';
+    const now = new Date().toISOString();
+
+    await env.DB.prepare(
+        'UPDATE banks SET allowed_modes = ?, updated_at = ? WHERE id = ?'
+    ).bind(modesJson, now, bankId).run();
+
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(bankId, 'update_settings', `更新做题模式: ${modesJson || '全部'}`, admin.id, now).run();
+
+    return json({ ok: true, allowed_modes: allowed_modes || null }, 200, origin);
 }

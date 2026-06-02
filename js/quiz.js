@@ -458,9 +458,6 @@ const Quiz = {
         if (!question || this.state.isFinished) {
             setSubmitHidden(true);
             setHint('');
-            // 隐藏顶栏完成按钮
-            const finishBtn = document.getElementById('btn-finish');
-            if (finishBtn) finishBtn.style.display = 'none';
             return;
         }
 
@@ -818,12 +815,13 @@ const Quiz = {
     },
 
     renderCodeInput(question, isSubmitted, userAnswer) {
+        const text = userAnswer?.text || userAnswer || '';
         return `
             <div style="margin-top:var(--space-4)">
-                <textarea class="code-editor" id="code-editor" rows="10" 
-                          ${isSubmitted ? 'readonly' : ''}
-                          placeholder="请输入代码..."
-                          aria-label="代码编辑器">${Utils.escapeHtml(userAnswer?.text || userAnswer || '')}</textarea>
+                <div class="code-editor" id="code-editor" 
+                     ${isSubmitted ? 'contenteditable="false"' : 'contenteditable="true"'}
+                     role="textbox" aria-multiline="true" aria-label="代码编辑器"
+                     data-placeholder="请输入代码...">${Utils.escapeHtml(text)}</div>
             </div>
             ${!isSubmitted ? '<div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">💡 编程题，请编写代码</div>' : ''}
         `;
@@ -1018,12 +1016,21 @@ const Quiz = {
         if (question.type === 'code') {
             const editor = card.querySelector('#code-editor');
             if (editor) {
-                editor.addEventListener(
-                    'input',
-                    Utils.debounce(() => {
-                        this.state.answers[question.id] = editor.value;
-                    }, INPUT_SAVE_DEBOUNCE_MS)
-                );
+                // 自动调整高度函数
+                // 获取纯文本内容
+                const getText = () => editor.innerText || '';
+                // 保存答案
+                const saveAnswer = Utils.debounce(() => {
+                    this.state.answers[question.id] = getText();
+                }, INPUT_SAVE_DEBOUNCE_MS);
+                editor.addEventListener('input', saveAnswer);
+                editor.addEventListener('paste', () => {
+                    setTimeout(() => {
+                        const text = getText();
+                        editor.textContent = text;
+                        saveAnswer();
+                    }, 10);
+                });
             }
         }
     },

@@ -41,6 +41,18 @@ export function initBanks(Admin) {
         } catch (e) { el.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
     };
 
+    // 做题模式定义
+    const MODE_DEFS = [
+        { key: 'all', label: '顺序刷题', icon: 'list' },
+        { key: 'random', label: '随机', icon: 'shuffle' },
+        { key: 'shuffle_options', label: '选项乱序', icon: 'refresh-cw' },
+        { key: 'wrong', label: '错题', icon: 'alert-circle' },
+        { key: 'review', label: '背题', icon: 'book-open' },
+        { key: 'spaced', label: '复习', icon: 'brain' },
+        { key: 'bookmark', label: '收藏', icon: 'star' },
+        { key: 'exam', label: '考试', icon: 'file-text' }
+    ];
+
     Admin.viewBank = async function(bankId) {
         const p = document.getElementById('bank-detail-panel');
         p.innerHTML = '<div class="loading">加载中...</div>';
@@ -49,6 +61,14 @@ export function initBanks(Admin) {
             const d = await this.get(`/api/admin/bank/${bankId}`);
             if (!d?.ok) { p.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
             const b = d.bank, qs = b.questions || [];
+            const allowed = b.allowed_modes; // null = 全部允许
+            const modesHtml = MODE_DEFS.map(m => {
+                const checked = !allowed || allowed.includes(m.key);
+                return `<label style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:12px;${checked?'background:var(--primary-light);border-color:var(--primary);':''}">
+                    <input type="checkbox" data-mode="${m.key}" ${checked?'checked':''} style="margin:0">
+                    ${m.label}
+                </label>`;
+            }).join(' ');
             p.innerHTML = `
                 <div class="card" style="margin-bottom:12px">
                     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
@@ -61,6 +81,18 @@ export function initBanks(Admin) {
                         </div>
                     </div>
                     <div class="card-body">
+                        <!-- 做题模式设置 -->
+                        <div style="margin-bottom:12px;padding:10px;background:var(--bg-hover);border-radius:var(--radius)">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                                <b style="font-size:13px">允许的做题模式</b>
+                                <div style="display:flex;gap:6px;align-items:center">
+                                    <label style="font-size:11px;color:var(--text-tertiary);cursor:pointer"><input type="checkbox" id="modes-select-all" onchange="Admin.toggleAllModes(this.checked)" ${!allowed?'checked':''}> 全选</label>
+                                    <button class="abtn primary" style="padding:3px 10px;font-size:11px" onclick="Admin.saveBankModes('${bankId}')">保存模式</button>
+                                </div>
+                            </div>
+                            <div id="bank-modes-list" style="display:flex;flex-wrap:wrap;gap:6px">${modesHtml}</div>
+                            <div style="font-size:10px;color:var(--text-tertiary);margin-top:6px">取消勾选 = 前端不显示该模式按钮。全部勾选 = 不限制。</div>
+                        </div>
                         <div style="margin-bottom:8px;display:flex;gap:6px;align-items:center">
                             <input type="text" id="bank-search" placeholder="搜索题目..." style="flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--bg-card);color:var(--text)" oninput="Admin.filterBankQuestions('${bankId}')">
                             <select id="bank-type-filter" style="padding:4px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px;background:var(--bg-card);color:var(--text)" onchange="Admin.filterBankQuestions('${bankId}')">
@@ -71,6 +103,31 @@ export function initBanks(Admin) {
                     </div>
                 </div>`;
         } catch (e) { p.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`; }
+    };
+
+    Admin.toggleAllModes = function(checked) {
+        document.querySelectorAll('#bank-modes-list input[type=checkbox]').forEach(cb => {
+            cb.checked = checked;
+            cb.closest('label').style.background = checked ? 'var(--primary-light)' : '';
+            cb.closest('label').style.borderColor = checked ? 'var(--primary)' : '';
+        });
+    };
+
+    Admin.saveBankModes = async function(bankId) {
+        const cbs = document.querySelectorAll('#bank-modes-list input[type=checkbox]');
+        const allChecked = Array.from(cbs).every(cb => cb.checked);
+        const modes = allChecked ? null : Array.from(cbs).filter(cb => cb.checked).map(cb => cb.dataset.mode);
+        const r = await this.put(`/api/admin/bank/${bankId}/settings`, { allowed_modes: modes });
+        if (r?.ok) {
+            Utils.showToast('做题模式已保存', 'success');
+            // 更新 checkbox 样式
+            cbs.forEach(cb => {
+                cb.closest('label').style.background = cb.checked ? 'var(--primary-light)' : '';
+                cb.closest('label').style.borderColor = cb.checked ? 'var(--primary)' : '';
+            });
+        } else {
+            Utils.showToast(r?.error || '保存失败', 'error');
+        }
     };
 
     Admin._renderQuestionList = function(bankId, qs) {

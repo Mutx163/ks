@@ -112,7 +112,7 @@
 }
 
 .quiz-container {
-    max-width: 720px;
+    max-width: 900px;
     margin: 0 auto;
 }
 
@@ -813,9 +813,18 @@
     color: #cdd6f4;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    resize: vertical;
     outline: none;
-    transition: var(--transition);
+    min-height: 210px;
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.code-editor:empty::before {
+    content: attr(data-placeholder);
+    color: #6c7086;
+    pointer-events: none;
 }
 
 .code-editor:focus {

@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS banks (
     version INTEGER DEFAULT 1,          -- 版本号
     question_count INTEGER DEFAULT 0,   -- 题目数量
     questions_json TEXT NOT NULL,       -- 题目JSON数组
+    allowed_modes TEXT DEFAULT '',       -- 允许的做题模式JSON数组，空表示全部允许
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

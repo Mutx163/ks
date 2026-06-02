@@ -304,6 +304,56 @@ const App = {
     },
 
     /**
+     * 检查做题模式是否被允许
+     * @param {Array|null} allowed - 允许的模式数组，null表示全部允许
+     * @param {string} mode - 要检查的模式
+     * @returns {boolean}
+     */
+    _isModeAllowed(allowed, mode) {
+        if (!allowed || !Array.isArray(allowed) || allowed.length === 0) return true;
+        return allowed.includes(mode);
+    },
+
+    /**
+     * 渲染做题模式按钮
+     */
+    _renderModeButtons(bankId, allowedModes, wrongCount, dueCount, bookmarkCount) {
+        const btns = [];
+
+        if (this._isModeAllowed(allowedModes, 'all')) {
+            btns.push(`<button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bankId}', 'all')">${Utils.icon('list')} 顺序刷题</button>`);
+        }
+        if (this._isModeAllowed(allowedModes, 'random')) {
+            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'random')">${Utils.icon('shuffle')} 随机</button>`);
+        }
+        if (this._isModeAllowed(allowedModes, 'shuffle_options')) {
+            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'shuffle_options')">${Utils.icon('refresh-cw')} 选项乱序</button>`);
+        }
+        if (this._isModeAllowed(allowedModes, 'wrong')) {
+            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>${Utils.icon('alert-circle')} 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}</button>`);
+        }
+        if (this._isModeAllowed(allowedModes, 'review')) {
+            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'review')">${Utils.icon('book-open')} 背题</button>`);
+        }
+        if (this._isModeAllowed(allowedModes, 'spaced') && dueCount > 0) {
+            btns.push(`<button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bankId}', 'spaced')">${Utils.icon('brain')} 复习(${dueCount})</button>`);
+        }
+        if (this._isModeAllowed(allowedModes, 'bookmark') && bookmarkCount > 0) {
+            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'bookmark')">${Utils.icon('star')} 收藏(${bookmarkCount})</button>`);
+        }
+        if (this._isModeAllowed(allowedModes, 'exam')) {
+            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startExam('${bankId}')">${Utils.icon('file-text')} 考试</button>`);
+        }
+
+        // 如果没有任何按钮，显示提示
+        if (btns.length === 0) {
+            btns.push(`<span style="font-size:12px;color:var(--text-tertiary)">暂无可用模式</span>`);
+        }
+
+        return btns.join('\n');
+    },
+
+    /**
      * 渲染题库网格（瘦身版）
      */
     renderBankGrid() {
@@ -398,28 +448,7 @@ const App = {
 
                     <!-- 刷题模式按钮网格 -->
                     <div class="bank-card-modes">
-                        <button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bank.id}', 'all')">${Utils.icon('list')} 顺序刷题</button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'random')">${Utils.icon('shuffle')} 随机</button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'shuffle_options')">${Utils.icon('refresh-cw')} 选项乱序</button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>
-                            ${Utils.icon('alert-circle')} 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'review')">${Utils.icon('book-open')} 背题</button>
-                        ${
-                            dueCount > 0
-                                ? `
-                            <button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bank.id}', 'spaced')">${Utils.icon('brain')} 复习(${dueCount})</button>
-                        `
-                                : ''
-                        }
-                        ${
-                            bookmarkCount > 0
-                                ? `
-                            <button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bank.id}', 'bookmark')">${Utils.icon('star')} 收藏(${bookmarkCount})</button>
-                        `
-                                : ''
-                        }
-                        <button class="btn btn-secondary btn-sm" onclick="App.startExam('${bank.id}')">${Utils.icon('file-text')} 考试</button>
+                        ${this._renderModeButtons(bank.id, bank.allowed_modes, wrongCount, dueCount, bookmarkCount)}
                     </div>
 
                     <div class="bank-card-footer">

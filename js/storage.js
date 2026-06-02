@@ -190,6 +190,7 @@ const Storage = {
             author: bank.author,
             categories: bank.categories,
             tags: bank.tags,
+            allowed_modes: bank.allowed_modes,
             questionCount: bank.questions?.length || 0
         };
 
