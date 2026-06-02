@@ -223,12 +223,14 @@
     background: var(--success-light);
     color: var(--success);
     border-color: var(--success);
+    border-width: 2.5px;
 }
 
 .sidebar-grid-item.wrong {
     background: var(--danger-light);
     color: var(--danger);
     border-color: var(--danger);
+    border-width: 2.5px;
 }
 
 .sidebar-footer {

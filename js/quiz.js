@@ -491,6 +491,19 @@ const Quiz = {
                     : '按 Enter 提交 · A-D 选答案 · Alt+←→ 切换'
             );
         }
+
+        // 最后一道题：下一题按钮变为完成
+        const nextBtn = document.querySelector('.quiz-footer-actions .btn-secondary:nth-child(2)');
+        if (nextBtn) {
+            const isLast = this.state.currentIndex >= this.state.questions.length - 1;
+            if (isLast) {
+                nextBtn.textContent = '完成';
+                nextBtn.onclick = () => this.finish();
+            } else {
+                nextBtn.textContent = '下一题';
+                nextBtn.onclick = () => this.nextQuestion();
+            }
+        }
     },
 
     getSubmittedHint(question) {

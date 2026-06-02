@@ -298,7 +298,7 @@ tbody tr:last-child td { border-bottom: none; }
 .qe-judge-btn:hover { border-color: var(--primary); background: var(--bg-card); }
 .qe-judge-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-.qe-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.qe-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; bottom: 0; background: var(--bg-card); z-index: 1; }
 .qe-info { font-size: 11px; color: var(--text-tertiary); }
 .qe-actions { display: flex; gap: 8px; }
 .qe-preview-card { background: var(--bg); border-radius: var(--radius); padding: 16px; }
