@@ -56,8 +56,8 @@ const Quiz = {
         this.state.examPassRate = parseInt(params.get('pass')) || 60;
         this.state.examCount = parseInt(params.get('count')) || 0;
 
-        // 搜索模式关键词
-        if (this.state.mode === 'search') {
+        // 搜索模式关键词（从首页搜索进入时，mode=review 且带 q 参数）
+        if (params.get('q')) {
             this.state.searchKeyword = params.get('q') || '';
         }
 
@@ -269,7 +269,7 @@ const Quiz = {
 
     prepareQuestions() {
         // 搜索模式：从 URL 参数或 sessionStorage 读取关键词
-        if (this.state.mode === 'search' && this.state.searchKeyword) {
+        if (this.state.searchKeyword) {
             const keyword = this.state.searchKeyword.toLowerCase();
             const allQuestions = [...(this.state.bank.questions || [])];
             const matched = allQuestions.filter((q) => {
@@ -286,6 +286,8 @@ const Quiz = {
                 Utils.showToast(`未找到匹配题目：「${this.state.searchKeyword}」`, 'info', 3000);
             }
             this.state.questions = matched;
+            // 搜索进入时使用背题模式
+            this.state.isReviewMode = true;
             return;
         }
         let questions = [...(this.state.bank.questions || [])];
@@ -586,7 +588,10 @@ const Quiz = {
 
     renderQuestion() {
         const question = this.state.questions[this.state.currentIndex];
-        if (!question) return;
+        if (!question) {
+            console.warn('[Quiz] 没有题目可渲染', { currentIndex: this.state.currentIndex, questionsLength: this.state.questions.length });
+            return;
+        }
 
         const container = document.getElementById('question-container');
         const isReviewMode = this.state.isReviewMode;
@@ -1016,19 +1021,17 @@ const Quiz = {
         if (question.type === 'code') {
             const editor = card.querySelector('#code-editor');
             if (editor) {
-                // 自动调整高度函数
-                // 获取纯文本内容
                 const getText = () => editor.innerText || '';
-                // 保存答案
-                const saveAnswer = Utils.debounce(() => {
+                // 立即更新答案状态（用于判断提交按钮）
+                const updateAnswer = () => {
                     this.state.answers[question.id] = getText();
-                }, INPUT_SAVE_DEBOUNCE_MS);
-                editor.addEventListener('input', saveAnswer);
+                    this.renderFooter();
+                };
+                editor.addEventListener('input', updateAnswer);
                 editor.addEventListener('paste', () => {
                     setTimeout(() => {
-                        const text = getText();
-                        editor.textContent = text;
-                        saveAnswer();
+                        editor.textContent = getText();
+                        updateAnswer();
                     }, 10);
                 });
             }

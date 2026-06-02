@@ -518,7 +518,7 @@ const App = {
         );
         setTimeout(() => {
             window.location.href =
-                'quiz.html?bank=' + firstBank.id + '&mode=search&q=' + encodeURIComponent(keyword);
+                'quiz.html?bank=' + firstBank.id + '&mode=review&q=' + encodeURIComponent(keyword);
         }, 300);
     },
 
