@@ -151,22 +151,40 @@ const Quiz = {
     },
 
     restoreSession() {
-        if (this.state.mode === 'exam') return;
-
         const session = Storage.getSession(this.state.bankId, this.state.mode);
-        if (session && session.currentIndex < this.state.questions.length) {
-            this.state.currentIndex = session.currentIndex || 0;
-            if (this.state.mode !== 'review') {
-                this.state.answers = session.answers || {};
-                this.state.submitted = session.submitted || {};
-                this.state.showExplanation = session.showExplanation || {};
+        if (!session) {
+            // 考试模式、随机模式等首次进入时保存题目顺序
+            if (this.state.mode === 'exam' || this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
+                this.state.savedOrderIds = this.state.questions.map((q) => q.id);
             }
-            this.state.questionTimes = session.questionTimes || {};
-            this.state.optionOrderCache = session.optionOrderCache || {};
-            this.state.savedOrderIds = session.questionOrderIds || null;
+            return;
+        }
 
-            if (this.state.savedOrderIds &&
-                (this.state.mode === 'random' || this.state.mode === 'shuffle_options')) {
+        this.state.currentIndex = session.currentIndex || 0;
+        if (this.state.mode !== 'review') {
+            this.state.answers = session.answers || {};
+            this.state.submitted = session.submitted || {};
+            this.state.showExplanation = session.showExplanation || {};
+        }
+        this.state.questionTimes = session.questionTimes || {};
+        this.state.optionOrderCache = session.optionOrderCache || {};
+        this.state.savedOrderIds = session.questionOrderIds || null;
+
+        // 恢复题目顺序（考试/随机/选项乱序模式）
+        if (this.state.savedOrderIds &&
+            (this.state.mode === 'exam' || this.state.mode === 'random' || this.state.mode === 'shuffle_options')) {
+            if (this.state.mode === 'exam') {
+                // 考试模式：用保存的题目 ID 从原始题库重建题目列表
+                // 防止 prepareQuestions() 抽了不同题导致 ID 对不上
+                const bankQuestions = this.state.bank?.questions || [];
+                const idMap = new Map(bankQuestions.map(q => [q.id, q]));
+                const restored = this.state.savedOrderIds
+                    .map(id => idMap.get(id))
+                    .filter(Boolean);
+                if (restored.length > 0) {
+                    this.state.questions = restored;
+                }
+            } else {
                 const orderMap = new Map(
                     this.state.savedOrderIds.map((id, i) => [id, i])
                 );
@@ -177,26 +195,27 @@ const Quiz = {
                     return 0;
                 });
             }
-        } else if (this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
-            this.state.savedOrderIds = this.state.questions.map((q) => q.id);
+        }
+
+        // 恢复考试剩余时间
+        if (this.state.mode === 'exam' && session.examTimeRemaining > 0) {
+            this.state.examTimeRemaining = session.examTimeRemaining;
         }
 
         // 恢复已上报位置，防止页面刷新后重复计数
-        if (session) {
-            this.state._lastPushAnswered = session.lastPushAnswered || 0;
-            this.state._lastPushCorrect = session.lastPushCorrect || 0;
-            this.state._lastPushDuration = session.lastPushDuration || 0;
-        }
+        this.state._lastPushAnswered = session.lastPushAnswered || 0;
+        this.state._lastPushCorrect = session.lastPushCorrect || 0;
+        this.state._lastPushDuration = session.lastPushDuration || 0;
     },
 
     saveSession() {
-        if (this.state.mode === 'exam') return;
-
-        // 保存乱序/随机的题目顺序
+        // 保存乱序/随机的题目顺序（含考试模式的随机抽题）
         const questionOrderIds =
-            this.state.mode === 'random' || this.state.mode === 'shuffle_options'
+            this.state.mode === 'random' || this.state.mode === 'shuffle_options' || this.state.mode === 'exam'
                 ? this.state.questions.map((q) => q.id)
                 : undefined;
+
+        const extra = this.state.mode === 'exam' ? { examTimeRemaining: this.state.examTimeRemaining } : {};
 
         Storage.saveSession(this.state.bankId, this.state.mode, {
             currentIndex: this.state.currentIndex,
@@ -211,7 +230,8 @@ const Quiz = {
             // 已上报位置，页面刷新后避免重复计数
             lastPushAnswered: this.state._lastPushAnswered,
             lastPushCorrect: this.state._lastPushCorrect,
-            lastPushDuration: this.state._lastPushDuration
+            lastPushDuration: this.state._lastPushDuration,
+            ...extra
         });
 
         // 云同步：推送进度（防抖）
@@ -384,7 +404,10 @@ const Quiz = {
     },
 
     startExamTimer() {
-        this.state.examTimeRemaining = this.state.examTimeLimit;
+        // 如果已恢复进度（刷新后），保留已恢复的剩余时间
+        if (!this.state.examTimeRemaining || this.state.examTimeRemaining <= 0) {
+            this.state.examTimeRemaining = this.state.examTimeLimit;
+        }
         this.state.examTimer = setInterval(() => {
             this.state.examTimeRemaining--;
             this.updateExamTimerDisplay();
@@ -1700,9 +1723,14 @@ const Quiz = {
         this.state.optionOrderCache = {};
         this.state.isFinished = false;
         this.state.startTime = Date.now();
+        this.state.examTimeRemaining = 0;
 
-        if (this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
+        if (this.state.mode === 'exam' || this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
             this.prepareQuestions();
+        }
+
+        if (this.state.mode === 'exam') {
+            this.startExamTimer();
         }
 
         if (this.state.mode === 'review') {
