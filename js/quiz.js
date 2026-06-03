@@ -227,6 +227,13 @@ const Quiz = {
 
     restoreSession() {
         const session = Storage.getSession(this.state.bankId, this.state.mode);
+        console.log('[Quiz] 📂 恢复会话:', {
+            bankId: this.state.bankId,
+            mode: this.state.mode,
+            found: !!session,
+            answers: session ? Object.keys(session.answers || {}).length : 0,
+            submitted: session ? Object.keys(session.submitted || {}).length : 0
+        });
         if (!session) {
             // 考试模式、随机模式等首次进入时保存题目顺序
             if (this.state.mode === 'exam' || this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
@@ -1998,6 +2005,11 @@ const Quiz = {
 
     bindEvents() {
         window.addEventListener('beforeunload', () => this.saveSession());
+
+        // 移动端 beforeunload 不可靠，visibilitychange 作为备份保存触发器
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') this.saveSession();
+        });
 
         // 左右滑动手势支持（移动端）
         let touchStartX = 0;
