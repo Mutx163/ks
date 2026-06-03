@@ -22,17 +22,21 @@ export function initBanks(Admin) {
                         </div>
                     </div>
                     <div class="card-body" style="overflow-x:auto"><table>
-                        <thead><tr><th>题库</th><th>题数</th><th>分类</th><th>版本</th><th>更新时间</th><th>操作</th></tr></thead>
+                        <thead><tr><th>题库</th><th>题数</th><th>分类</th><th>版本</th><th>状态</th><th>更新时间</th><th>操作</th></tr></thead>
                         <tbody>${d.banks.map(b => `
-                            <tr>
+                            <tr style="${b.enabled === false ? 'opacity:0.5;' : ''}">
                                 <td><b>${Utils.escapeHtml(b.name)}</b><br><span style="font-size:10px;color:var(--text-tertiary)">${b.id}</span></td>
                                 <td>${b.question_count}</td>
                                 <td>${Utils.escapeHtml(b.category||'-')}</td>
                                 <td>v${b.version}</td>
+                                <td>
+                                    <button class="abtn ${b.enabled !== false ? 'success' : ''}" style="padding:2px 8px;font-size:10px;${b.enabled === false ? 'background:var(--bg-hover);color:var(--text-tertiary);' : ''}" onclick="Admin.toggleBank('${b.id}', ${b.enabled === false})">${b.enabled !== false ? '已启用' : '已禁用'}</button>
+                                </td>
                                 <td style="font-size:11px">${Admin.fmtTime(b.updated_at)||'-'}</td>
                                 <td>
                                     <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.viewBank('${b.id}')">管理</button>
                                     <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.uploadBank('${b.id}')">替换</button>
+                                    <button class="abtn danger" style="padding:2px 8px;font-size:10px" onclick="Admin.confirmDeleteBank('${b.id}', '${Utils.escapeHtml(b.name)}')">删除</button>
                                 </td>
                             </tr>
                         `).join('')}</tbody>
@@ -223,6 +227,45 @@ export function initBanks(Admin) {
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
                 </div>
             </div>`;
+    };
+
+    // 切换题库启用/禁用状态
+    Admin.toggleBank = async function(bankId, enable) {
+        const r = await this.put(`/api/admin/bank/${bankId}/toggle`, { enabled: enable });
+        if (r?.ok) {
+            Utils.showToast(enable ? '题库已启用' : '题库已禁用', 'success');
+            this.renderBanks();
+        } else {
+            Utils.showToast(r?.error || '操作失败', 'error');
+        }
+    };
+
+    // 确认删除题库
+    Admin.confirmDeleteBank = function(bankId, bankName) {
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:400px">
+                    <h3>⚠️ 确认删除题库</h3>
+                    <p style="margin:12px 0;color:var(--text-secondary)">确定要删除题库 "${bankName}" 吗？</p>
+                    <p style="margin:8px 0;font-size:12px;color:var(--danger)">此操作不可撤销，题库内所有题目和修改历史将被永久删除。</p>
+                    <div class="modal-actions">
+                        <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
+                        <button class="mp" style="background:var(--danger)" onclick="Admin.deleteBank('${bankId}')">确认删除</button>
+                    </div>
+                </div>
+            </div>`;
+    };
+
+    // 执行删除题库
+    Admin.deleteBank = async function(bankId) {
+        const r = await this.delete(`/api/admin/bank/${bankId}`);
+        if (r?.ok) {
+            Utils.showToast(r.message || '题库已删除', 'success');
+            document.querySelector('.modal-mask')?.remove();
+            this.renderBanks();
+        } else {
+            Utils.showToast(r?.error || '删除失败', 'error');
+        }
     };
 
     // 批量导入题目

@@ -217,6 +217,18 @@ export default {
                 return await handleAdminUpdateBankSettings(bankId, request, env, origin);
             }
 
+            // PUT /api/admin/bank/:id/toggle（启用/禁用题库）
+            if (method === 'PUT' && path.match(/\/api\/admin\/bank\/[^/]+\/toggle$/)) {
+                const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
+                return await handleAdminToggleBank(bankId, request, env, origin);
+            }
+
+            // DELETE /api/admin/bank/:id（删除题库）
+            if (method === 'DELETE' && path.match(/\/api\/admin\/bank\/[^/]+$/)) {
+                const bankId = path.split('/api/admin/bank/')[1];
+                return await handleAdminDeleteBank(bankId, request, env, origin);
+            }
+
             // GET /api/banks（前端获取题库列表）
             if (method === 'GET' && path === '/api/banks') {
                 return await handleGetBanks(env, origin);
@@ -950,11 +962,12 @@ async function handleAdminUserCloudData(userId, url, env, origin) {
 // 前端：获取题库列表（不含题目详情）
 async function handleGetBanks(env, origin) {
     const rows = await env.DB.prepare(
-        'SELECT id, name, description, category, version, question_count, allowed_modes, updated_at FROM banks ORDER BY name'
+        'SELECT id, name, description, category, version, question_count, allowed_modes, enabled, updated_at FROM banks ORDER BY name'
     ).all();
     // 解析 allowed_modes JSON
     const banks = (rows.results || []).map(b => ({
         ...b,
+        enabled: b.enabled !== 0, // 转为布尔值
         allowed_modes: b.allowed_modes ? JSON.parse(b.allowed_modes) : null
     }));
     return json({ ok: true, banks }, 200, origin);
@@ -1023,7 +1036,51 @@ async function handleAdminGetBank(bankId, url, env, origin) {
     let questions = [];
     try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
 
-    return json({ ok: true, bank: { ...bank, questions, questions_json: undefined, allowed_modes: bank.allowed_modes ? JSON.parse(bank.allowed_modes) : null } }, 200, origin);
+    return json({ ok: true, bank: { ...bank, questions, questions_json: undefined, enabled: bank.enabled !== 0, allowed_modes: bank.allowed_modes ? JSON.parse(bank.allowed_modes) : null } }, 200, origin);
+}
+
+// 管理员：启用/禁用题库
+async function handleAdminToggleBank(bankId, request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, enabled } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    const enabledValue = enabled ? 1 : 0;
+    const now = new Date().toISOString();
+
+    await env.DB.prepare(
+        'UPDATE banks SET enabled = ?, updated_at = ? WHERE id = ?'
+    ).bind(enabledValue, now, bankId).run();
+
+    // 记录历史
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(bankId, 'toggle', `${enabled ? '启用' : '禁用'}题库`, admin.id, now).run();
+
+    return json({ ok: true, enabled: !!enabledValue }, 200, origin);
+}
+
+// 管理员：删除题库
+async function handleAdminDeleteBank(bankId, request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
+    if (!bank) return error('题库不存在', 404, origin);
+
+    // 删除题库和相关历史记录
+    await env.DB.batch([
+        env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId),
+        env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId)
+    ]);
+
+    return json({ ok: true, message: `题库 "${bank.name}" 已删除` }, 200, origin);
 }
 
 // 管理员：添加单题

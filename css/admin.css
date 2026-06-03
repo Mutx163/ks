@@ -156,6 +156,7 @@ tbody tr:last-child td { border-bottom: none; }
 .abtn.warn   { color: var(--warning); } .abtn.warn:hover   { background: var(--warning-light); }
 .abtn.danger { color: var(--danger); } .abtn.danger:hover { background: var(--danger-light); }
 .abtn.primary{ color: var(--primary); } .abtn.primary:hover{ background: var(--primary-light); }
+.abtn.success{ color: var(--success); background: var(--success-light); } .abtn.success:hover{ background: var(--success); color: #fff; }
 
 /* ===== 详情面板 ===== */
 .detail {

@@ -155,6 +155,14 @@ const Admin = {
         } catch (e) { return { ok: false, error: e.message }; }
     },
 
+    async delete(path, body = {}) {
+        try {
+            const r = await fetch(API.BASE_URL + path, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId: API.getDeviceId(), password: this.password, ...body }) });
+            if (!r.ok) return { ok: false, error: `HTTP ${r.status}` };
+            return await r.json();
+        } catch (e) { return { ok: false, error: e.message }; }
+    },
+
     async get(path) { return this.getWithAuth(path, this.password); },
 
     async getWithAuth(path, pwd) {
