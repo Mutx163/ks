@@ -378,35 +378,33 @@ const API = {
         if (this._banNoticeShown) return;
         this._banNoticeShown = true;
         
-        // 创建封禁提示
+        // 创建封禁提示（无关闭按钮，必须联系管理员）
         const notice = document.createElement('div');
         notice.style.cssText = `
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.8); z-index: 9999;
+            background: rgba(0,0,0,0.9); z-index: 9999;
             display: flex; align-items: center; justify-content: center;
-            animation: fadeIn 0.3s ease;
+            pointer-events: all;
         `;
         notice.innerHTML = `
             <div style="
                 background: #fff; border-radius: 16px; padding: 32px;
                 max-width: 360px; text-align: center;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
             ">
-                <div style="font-size: 48px; margin-bottom: 16px;">🚫</div>
-                <h3 style="font-size: 18px; margin-bottom: 8px; color: #1f2937;">账号已被封禁</h3>
-                <p style="font-size: 14px; color: #6b7280; margin-bottom: 24px;">
-                    您的账号已被管理员封禁，无法同步数据。<br>
-                    如有疑问，请联系管理员。
+                <div style="font-size: 64px; margin-bottom: 20px;">🚫</div>
+                <h3 style="font-size: 20px; margin-bottom: 12px; color: #1f2937;">账号已被封禁</h3>
+                <p style="font-size: 15px; color: #6b7280; line-height: 1.6;">
+                    您的账号已被管理员封禁<br>
+                    无法使用刷题功能<br><br>
+                    <strong>如有疑问，请联系管理员</strong>
                 </p>
-                <button onclick="this.closest('div[style]').remove()" style="
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: #fff; border: none; padding: 12px 32px;
-                    border-radius: 10px; font-size: 14px; font-weight: 600;
-                    cursor: pointer;
-                ">我知道了</button>
             </div>
         `;
         document.body.appendChild(notice);
+        
+        // 阻止页面滚动
+        document.body.style.overflow = 'hidden';
     },
 
     // ==================== 排行榜 ====================
