@@ -23,6 +23,7 @@ const BankLoader = {
 
     /**
      * 从云端获取题库列表（不含题目详情）
+     * 只返回已启用的题库
      */
     async loadBankList() {
         try {
@@ -32,7 +33,10 @@ const BankLoader = {
             const data = await API.request('/api/banks', { signal: controller.signal });
             clearTimeout(timer);
             console.log('[BankLoader] 题库列表响应:', data);
-            if (data?.ok && data.banks) return data.banks;
+            if (data?.ok && data.banks) {
+                // 过滤掉禁用的题库
+                return data.banks.filter(b => b.enabled !== false);
+            }
         } catch (e) {
             console.warn('[BankLoader] 获取题库列表失败:', e.message);
         }

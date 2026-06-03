@@ -979,6 +979,8 @@ async function handleGetBank(bankId, env, origin) {
         'SELECT * FROM banks WHERE id = ?'
     ).bind(bankId).first();
     if (!bank) return error('题库不存在', 404, origin);
+    // 检查题库是否启用
+    if (bank.enabled === 0) return error('题库已禁用', 403, origin);
 
     let questions = [];
     try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
