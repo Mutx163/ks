@@ -15,13 +15,19 @@ const Admin = {
         const saved = localStorage.getItem('admin_pwd');
         if (!saved) return sessionStorage.getItem('admin_pwd') || '';
         try {
-            const { pwd, ts } = JSON.parse(saved);
-            if (Date.now() - ts > 3600000) { localStorage.removeItem('admin_pwd'); return ''; }
+            const { pwd, ts, remember } = JSON.parse(saved);
+            // 根据"记住我"设置判断有效期
+            const maxAge = remember ? 7 * 24 * 3600000 : 24 * 3600000; // 7天 或 24小时
+            if (Date.now() - ts > maxAge) { 
+                localStorage.removeItem('admin_pwd'); 
+                return ''; 
+            }
             return pwd;
         } catch { localStorage.removeItem('admin_pwd'); return ''; }
     })(),
     sort: 'time',
     tab: 'overview',
+    _loginVerified: false, // 标记是否已验证过密码
 
     async init() {
         Perf.init('管理后台');
@@ -35,15 +41,22 @@ const Admin = {
     async login() {
         const pwd = document.getElementById('admin-password').value.trim();
         if (!pwd) return;
+        const remember = document.getElementById('remember-me')?.checked || false;
         const err = document.getElementById('login-error');
         err.style.display = 'none';
         try {
             const d = await this.getWithAuth('/api/admin/users', pwd);
             if (d && d.ok) {
-                localStorage.setItem('admin_pwd', JSON.stringify({ pwd, ts: Date.now() }));
+                // 保存密码，包含"记住我"状态
+                localStorage.setItem('admin_pwd', JSON.stringify({ 
+                    pwd, 
+                    ts: Date.now(),
+                    remember 
+                }));
                 sessionStorage.setItem('admin_pwd', pwd);
                 this.password = pwd;
                 this.users = d.users;
+                this._loginVerified = true;
                 this.showApp();
             } else {
                 err.textContent = (d && d.error) || '密码错误';
@@ -55,15 +68,35 @@ const Admin = {
         }
     },
 
-    logout() { localStorage.removeItem('admin_pwd'); sessionStorage.removeItem('admin_pwd'); location.reload(); },
+    logout() { 
+        localStorage.removeItem('admin_pwd'); 
+        sessionStorage.removeItem('admin_pwd'); 
+        this._loginVerified = false;
+        location.reload(); 
+    },
 
     async loadAll() {
+        console.log('[Admin] 🔐 验证登录状态...');
         try {
             const d = await this.get('/api/admin/users');
-            if (!d?.ok) { localStorage.removeItem('admin_pwd'); sessionStorage.removeItem('admin_pwd'); return; }
+            if (!d?.ok) { 
+                console.warn('[Admin] ❌ 登录验证失败');
+                localStorage.removeItem('admin_pwd'); 
+                sessionStorage.removeItem('admin_pwd'); 
+                return; 
+            }
+            console.log('[Admin] ✅ 登录验证成功');
             this.users = d.users;
+            this._loginVerified = true;
             this.showApp();
-        } catch { localStorage.removeItem('admin_pwd'); sessionStorage.removeItem('admin_pwd'); }
+        } catch (e) { 
+            console.error('[Admin] ❌ 登录验证异常:', e.message);
+            // 网络错误时不清除密码，下次刷新再试
+            if (!this._loginVerified) {
+                localStorage.removeItem('admin_pwd'); 
+                sessionStorage.removeItem('admin_pwd'); 
+            }
+        }
     },
 
     showApp() {
