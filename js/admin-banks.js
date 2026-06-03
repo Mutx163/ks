@@ -337,6 +337,12 @@ export function initBanks(Admin) {
         const d = await this.get(`/api/admin/bank/${bankId}/history`);
         if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
         
+        // 获取用户列表用于显示操作人姓名
+        const usersMap = {};
+        if (this.users) {
+            this.users.forEach(u => { usersMap[u.id] = u.initials; });
+        }
+        
         const actionLabels = {
             'add_question': '添加题目',
             'edit_question': '编辑题目',
@@ -352,15 +358,18 @@ export function initBanks(Admin) {
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="modal-box" style="max-width:500px;max-height:80vh;overflow-y:auto">
                     <h3>修改历史</h3>
-                    <div style="margin-top:12px">${d.history.length ? d.history.map(h => `
+                    <div style="margin-top:12px">${d.history.length ? d.history.map(h => {
+                        const operatorName = usersMap[h.operator] || h.operator || '未知';
+                        return `
                         <div style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px">
                             <div style="display:flex;justify-content:space-between;align-items:center">
                                 <span style="font-weight:600;color:var(--text-secondary)">${actionLabels[h.action]||h.action}</span>
                                 <span style="color:var(--text-tertiary);font-size:11px">${Admin.fmtTime(h.created_at)}</span>
                             </div>
-                            <div style="margin-top:4px;color:var(--text-tertiary)">${Utils.escapeHtml(h.detail)}</div>
-                        </div>
-                    `).join('') : '<div class="empty-state">暂无历史</div>'}</div>
+                            <div style="margin-top:4px;color:var(--text-secondary)">${Utils.escapeHtml(h.detail)}</div>
+                            <div style="margin-top:2px;color:var(--text-tertiary);font-size:11px">操作人: ${Utils.escapeHtml(operatorName)} (${h.operator})</div>
+                        </div>`;
+                    }).join('') : '<div class="empty-state">暂无历史</div>'}</div>
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
                 </div>
             </div>`;
