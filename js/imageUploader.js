@@ -34,7 +34,7 @@ const ImageUploader = {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('storage_id', this.STORAGE_ID);
-            formData.append('is_public', 'true');
+            // is_public 不传，默认就是公开的
 
             const response = await fetch(`${this.API_BASE}/upload`, {
                 method: 'POST',
