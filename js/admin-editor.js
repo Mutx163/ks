@@ -313,12 +313,8 @@ export function initEditor(Admin) {
                 const text = item.querySelector('.qe-opt-input').value.trim();
                 const img = item.querySelector('.qe-opt-img')?.value?.trim() || '';
                 if (text || img) {
-                    // 如果有图片，使用对象格式；否则使用纯文本
-                    if (img) {
-                        options.push({ text, img });
-                    } else {
-                        options.push(text);
-                    }
+                    // 始终使用对象格式，方便管理图片
+                    options.push({ text, img: img || '' });
                 }
             });
         }
@@ -341,7 +337,7 @@ export function initEditor(Admin) {
             category: document.getElementById('eq-category').value.trim(),
             difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
             question: document.getElementById('eq-question').value.trim(),
-            img: img || undefined,
+            img: img || '',  // 使用空字符串而不是 undefined
             options,
             answer,
             explanation: document.getElementById('eq-explanation').value.trim()
