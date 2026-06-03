@@ -8,6 +8,7 @@ import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
 import Tracker from './tracker.js';
 import API from './api.js';
+import Perf from './perf.js';
 
 const INPUT_SAVE_DEBOUNCE_MS = 300;
 const FILL_AUTO_FOCUS_DELAY_MS = 100;
@@ -48,6 +49,7 @@ const Quiz = {
     },
 
     async init() {
+        Perf.init('刷题页');
         console.log('[Quiz] ========== 刷题页面初始化开始 ==========');
         
         const params = new URLSearchParams(window.location.search);
@@ -91,6 +93,7 @@ const Quiz = {
         }
 
         // 加载题库数据
+        Perf.mark('开始加载题库');
         console.log('[Quiz] 📚 开始加载题库:', this.state.bankId);
         this.state.bank = Storage.getBank(this.state.bankId);
         
@@ -117,6 +120,7 @@ const Quiz = {
             return;
         }
         
+        Perf.mark('题库加载完成');
         console.log('[Quiz] ✅ 题库加载成功:', {
             id: this.state.bank.id,
             name: this.state.bank.name,
@@ -124,8 +128,10 @@ const Quiz = {
             questionCount: this.state.bank.questions.length
         });
 
+        Perf.mark('准备题目');
         console.log('[Quiz] 🔄 准备题目列表...');
         this.prepareQuestions();
+        Perf.mark('题目准备完成');
         console.log('[Quiz] ✅ 题目准备完成:', this.state.questions.length, '题');
 
         if (this.state.mode === 'review') {
@@ -166,6 +172,7 @@ const Quiz = {
             return;
         }
 
+        Perf.mark('恢复会话');
         console.log('[Quiz] 📂 恢复会话状态...');
         this.restoreSession();
         this.state.startTime = Date.now();
@@ -176,9 +183,11 @@ const Quiz = {
             this.startExamTimer();
         }
 
+        Perf.mark('开始渲染');
         console.log('[Quiz] 🎨 开始渲染页面...');
         this.render();
         this.bindEvents();
+        Perf.mark('渲染完成');
 
         this.autoSaveInterval = setInterval(() => this.saveSession(), 30000);
         this.timerInterval = setInterval(() => this.updateTimerDisplay(), 1000);
@@ -191,6 +200,14 @@ const Quiz = {
         window.addEventListener('beforeunload', this._beforeUnloadHandler);
         
         console.log('[Quiz] ========== 刷题页面初始化完成 ==========');
+        
+        // 输出性能汇总
+        Perf.done({
+            bankId: this.state.bankId,
+            bankName: this.state.bank?.name,
+            mode: this.state.mode,
+            questionCount: this.state.questions.length
+        });
     },
 
     updateTimerDisplay() {

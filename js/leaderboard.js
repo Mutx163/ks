@@ -8,14 +8,19 @@
 
 import API from './api.js';
 import Utils from './utils.js';
+import Perf from './perf.js';
 
 const LB = {
     currentSort: 'answered',
 
     async init() {
+        Perf.init('排行榜');
+        Perf.mark('开始同步');
         await API.autoSync();
+        Perf.mark('同步完成');
 
         if (!API.isRegistered()) {
+            Perf.done({ registered: false });
             document.getElementById('lb-list').innerHTML = `
                 <div class="lb-empty">
                     <div class="lb-empty-icon">🏆</div>
@@ -27,7 +32,10 @@ const LB = {
             return;
         }
 
+        Perf.mark('加载排行榜');
         await this.loadLeaderboard();
+        Perf.mark('排行榜加载完成');
+        Perf.done({ registered: true });
     },
 
     async promptRegister() {

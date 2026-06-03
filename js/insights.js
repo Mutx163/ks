@@ -2,6 +2,7 @@ import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
 import API from './api.js';
+import Perf from './perf.js';
 
 const Insights = {
     state: {
@@ -13,20 +14,32 @@ const Insights = {
     },
 
     async init() {
+        Perf.init('数据洞察');
         this.state.page = document.body.dataset.page || 'trend';
         this.applySettings();
+        
+        Perf.mark('加载题库');
         await this.loadBuiltinBanks();
+        Perf.mark('题库加载完成');
 
         // 云同步
+        Perf.mark('云同步');
         await API.autoSync();
+        Perf.mark('云同步完成');
 
+        Perf.mark('加载数据');
         this.loadData();
+        Perf.mark('数据加载完成');
 
+        Perf.mark('渲染页面');
         if (this.state.page === 'analysis') {
             this.renderAnalysisPage();
         } else {
             this.renderTrendPage();
         }
+        Perf.mark('渲染完成');
+        
+        Perf.done({ page: this.state.page, bankCount: this.state.banks.length });
     },
 
     applySettings() {

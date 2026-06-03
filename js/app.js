@@ -7,6 +7,7 @@ import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
 import Tracker from './tracker.js';
 import API from './api.js';
+import Perf from './perf.js';
 
 const App = {
     state: {
@@ -17,30 +18,38 @@ const App = {
     },
 
     async init() {
+        Perf.init('首页');
         console.log('[App] ========== 首页初始化开始 ==========');
         window._pageStartTime = window._pageStartTime || Date.now();
 
         // 加载题库（30秒超时，失败不影响页面显示）
+        Perf.mark('开始加载题库');
         console.log('[App] 📚 开始加载题库...');
         try {
             await Promise.race([
                 BankLoader.loadAllBuiltinBanks(),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
             ]);
+            Perf.mark('题库加载完成');
             console.log('[App] ✅ 题库加载完成');
         } catch (e) {
+            Perf.mark('题库加载失败');
             console.warn('[App] ⚠️ 题库加载超时或失败:', e.message);
         }
 
         // 云同步（静默，3秒超时）
+        Perf.mark('开始云同步');
         console.log('[App] ☁️ 开始云同步...');
         try { 
             await Promise.race([API.autoSync(), new Promise(r => setTimeout(r, 3000))]); 
+            Perf.mark('云同步完成');
             console.log('[App] ✅ 云同步完成');
         } catch (e) {
+            Perf.mark('云同步失败');
             console.warn('[App] ⚠️ 云同步失败:', e.message);
         }
 
+        Perf.mark('加载本地数据');
         console.log('[App] 📦 加载本地数据...');
         this.loadData();
 
@@ -55,9 +64,11 @@ const App = {
         if (elapsed < 500) setTimeout(showReal, 500 - elapsed);
         else showReal();
 
+        Perf.mark('开始渲染');
         console.log('[App] 🎨 开始渲染页面...');
         this.render();
         this.bindEvents();
+        Perf.mark('渲染完成');
 
         // 首次访问：提示注册
         if (!API.isRegistered()) {
@@ -66,11 +77,18 @@ const App = {
         }
 
         // 加载公告横幅
+        Perf.mark('加载公告');
         console.log('[App] 📢 加载公告...');
         this.loadAnnouncement();
         
         const totalElapsed = Date.now() - window._pageStartTime;
         console.log(`[App] ========== 首页初始化完成 (${totalElapsed}ms) ==========`);
+        
+        // 输出性能汇总
+        Perf.done({
+            bankCount: this.state.banks.length,
+            isRegistered: API.isRegistered()
+        });
     },
 
     loadData() {

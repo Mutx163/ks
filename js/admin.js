@@ -3,6 +3,7 @@
  */
 import API from './api.js';
 import Utils from './utils.js';
+import Perf from './perf.js';
 import { initUsers } from './admin-users.js';
 import { initBanks } from './admin-banks.js';
 import { initEditor } from './admin-editor.js';
@@ -23,6 +24,7 @@ const Admin = {
     tab: 'overview',
 
     async init() {
+        Perf.init('管理后台');
         document.getElementById('btn-login').addEventListener('click', () => this.login());
         document.getElementById('admin-password').addEventListener('keydown', e => { if (e.key === 'Enter') this.login(); });
         if (this.password) await this.loadAll();
