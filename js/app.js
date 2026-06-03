@@ -58,7 +58,9 @@ const App = {
     },
 
     loadData() {
-        this.state.banks = Storage.getBanks();
+        // 过滤掉禁用的题库（兼容本地缓存）
+        const allBanks = Storage.getBanks();
+        this.state.banks = allBanks.filter(b => b.enabled !== false);
         this.state.stats = Storage.getGlobalStats();
         // 恢复排序选项
         this.state.bankSort = localStorage.getItem('quiz_bank_sort') || 'recent';
