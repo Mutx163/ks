@@ -384,16 +384,45 @@ export function initBanks(Admin) {
     Admin.viewBankHistory = async function(bankId) {
         const d = await this.get(`/api/admin/bank/${bankId}/history`);
         if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
+        
+        const actionLabels = {
+            'add_question': '➕ 添加题目',
+            'edit_question': '✏️ 编辑题目',
+            'delete_question': '🗑️ 删除题目',
+            'batch_import': '📥 批量导入',
+            'toggle': '🔄 状态变更',
+            'update_settings': '⚙️ 更新设置',
+            'create': '🆕 创建题库',
+            'replace': '🔁 替换题库'
+        };
+        
+        const actionColors = {
+            'add_question': '#10b981',
+            'edit_question': '#667eea',
+            'delete_question': '#ef4444',
+            'batch_import': '#f59e0b',
+            'toggle': '#8b5cf6',
+            'update_settings': '#6366f1',
+            'create': '#10b981',
+            'replace': '#f59e0b'
+        };
+        
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
-                <div class="modal-box" style="max-width:500px;max-height:80vh;overflow-y:auto">
-                    <h3>修改历史</h3>
-                    <div style="margin-top:12px">${d.history.length ? d.history.map(h => `
-                        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
-                            <div style="color:var(--text-tertiary);font-size:11px">${Admin.fmtTime(h.created_at)}</div>
-                            <div style="margin-top:4px">${Utils.escapeHtml(h.detail)}</div>
-                        </div>
-                    `).join('') : '<div class="empty-state">暂无历史</div>'}</div>
+                <div class="modal-box" style="max-width:520px;max-height:80vh;overflow-y:auto">
+                    <h3 style="margin-bottom:16px">📋 修改历史</h3>
+                    <div>${d.history.length ? d.history.map(h => {
+                        const label = actionLabels[h.action] || h.action;
+                        const color = actionColors[h.action] || '#6b7280';
+                        return `
+                        <div style="padding:12px 14px;background:var(--bg-hover);border-radius:10px;margin-bottom:8px;border-left:4px solid ${color}">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                                <span style="font-size:13px;font-weight:600;color:${color}">${label}</span>
+                                <span style="font-size:11px;color:var(--text-tertiary)">${Admin.fmtTime(h.created_at)}</span>
+                            </div>
+                            <div style="font-size:12px;color:var(--text-secondary)">${Utils.escapeHtml(h.detail)}</div>
+                        </div>`;
+                    }).join('') : '<div class="empty-state">暂无历史记录</div>'}</div>
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
                 </div>
             </div>`;
