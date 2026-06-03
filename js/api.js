@@ -266,6 +266,11 @@ const API = {
             }
         }
 
+        // 保存管理员状态
+        if (data.user?.is_admin !== undefined) {
+            localStorage.setItem('ks_is_admin', data.user.is_admin ? '1' : '0');
+        }
+
         // 合并设置（云端优先，但保留本地特有的字段）
         if (data.settings && Object.keys(data.settings).length > 0) {
             const localSettings = Storage.getSettings();

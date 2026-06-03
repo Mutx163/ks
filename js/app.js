@@ -906,8 +906,9 @@ const App = {
         const aiEngine = settings.aiEngine || 'metaso';
         const customAiEngine = settings.customAiEngine || '';
 
-        // 检查是否有管理员密码
+        // 检查是否是管理员（本地管理员密码或云端管理员标记）
         const hasAdminPwd = !!localStorage.getItem('admin_pwd');
+        const isAdmin = hasAdminPwd || localStorage.getItem('ks_is_admin') === '1';
         
         const content = `
             <label>字体大小</label>
@@ -946,7 +947,7 @@ const App = {
                 <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">用 {keyword} 表示搜索关键词</p>
             </div>
             
-            ${hasAdminPwd ? `
+            ${isAdmin ? `
             <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
                 <button onclick="window.open('admin.html', '_blank'); this.closest('.modal').remove();" style="
                     width: 100%; padding: 12px; 

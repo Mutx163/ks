@@ -504,7 +504,8 @@ async function handleGetCloudData(did, env, origin) {
         ok: true,
         user: { 
             initials: user.initials,
-            banned: user.banned || 0
+            banned: user.banned || 0,
+            is_admin: user.is_admin || 0
         },
         settings,
         progress,
