@@ -17,21 +17,31 @@ const App = {
     },
 
     async init() {
+        console.log('[App] ========== 首页初始化开始 ==========');
         window._pageStartTime = window._pageStartTime || Date.now();
 
-        // 加载题库（10秒超时，失败不影响页面显示）
+        // 加载题库（30秒超时，失败不影响页面显示）
+        console.log('[App] 📚 开始加载题库...');
         try {
             await Promise.race([
                 BankLoader.loadAllBuiltinBanks(),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
             ]);
+            console.log('[App] ✅ 题库加载完成');
         } catch (e) {
-            console.warn('[App] 题库加载超时或失败:', e.message);
+            console.warn('[App] ⚠️ 题库加载超时或失败:', e.message);
         }
 
         // 云同步（静默，3秒超时）
-        try { await Promise.race([API.autoSync(), new Promise(r => setTimeout(r, 3000))]); } catch {}
+        console.log('[App] ☁️ 开始云同步...');
+        try { 
+            await Promise.race([API.autoSync(), new Promise(r => setTimeout(r, 3000))]); 
+            console.log('[App] ✅ 云同步完成');
+        } catch (e) {
+            console.warn('[App] ⚠️ 云同步失败:', e.message);
+        }
 
+        console.log('[App] 📦 加载本地数据...');
         this.loadData();
 
         // 隐藏骨架屏，显示真实内容（最少显示 500ms）
@@ -45,27 +55,48 @@ const App = {
         if (elapsed < 500) setTimeout(showReal, 500 - elapsed);
         else showReal();
 
+        console.log('[App] 🎨 开始渲染页面...');
         this.render();
         this.bindEvents();
 
         // 首次访问：提示注册
         if (!API.isRegistered()) {
+            console.log('[App] 👤 首次访问，提示注册');
             setTimeout(() => API.showRegisterModal(), 1500);
         }
 
         // 加载公告横幅
+        console.log('[App] 📢 加载公告...');
         this.loadAnnouncement();
+        
+        const totalElapsed = Date.now() - window._pageStartTime;
+        console.log(`[App] ========== 首页初始化完成 (${totalElapsed}ms) ==========`);
     },
 
     loadData() {
+        console.log('[App] 📦 开始加载本地数据...');
+        
         // 过滤掉禁用的题库（兼容本地缓存）
         const allBanks = Storage.getBanks();
-        this.state.banks = allBanks.filter(b => b.enabled !== false);
+        const enabledBanks = allBanks.filter(b => b.enabled !== false);
+        const disabledCount = allBanks.length - enabledBanks.length;
+        
+        console.log(`[App] 📊 题库统计: 总计 ${allBanks.length} 个, 启用 ${enabledBanks.length} 个, 禁用 ${disabledCount} 个`);
+        if (disabledCount > 0) {
+            console.log('[App] 🚫 已禁用的题库:', allBanks.filter(b => b.enabled === false).map(b => b.name || b.id));
+        }
+        
+        this.state.banks = enabledBanks;
         this.state.stats = Storage.getGlobalStats();
+        
+        console.log('[App] 📊 统计数据:', this.state.stats);
+        
         // 恢复排序选项
         this.state.bankSort = localStorage.getItem('quiz_bank_sort') || 'recent';
         const sortSelect = document.getElementById('bank-sort');
         if (sortSelect) sortSelect.value = this.state.bankSort;
+        
+        console.log('[App] ✅ 本地数据加载完成');
     },
 
     render() {

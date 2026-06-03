@@ -48,6 +48,8 @@ const Quiz = {
     },
 
     async init() {
+        console.log('[Quiz] ========== 刷题页面初始化开始 ==========');
+        
         const params = new URLSearchParams(window.location.search);
         this.state.bankId = params.get('bank');
         this.state.mode = params.get('mode') || 'all';
@@ -56,14 +58,25 @@ const Quiz = {
         this.state.examPassRate = parseInt(params.get('pass')) || 60;
         this.state.examCount = parseInt(params.get('count')) || 0;
 
+        console.log('[Quiz] 📋 URL 参数:', {
+            bank: this.state.bankId,
+            mode: this.state.mode,
+            type: this.state.filterType,
+            time: this.state.examTimeLimit,
+            pass: this.state.examPassRate,
+            count: this.state.examCount
+        });
+
         // 搜索模式关键词（从首页搜索进入时，mode=review 且带 q 参数）
         if (params.get('q')) {
             this.state.searchKeyword = params.get('q') || '';
+            console.log('[Quiz] 🔍 搜索关键词:', this.state.searchKeyword);
         }
 
         // 从设置读取答题模式
         const settings = Storage.getSettings();
         this.state.answerMode = settings.answerMode || 'normal';
+        console.log('[Quiz] ⚙️ 用户设置:', settings);
 
         // 应用字体大小
         if (settings.fontSize) {
@@ -71,24 +84,52 @@ const Quiz = {
         }
 
         if (!this.state.bankId) {
+            console.error('[Quiz] ❌ 缺少题库参数');
             Utils.showToast('缺少题库参数', 'error');
             setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
+        // 加载题库数据
+        console.log('[Quiz] 📚 开始加载题库:', this.state.bankId);
         this.state.bank = Storage.getBank(this.state.bankId);
+        
+        if (this.state.bank) {
+            console.log('[Quiz] ⚡ 从本地缓存加载题库:', {
+                id: this.state.bank.id,
+                name: this.state.bank.name,
+                version: this.state.bank.version,
+                questionCount: this.state.bank.questions?.length
+            });
+        } else {
+            console.log('[Quiz] 📡 本地无缓存，从 JSON 文件加载...');
+        }
+        
         if (!this.state.bank || !Array.isArray(this.state.bank.questions)) {
+            console.log('[Quiz] 📡 尝试从云端加载题库...');
             await this.loadBankFromJson();
         }
+        
         if (!this.state.bank || !Array.isArray(this.state.bank.questions)) {
+            console.error('[Quiz] ❌ 题库加载失败');
             Utils.showToast('题库加载失败', 'error');
             setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
+        
+        console.log('[Quiz] ✅ 题库加载成功:', {
+            id: this.state.bank.id,
+            name: this.state.bank.name,
+            version: this.state.bank.version,
+            questionCount: this.state.bank.questions.length
+        });
 
+        console.log('[Quiz] 🔄 准备题目列表...');
         this.prepareQuestions();
+        console.log('[Quiz] ✅ 题目准备完成:', this.state.questions.length, '题');
 
         if (this.state.mode === 'review') {
+            console.log('[Quiz] 📖 背题模式：自动显示所有答案');
             this.state.questions.forEach((q) => {
                 this.state.submitted[q.id] = true;
                 this.state.showExplanation[q.id] = true;
@@ -97,18 +138,21 @@ const Quiz = {
         }
 
         if (this.state.mode === 'wrong' && this.state.questions.length === 0) {
+            console.log('[Quiz] ✨ 没有错题');
             Utils.showToast('没有错题，真棒！', 'success');
             setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
         if (this.state.mode === 'spaced' && this.state.questions.length === 0) {
+            console.log('[Quiz] 📅 没有需要复习的题目');
             Utils.showToast('没有需要复习的题目', 'info');
             setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
         if (this.state.mode === 'bookmark' && this.state.questions.length === 0) {
+            console.log('[Quiz] ⭐ 没有收藏的题目');
             Utils.showToast('没有收藏的题目', 'info');
             setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
@@ -116,19 +160,23 @@ const Quiz = {
 
         // 检查注册状态，未注册跳回首页
         if (!API.isRegistered()) {
+            console.log('[Quiz] 👤 未注册用户');
             Utils.showToast('请先在首页注册后再刷题', 'error');
             setTimeout(() => window.location.href = 'index.html', 1500);
             return;
         }
 
+        console.log('[Quiz] 📂 恢复会话状态...');
         this.restoreSession();
         this.state.startTime = Date.now();
         this.state.questionStartTime = Date.now();
 
         if (this.state.mode === 'exam') {
+            console.log('[Quiz] ⏱️ 考试模式：启动计时器');
             this.startExamTimer();
         }
 
+        console.log('[Quiz] 🎨 开始渲染页面...');
         this.render();
         this.bindEvents();
 
@@ -141,6 +189,8 @@ const Quiz = {
         // 页面关闭/刷新前刷新待上报数据
         this._beforeUnloadHandler = () => this._flushStatsSync();
         window.addEventListener('beforeunload', this._beforeUnloadHandler);
+        
+        console.log('[Quiz] ========== 刷题页面初始化完成 ==========');
     },
 
     updateTimerDisplay() {

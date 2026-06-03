@@ -78,22 +78,29 @@ const API = {
     // ==================== 网络请求 ====================
 
     async request(path, options = {}) {
+        const startTime = Date.now();
+        const method = options.method || 'GET';
         try {
             const url = this.BASE_URL + path;
-            console.log('[API] 请求:', url);
+            console.log(`[API] 📡 ${method} ${url}`);
+            
             const res = await fetch(url, {
                 headers: { 'Content-Type': 'application/json' },
                 ...options
             });
-            console.log('[API] 响应:', res.status, res.ok);
+            
+            const elapsed = Date.now() - startTime;
+            console.log(`[API] ✅ ${method} ${path} (${elapsed}ms) 状态: ${res.status}`);
+            
             const data = await res.json();
             if (!res.ok) {
-                console.warn('[API] 错误:', data.error || '请求失败');
+                console.warn(`[API] ❌ 请求失败: ${data.error || '未知错误'}`);
                 return null;
             }
             return data;
         } catch (e) {
-            console.warn('[API] 网络错误:', e.message);
+            const elapsed = Date.now() - startTime;
+            console.error(`[API] ❌ ${method} ${path} 异常 (${elapsed}ms):`, e.message);
             return null;
         }
     },
@@ -163,16 +170,27 @@ const API = {
      * 页面加载时自动同步（拉取云端 → 合并 → 静默执行）
      */
     async autoSync() {
+        console.log('[API] ========== 自动同步开始 ==========');
+        const startTime = Date.now();
+        
         if (!this.isRegistered()) {
-            // 尝试从服务端恢复同步码
+            console.log('[API] 👤 未注册，尝试恢复同步码...');
             const recovered = await this.checkRegistered();
-            if (!recovered) return false;
+            if (!recovered) {
+                console.log('[API] ❌ 无法恢复同步码，跳过同步');
+                return false;
+            }
+            console.log('[API] ✅ 同步码已恢复');
         }
 
-        // 拉取云端设置和进度
+        console.log('[API] ☁️ 拉取云端数据...');
         await this.pullCloudData();
-        // 推送本地最新数据到云端
+        
+        console.log('[API] 📤 推送本地数据到云端...');
         await this.pushAll();
+        
+        const elapsed = Date.now() - startTime;
+        console.log(`[API] ========== 自动同步完成 (${elapsed}ms) ==========`);
         return true;
     },
 
@@ -180,8 +198,20 @@ const API = {
      * 拉取云端设置和进度，合并到本地
      */
     async pullCloudData() {
+        console.log('[API] 📥 开始拉取云端数据...');
+        const startTime = Date.now();
+        
         const data = await this.request(`/api/cloud-data/${this.getDeviceId()}`);
-        if (!data || !data.ok) return;
+        if (!data || !data.ok) {
+            console.log('[API] ⚠️ 云端数据拉取失败或无数据');
+            return;
+        }
+
+        console.log('[API] 📥 云端数据响应:', {
+            hasUser: !!data.user,
+            hasSettings: !!data.settings && Object.keys(data.settings).length > 0,
+            hasProgress: !!data.progress && Object.keys(data.progress).length > 0
+        });
 
         const Storage = StorageMod;
         if (!Storage) return;
@@ -191,7 +221,7 @@ const API = {
             const localInitials = localStorage.getItem(this.KEYS.INITIALS);
             if (localInitials !== data.user.initials) {
                 localStorage.setItem(this.KEYS.INITIALS, data.user.initials);
-                console.log('[Sync] 用户名已同步:', data.user.initials);
+                console.log('[API] 👤 用户名已同步:', localInitials, '->', data.user.initials);
             }
         }
 
@@ -200,28 +230,36 @@ const API = {
             const localSettings = Storage.getSettings();
             const merged = { ...localSettings, ...data.settings };
             Storage.updateSettings(merged);
+            console.log('[API] ⚙️ 设置已合并');
         }
 
         // 合并进度（取各 bankId 的最大值）
         if (data.progress && Object.keys(data.progress).length > 0) {
+            console.log('[API] 📊 合并进度数据...');
             this._mergeProgress(data.progress);
         }
 
         localStorage.setItem(this.KEYS.LAST_PULL, Date.now().toString());
+        const elapsed = Date.now() - startTime;
+        console.log(`[API] ✅ 云端数据拉取完成 (${elapsed}ms)`);
     },
 
     /**
      * 推送所有本地数据到云端
      */
     async pushAll() {
+        console.log('[API] 📤 开始推送本地数据...');
         const Storage = StorageMod;
         if (!Storage) return;
 
         // 推送设置
+        console.log('[API] 📤 推送设置...');
         this.pushSettings(Storage.getSettings());
 
         // 推送进度
+        console.log('[API] 📤 推送进度...');
         this.pushProgress(Storage.getProgress());
+        console.log('[API] ✅ 本地数据推送完成');
     },
 
     /**

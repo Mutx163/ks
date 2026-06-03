@@ -150,10 +150,16 @@ const Storage = {
      */
     getBanks() {
         const meta = this.get(this.KEYS.BANKS_META) || [];
-        return meta.map((m) => {
+        console.log('[Storage] 📚 获取题库列表: 元数据', meta.length, '个');
+        
+        const banks = meta.map((m) => {
             const fullData = this._bankData.get(m.id);
+            const source = fullData ? '内存缓存' : '元数据';
             return fullData || m; // 内存有完整数据就返回完整数据，否则返回元数据
         });
+        
+        console.log('[Storage] 📚 返回题库:', banks.map(b => `${b.name || b.id} (${b.questions?.length || 0}题)`));
+        return banks;
     },
 
     /**
@@ -162,11 +168,19 @@ const Storage = {
     getBank(bankId) {
         // 优先从内存缓存获取完整数据
         if (this._bankData.has(bankId)) {
-            return this._bankData.get(bankId);
+            const bank = this._bankData.get(bankId);
+            console.log('[Storage] ⚡ 从内存缓存获取题库:', bankId, `(${bank.questions?.length || 0}题)`);
+            return bank;
         }
         // 回退到元数据
         const meta = this.get(this.KEYS.BANKS_META) || [];
-        return meta.find((b) => b.id === bankId) || null;
+        const bank = meta.find((b) => b.id === bankId) || null;
+        if (bank) {
+            console.log('[Storage] 📦 从元数据获取题库:', bankId, '(无题目数据)');
+        } else {
+            console.log('[Storage] ❌ 题库不存在:', bankId);
+        }
+        return bank;
     },
 
     /**
@@ -174,7 +188,12 @@ const Storage = {
      * 完整数据缓存在内存中，只有元数据存入 localStorage
      */
     addBank(bank) {
-        if (!bank || !bank.id) return false;
+        if (!bank || !bank.id) {
+            console.warn('[Storage] ⚠️ addBank: 无效的题库数据');
+            return false;
+        }
+
+        console.log('[Storage] 💾 添加题库:', bank.id, bank.name, `(${bank.questions?.length || 0}题)`);
 
         // 缓存完整数据到内存
         this._bankData.set(bank.id, bank);
@@ -192,16 +211,19 @@ const Storage = {
             categories: bank.categories,
             tags: bank.tags,
             allowed_modes: bank.allowed_modes,
+            enabled: bank.enabled,
             questionCount: bank.questions?.length || 0
         };
 
         if (existingIndex >= 0) {
+            console.log('[Storage] 🔄 更新已有题库元数据:', bank.id);
             metaList[existingIndex] = {
                 ...metaList[existingIndex],
                 ...metaData,
                 updatedAt: new Date().toISOString()
             };
         } else {
+            console.log('[Storage] ➕ 新增题库元数据:', bank.id);
             metaList.push({
                 ...metaData,
                 createdAt: new Date().toISOString(),
@@ -210,6 +232,7 @@ const Storage = {
         }
 
         this.set(this.KEYS.BANKS_META, metaList);
+        console.log('[Storage] ✅ 题库添加完成:', bank.id, '(内存+元数据)');
         return true;
     },
 
@@ -217,8 +240,11 @@ const Storage = {
      * 删除题库
      */
     removeBank(bankId) {
+        console.log('[Storage] 🗑️ 删除题库:', bankId);
+        
         // 从内存中移除
         this._bankData.delete(bankId);
+        console.log('[Storage] 🗑️ 已从内存缓存移除');
 
         // 从元数据中移除
         const metaList = this.get(this.KEYS.BANKS_META) || [];
@@ -226,18 +252,23 @@ const Storage = {
 
         if (filtered.length < metaList.length) {
             this.set(this.KEYS.BANKS_META, filtered);
+            console.log('[Storage] 🗑️ 已从元数据移除');
 
             // 同时删除该题库的进度和收藏
             const progress = this.getProgress();
             delete progress[bankId];
             this.set(this.KEYS.PROGRESS, progress);
+            console.log('[Storage] 🗑️ 已清理该题库的进度数据');
 
             const bookmarks = this.getBookmarks();
             delete bookmarks[bankId];
             this.set(this.KEYS.BOOKMARKS, bookmarks);
+            console.log('[Storage] 🗑️ 已清理该题库的收藏数据');
 
+            console.log('[Storage] ✅ 题库删除完成:', bankId);
             return true;
         }
+        console.log('[Storage] ⚠️ 题库不存在:', bankId);
         return false;
     },
 
