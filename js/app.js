@@ -964,6 +964,13 @@ const App = {
 
                         const newSwipe = modal.querySelector('#setting-swipe').checked;
 
+                        console.log('[Settings] 💾 保存设置:', {
+                            answerMode: newAnswerMode,
+                            swipeNavigation: newSwipe,
+                            aiEngine: newAiEngine,
+                            customAiEngine: newCustomEngine
+                        });
+
                         Storage.updateSettings({
                             answerMode: newAnswerMode,
                             swipeNavigation: newSwipe,

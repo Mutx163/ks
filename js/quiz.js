@@ -1522,6 +1522,8 @@ const Quiz = {
         const customEngine = settings.customAiEngine || '';
         const encoded = encodeURIComponent(keyword);
 
+        console.log('[AI] 🔍 构建搜索 URL:', { aiEngine, customEngine, keyword });
+
         const engines = {
             felo: `https://felo.ai/search?q=${encoded}`,
             andi: `https://andisearch.com/?q=${encoded}`,
@@ -1529,13 +1531,30 @@ const Quiz = {
             metaso: `https://metaso.cn/?q=${encoded}`
         };
 
-        if (engines[aiEngine]) return engines[aiEngine];
-
-        if (aiEngine === 'custom' && customEngine && customEngine.includes('{keyword}') && customEngine.startsWith('https://')) {
-            return customEngine.replace('{keyword}', encoded);
+        // 非自定义引擎，直接返回
+        if (aiEngine !== 'custom') {
+            const url = engines[aiEngine] || engines.metaso;
+            console.log('[AI] ✅ 使用内置引擎:', aiEngine, url);
+            return url;
         }
 
-        return engines.metaso;
+        // 自定义引擎
+        if (!customEngine) {
+            console.warn('[AI] ⚠️ 自定义引擎 URL 为空，使用默认引擎');
+            return engines.metaso;
+        }
+
+        // 如果 URL 不包含 {keyword}，自动在末尾添加 ?q={keyword}
+        let url = customEngine;
+        if (!url.includes('{keyword}')) {
+            // 检查 URL 是否已有查询参数
+            url += url.includes('?') ? '&' : '?';
+            url += 'q={keyword}';
+        }
+
+        url = url.replace('{keyword}', encoded);
+        console.log('[AI] ✅ 使用自定义引擎:', url);
+        return url;
     },
 
     /**
