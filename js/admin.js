@@ -121,11 +121,15 @@ const Admin = {
     showApp() {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('admin-app').style.display = '';
-        this.renderTab();
+        // 恢复上次的标签页
+        const savedTab = localStorage.getItem('admin_tab') || 'overview';
+        this.switchTab(savedTab);
     },
 
     switchTab(t) {
         this.tab = t;
+        // 保存当前标签到 localStorage
+        localStorage.setItem('admin_tab', t);
         document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === t));
         document.querySelectorAll('.section').forEach(el => el.classList.toggle('active', el.id === 'sec-' + t));
         this.renderTab();
