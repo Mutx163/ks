@@ -540,80 +540,99 @@ const API = {
             const Utils = window.Utils;
             if (!Utils) { resolve(false); return; }
 
-            Utils.showModal({
-                title: '🏆 加入排行榜',
-                closable: false,
-                content: `
-                    <div style="margin-bottom: 16px;">
-                        <p style="color: var(--text-secondary); margin-bottom: 12px;">
-                            输入姓名首字母注册，支持多设备同步！
+            let currentTab = 'register';
+
+            const renderContent = () => {
+                return `
+                    <div style="display: flex; gap: 0; margin-bottom: 20px; background: var(--bg-hover); border-radius: 10px; padding: 4px;">
+                        <button id="tab-register" onclick="document.getElementById('register-form').style.display='block';document.getElementById('bind-form').style.display='none';document.getElementById('tab-register').style.background='#fff';document.getElementById('tab-register').style.boxShadow='0 1px 3px rgba(0,0,0,0.1)';document.getElementById('tab-bind').style.background='transparent';document.getElementById('tab-bind').style.boxShadow='none';" style="flex:1; padding: 10px; border: none; background: #fff; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.2s;">✨ 新用户注册</button>
+                        <button id="tab-bind" onclick="document.getElementById('register-form').style.display='none';document.getElementById('bind-form').style.display='block';document.getElementById('tab-bind').style.background='#fff';document.getElementById('tab-bind').style.boxShadow='0 1px 3px rgba(0,0,0,0.1)';document.getElementById('tab-register').style.background='transparent';document.getElementById('tab-register').style.boxShadow='none';" style="flex:1; padding: 10px; border: none; background: transparent; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">🔗 绑定同步码</button>
+                    </div>
+                    
+                    <div id="register-form">
+                        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; text-align: center;">
+                            输入姓名首字母，即可开始刷题！
                         </p>
                         <input type="text" id="reg-initials"
-                            placeholder="如: ZS（张三）"
+                            placeholder="例如: ZS（张三）"
                             maxlength="4"
-                            style="text-transform: uppercase; text-align: center; font-size: 18px; letter-spacing: 4px; width: 100%;"
+                            style="text-transform: uppercase; text-align: center; font-size: 24px; letter-spacing: 8px; width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--bg);"
                             autocomplete="off">
+                        <p style="color: var(--text-tertiary); font-size: 12px; margin-top: 8px; text-align: center;">
+                            1-4个字母，如 ZS、LYT、WANG
+                        </p>
                     </div>
-                    <div style="border-top: 1px solid var(--border); padding-top: 12px;">
-                        <p style="color: var(--text-tertiary); font-size: 12px; margin-bottom: 8px;">
-                            已有同步码？在其他设备绑定：
+                    
+                    <div id="bind-form" style="display: none;">
+                        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; text-align: center;">
+                            在其他设备已有账号？输入同步码继续
                         </p>
                         <input type="text" id="reg-sync-code"
                             placeholder="输入6位同步码"
                             maxlength="6"
-                            style="text-transform: uppercase; text-align: center; font-size: 16px; letter-spacing: 3px; width: 100%;"
+                            style="text-transform: uppercase; text-align: center; font-size: 24px; letter-spacing: 6px; width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--bg);"
                             autocomplete="off">
+                        <p style="color: var(--text-tertiary); font-size: 12px; margin-top: 8px; text-align: center;">
+                            同步码可在已登录设备的"我的"页面查看
+                        </p>
                     </div>
-                `,
+                `;
+            };
+
+            Utils.showModal({
+                title: '🏆 欢迎使用城科卷王',
+                closable: false,
+                content: renderContent(),
                 buttons: [
                     {
-                        label: '注册新账号',
+                        label: '开始刷题',
                         class: 'btn-primary',
                         onClick: (modal) => {
-                            const input = modal.querySelector('#reg-initials');
-                            const initials = (input?.value || '').trim().toUpperCase();
-                            if (initials.length < 1 || initials.length > 4) {
-                                Utils.showToast('请输入1-4个字符', 'error');
-                                return;
-                            }
-                            Utils.showToast('注册中...', 'info');
-                            API.register(initials).then(result => {
-                                if (result && result.ok) {
-                                    Utils.showToast(`注册成功！同步码: ${result.syncCode}`, 'success', 5000);
-                                    modal.remove();
-                                    resolve(true);
-                                } else {
-                                    Utils.showToast('注册失败，请重试', 'error');
+                            // 判断当前是注册还是绑定
+                            const registerForm = modal.querySelector('#register-form');
+                            const isRegister = registerForm.style.display !== 'none';
+                            
+                            if (isRegister) {
+                                const input = modal.querySelector('#reg-initials');
+                                const initials = (input?.value || '').trim().toUpperCase();
+                                if (initials.length < 1 || initials.length > 4) {
+                                    Utils.showToast('请输入1-4个字母', 'error');
+                                    return;
                                 }
-                            }).catch(e => {
-                                console.error('[Register]', e);
-                                Utils.showToast('网络错误，请重试', 'error');
-                            });
-                        }
-                    },
-                    {
-                        label: '绑定同步码',
-                        class: 'btn-secondary',
-                        onClick: (modal) => {
-                            const input = modal.querySelector('#reg-sync-code');
-                            const code = (input?.value || '').trim().toUpperCase();
-                            if (code.length !== 6) {
-                                Utils.showToast('请输入6位同步码', 'error');
-                                return;
-                            }
-                            Utils.showToast('绑定中...', 'info');
-                            API.bindDevice(code).then(result => {
-                                if (result && result.ok) {
-                                    Utils.showToast(`绑定成功！欢迎 ${result.initials}`, 'success');
-                                    modal.remove();
-                                    resolve(true);
-                                } else {
-                                    Utils.showToast(result?.error || '绑定失败', 'error');
+                                Utils.showToast('注册中...', 'info');
+                                API.register(initials).then(result => {
+                                    if (result && result.ok) {
+                                        Utils.showToast(`注册成功！`, 'success');
+                                        modal.remove();
+                                        resolve(true);
+                                    } else {
+                                        Utils.showToast('注册失败，请重试', 'error');
+                                    }
+                                }).catch(e => {
+                                    console.error('[Register]', e);
+                                    Utils.showToast('网络错误，请重试', 'error');
+                                });
+                            } else {
+                                const input = modal.querySelector('#reg-sync-code');
+                                const code = (input?.value || '').trim().toUpperCase();
+                                if (code.length !== 6) {
+                                    Utils.showToast('请输入6位同步码', 'error');
+                                    return;
                                 }
-                            }).catch(e => {
-                                console.error('[Bind]', e);
-                                Utils.showToast('网络错误，请重试', 'error');
-                            });
+                                Utils.showToast('绑定中...', 'info');
+                                API.bindDevice(code).then(result => {
+                                    if (result && result.ok) {
+                                        Utils.showToast(`绑定成功！欢迎 ${result.initials}`, 'success');
+                                        modal.remove();
+                                        resolve(true);
+                                    } else {
+                                        Utils.showToast(result?.error || '绑定失败', 'error');
+                                    }
+                                }).catch(e => {
+                                    console.error('[Bind]', e);
+                                    Utils.showToast('网络错误，请重试', 'error');
+                                });
+                            }
                         }
                     },
                     // 无跳过按钮，必须注册或绑定
