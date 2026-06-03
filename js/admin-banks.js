@@ -112,27 +112,11 @@ export function initBanks(Admin) {
                         
                         <!-- 题目操作 -->
                         <div style="display:flex;gap:8px;flex-wrap:wrap">
+                            <button class="abtn primary" onclick="Admin.showQuestionList('${Utils.jsSafe(bankId)}', '${Utils.jsSafe(b.name)}')">📝 管理题目 (${qs.length})</button>
                             <button class="abtn primary" onclick="Admin.addQuestion('${Utils.jsSafe(bankId)}')">添加题目</button>
                             <button class="abtn primary" onclick="Admin.importQuestions('${Utils.jsSafe(bankId)}')">批量导入</button>
                             <button class="abtn" onclick="Admin.viewBankHistory('${Utils.jsSafe(bankId)}')">修改历史</button>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- 搜索和筛选 -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3>题目列表</h3>
-                        <span class="count">${qs.length}题</span>
-                    </div>
-                    <div class="card-body" style="padding:12px">
-                        <div style="display:flex;gap:8px;margin-bottom:12px">
-                            <input type="text" id="bank-search" placeholder="搜索题目..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg-card);color:var(--text)" oninput="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
-                            <select id="bank-type-filter" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg-card);color:var(--text)" onchange="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
-                                <option value="">全部题型</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option><option value="fill">填空</option><option value="essay">简答</option>
-                            </select>
-                        </div>
-                        <div id="bank-questions-list" style="max-height:500px;overflow-y:auto">${this._renderQuestionList(bankId, qs)}</div>
                     </div>
                 </div>
             `;
@@ -143,6 +127,54 @@ export function initBanks(Admin) {
                 </div>
                 <div class="empty-state">加载失败: ${e.message}</div>
             `; 
+        }
+    };
+
+    // ==================== 题目列表页（第三级）====================
+    Admin.showQuestionList = async function(bankId, bankName) {
+        const el = document.getElementById('sec-banks');
+        el.innerHTML = '<div class="loading">加载中...</div>';
+        
+        try {
+            const d = await this.get(`/api/admin/bank/${bankId}`);
+            if (!d?.ok) { el.innerHTML = '<div class="empty-state">加载失败</div>'; return; }
+            
+            const qs = d.bank.questions || [];
+            
+            el.innerHTML = `
+                <!-- 返回按钮 -->
+                <div style="margin-bottom:16px">
+                    <button class="abtn" onclick="Admin.showBankDetail('${Utils.jsSafe(bankId)}')" style="display:flex;align-items:center;gap:6px">
+                        ← 返回题库详情
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <h3>${Utils.escapeHtml(bankName || bankId)} - 题目列表</h3>
+                        <div style="display:flex;gap:6px;align-items:center">
+                            <span class="count">${qs.length}题</span>
+                            <button class="abtn primary" style="padding:3px 10px;font-size:11px" onclick="Admin.addQuestion('${Utils.jsSafe(bankId)}')">添加题目</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:12px">
+                        <div style="display:flex;gap:8px;margin-bottom:12px">
+                            <input type="text" id="bank-search" placeholder="搜索题目..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg-card);color:var(--text)" oninput="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
+                            <select id="bank-type-filter" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg-card);color:var(--text)" onchange="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
+                                <option value="">全部题型</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option><option value="fill">填空</option><option value="essay">简答</option>
+                            </select>
+                        </div>
+                        <div id="bank-questions-list">${this._renderQuestionList(bankId, qs)}</div>
+                    </div>
+                </div>
+            `;
+        } catch (e) {
+            el.innerHTML = `
+                <div style="margin-bottom:16px">
+                    <button class="abtn" onclick="Admin.showBankDetail('${Utils.jsSafe(bankId)}')">← 返回题库详情</button>
+                </div>
+                <div class="empty-state">加载失败: ${e.message}</div>
+            `;
         }
     };
 
