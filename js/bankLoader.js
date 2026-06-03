@@ -204,21 +204,42 @@ const BankLoader = {
     },
 
     /**
-     * 加载所有题库
+     * 加载所有题库（优化版：并行请求列表和已知题库）
      */
     async loadAllBuiltinBanks() {
         console.log('[BankLoader] ========== 开始加载所有题库 ==========');
         const startTime = Date.now();
         
-        const list = await this.loadBankList();
+        // 从本地缓存获取已知的题库 ID
+        const cachedBanks = Storage.getBanks().filter(b => b.enabled !== false);
+        const cachedIds = cachedBanks.map(b => b.id);
+        
+        console.log(`[BankLoader] 📦 本地缓存: ${cachedIds.length} 个题库`, cachedIds);
+        
+        // 并行请求：题库列表 + 已知题库的详情
+        console.log('[BankLoader] ⚡ 并行请求: 题库列表 + 已知题库详情...');
+        const [list, ...cachedResults] = await Promise.all([
+            this.loadBankList(),
+            ...cachedIds.map(id => this.loadBank(id))
+        ]);
+        
         if (!list.length) {
             console.warn('[BankLoader] ⚠️ 无可用题库');
             console.log('[BankLoader] ========== 所有题库加载结束 ==========');
             return [];
         }
-
-        console.log(`[BankLoader] 📚 开始加载 ${list.length} 个题库...`);
-        const results = await Promise.all(list.map(b => this.loadBank(b.id)));
+        
+        // 检查是否有新题库需要加载（列表中有但本地没有的）
+        const cachedSet = new Set(cachedIds);
+        const newBanks = list.filter(b => !cachedSet.has(b.id));
+        
+        if (newBanks.length > 0) {
+            console.log(`[BankLoader] 🆕 发现 ${newBanks.length} 个新题库:`, newBanks.map(b => b.id));
+            const newResults = await Promise.all(newBanks.map(b => this.loadBank(b.id)));
+            cachedResults.push(...newResults);
+        }
+        
+        const results = cachedResults;
         const successCount = results.filter(Boolean).length;
         const failCount = results.length - successCount;
         

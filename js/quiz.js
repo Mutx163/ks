@@ -284,6 +284,9 @@ const Quiz = {
     },
 
     saveSession() {
+        // 考试/答题已结束后不再保存，防止 beforeunload 恢复已清除的会话
+        if (this.state.isFinished) return;
+
         // 保存乱序/随机的题目顺序（含考试模式的随机抽题）
         const questionOrderIds =
             this.state.mode === 'random' || this.state.mode === 'shuffle_options' || this.state.mode === 'exam'
