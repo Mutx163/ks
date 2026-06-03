@@ -756,16 +756,22 @@ const Quiz = {
 
     /**
      * 获取选项的显示列表（支持选项乱序）
-     * 每个选项格式：{ displayLetter, originalLetter, text }
+     * 每个选项格式：{ displayLetter, originalLetter, text, img }
      * data-answer 始终存 originalLetter，checkAnswer 无需修改
      */
     getDisplayOptions(question) {
         const options = question.options || [];
-        const normal = options.map((option, index) => ({
-            displayLetter: String.fromCharCode(65 + index),
-            originalLetter: String.fromCharCode(65 + index),
-            text: option
-        }));
+        const normal = options.map((option, index) => {
+            // 支持字符串或对象格式
+            const text = typeof option === 'string' ? option : (option.text || '');
+            const img = typeof option === 'object' ? (option.img || '') : '';
+            return {
+                displayLetter: String.fromCharCode(65 + index),
+                originalLetter: String.fromCharCode(65 + index),
+                text,
+                img
+            };
+        });
 
         if (this.state.mode !== 'shuffle_options' && this.state.mode !== 'exam') return normal;
 
@@ -775,11 +781,18 @@ const Quiz = {
             this.state.optionOrderCache[question.id] = Utils.shuffleArray(indices);
         }
 
-        return this.state.optionOrderCache[question.id].map((origIdx, displayIdx) => ({
-            displayLetter: String.fromCharCode(65 + displayIdx),
-            originalLetter: String.fromCharCode(65 + origIdx),
-            text: options[origIdx]
-        }));
+        return this.state.optionOrderCache[question.id].map((origIdx, displayIdx) => {
+            const opt = options[origIdx];
+            // 支持字符串或对象格式
+            const text = typeof opt === 'string' ? opt : (opt.text || '');
+            const img = typeof opt === 'object' ? (opt.img || '') : '';
+            return {
+                displayLetter: String.fromCharCode(65 + displayIdx),
+                originalLetter: String.fromCharCode(65 + origIdx),
+                text,
+                img
+            };
+        });
     },
 
     renderSingleOptions(question, isSubmitted, userAnswer) {
@@ -810,7 +823,10 @@ const Quiz = {
                         return `
                         <div class="${cls}" data-answer="${origLetter}" role="radio" aria-checked="${isUserSel}" tabindex="0">
                             ${markerHtml}
-                            <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
+                            <div class="option-content">
+                                ${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}
+                                ${opt.img ? `<img src="${Utils.escapeHtml(opt.img)}" class="option-image" loading="lazy" alt="选项图片">` : ''}
+                            </div>
                         </div>
                     `;
                     })
@@ -849,7 +865,10 @@ const Quiz = {
                         return `
                         <div class="${cls}" data-answer="${origLetter}" role="checkbox" aria-checked="${userAnswers.includes(origLetter)}" tabindex="0">
                             ${markerHtml}
-                            <div class="option-content">${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}</div>
+                            <div class="option-content">
+                                ${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}
+                                ${opt.img ? `<img src="${Utils.escapeHtml(opt.img)}" class="option-image" loading="lazy" alt="选项图片">` : ''}
+                            </div>
                         </div>
                     `;
                     })

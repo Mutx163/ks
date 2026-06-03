@@ -494,6 +494,27 @@
     box-shadow: var(--shadow);
 }
 
+/* ===== 选项图片 ===== */
+.option-image {
+    max-width: 100%;
+    max-height: 150px;
+    height: auto;
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-2);
+    display: block;
+    border: 1px solid var(--border);
+}
+
+/* ===== Markdown 图片 ===== */
+.markdown-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    margin: var(--space-2) 0;
+    display: block;
+    border: 1px solid var(--border);
+}
+
 /* ===== 简答题输入 ===== */
 .essay-input {
     width: 100%;

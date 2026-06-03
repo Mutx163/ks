@@ -180,6 +180,15 @@ const Utils = {
             return `%%PH${id}%%`;
         });
 
+        // 提取图片 (![alt](url))
+        html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
+            const id = placeholders.length;
+            placeholders.push(
+                `<img src="${this.escapeHtml(url.trim())}" alt="${this.escapeHtml(alt)}" class="markdown-image" loading="lazy">`
+            );
+            return `%%PH${id}%%`;
+        });
+
         // 转义普通文本中的 HTML
         html = this.escapeHtml(html);
 

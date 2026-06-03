@@ -2,6 +2,7 @@
  * 管理后台 - 题目编辑器
  */
 import Utils from './utils.js';
+import ImageUploader from './imageUploader.js';
 
 export function initEditor(Admin) {
 
@@ -54,16 +55,24 @@ export function initEditor(Admin) {
         let optionsHTML = '';
         if (isChoice) {
             const letters = 'ABCDEFGH';
-            const allOpts = [...opts];
+            const allOpts = opts.map(opt => {
+                // 支持字符串或对象格式
+                if (typeof opt === 'string') return { text: opt, img: '' };
+                return { text: opt.text || '', img: opt.img || '' };
+            });
             // 确保至少4个选项
-            while (allOpts.length < 4) allOpts('');
+            while (allOpts.length < 4) allOpts.push({ text: '', img: '' });
             optionsHTML = allOpts.map((opt, i) => {
                 const letter = letters[i];
                 const selected = answerStr.includes(letter);
+                const imgPreview = opt.img ? `<img src="${Utils.escapeHtml(opt.img)}" style="max-width:60px;max-height:40px;border-radius:4px;margin-left:4px;vertical-align:middle;border:1px solid var(--border)">` : '';
                 return `<div class="qe-opt-item ${selected ? 'selected' : ''}" data-letter="${letter}" onclick="Admin._selectOption('${letter}')">
                     <span class="qe-opt-indicator ${type === 'multiple' || type === 'multi' ? 'checkbox' : 'radio'}">${selected ? (type === 'multiple' || type === 'multi' ? '☑' : '●') : (type === 'multiple' || type === 'multi' ? '☐' : '○')}</span>
                     <span class="qe-opt-letter">${letter}.</span>
-                    <input class="qe-opt-input" value="${Utils.escapeHtml(opt)}" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
+                    <input class="qe-opt-input" value="${Utils.escapeHtml(opt.text)}" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
+                    <input type="hidden" class="qe-opt-img" value="${Utils.escapeHtml(opt.img)}">
+                    ${imgPreview}
+                    <button type="button" class="abtn" style="padding:1px 4px;font-size:10px" onclick="event.stopPropagation();Admin._uploadOptionImage(this)" title="添加选项图片">📷</button>
                     <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>
                 </div>`;
             }).join('');
@@ -110,9 +119,17 @@ export function initEditor(Admin) {
                 <div class="qe-field">
                     <label>题目内容</label>
                     <textarea id="eq-question" rows="3" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q?.question||'')}</textarea>
+                    <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+                        <button type="button" class="abtn primary" style="padding:4px 10px;font-size:11px" onclick="Admin._uploadQuestionImage()">📷 添加题目图片</button>
+                        <input type="text" id="eq-img" value="${Utils.escapeHtml(q?.img||q?.image||'')}" placeholder="或直接输入图片URL" style="flex:1;padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text)">
+                    </div>
+                    <div id="eq-img-preview" style="${q?.img||q?.image?'':'display:none'};margin-top:6px">
+                        <img id="eq-img-thumb" src="${Utils.escapeHtml(q?.img||q?.image||'')}" style="max-width:200px;max-height:100px;border-radius:var(--radius);border:1px solid var(--border)">
+                        <button type="button" class="abtn danger" style="padding:2px 6px;font-size:10px;margin-left:4px" onclick="Admin._removeQuestionImage()">删除</button>
+                    </div>
                 </div>
                 <div class="qe-field" id="eq-options-wrap" style="${isChoice?'':'display:none'}">
-                    <label>选项 <span class="qe-hint">点击选项设为答案</span></label>
+                    <label>选项 <span class="qe-hint">点击选项设为答案 | 支持选项图片</span></label>
                     <div class="qe-opt-list" id="eq-options-list">${optionsHTML}</div>
                     <button type="button" class="qe-add-opt" onclick="Admin._addOption()">+ 添加选项</button>
                 </div>
@@ -189,6 +206,8 @@ export function initEditor(Admin) {
         row.innerHTML = `<span class="qe-opt-indicator ${isMulti ? 'checkbox' : 'radio'}">${isMulti ? '☐' : '○'}</span>
             <span class="qe-opt-letter">${letter}.</span>
             <input class="qe-opt-input" value="" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
+            <input type="hidden" class="qe-opt-img" value="">
+            <button type="button" class="abtn" style="padding:1px 4px;font-size:10px" onclick="event.stopPropagation();Admin._uploadOptionImage(this)" title="添加选项图片">📷</button>
             <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>`;
         list.appendChild(row);
         this._preview();
@@ -285,12 +304,20 @@ export function initEditor(Admin) {
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
 
-        // 收集选项
+        // 收集选项（支持图片）
         let options = [];
         if (isChoice) {
-            document.querySelectorAll('#eq-options-list .qe-opt-input').forEach(inp => {
-                const v = inp.value.trim();
-                if (v) options.push(v);
+            document.querySelectorAll('#eq-options-list .qe-opt-item').forEach(item => {
+                const text = item.querySelector('.qe-opt-input').value.trim();
+                const img = item.querySelector('.qe-opt-img')?.value?.trim() || '';
+                if (text || img) {
+                    // 如果有图片，使用对象格式；否则使用纯文本
+                    if (img) {
+                        options.push({ text, img });
+                    } else {
+                        options.push(text);
+                    }
+                }
             });
         }
 
@@ -304,17 +331,58 @@ export function initEditor(Admin) {
             answer = document.getElementById('eq-answer').value;
         }
 
+        // 收集题目图片
+        const img = document.getElementById('eq-img')?.value?.trim() || '';
+
         const question = {
             type,
             category: document.getElementById('eq-category').value.trim(),
             difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
             question: document.getElementById('eq-question').value.trim(),
+            img: img || undefined,
             options,
             answer,
             explanation: document.getElementById('eq-explanation').value.trim()
         };
         if (!question.question) { Utils.showToast('题目内容不能为空', 'error'); return null; }
         return question;
+    };
+
+    // 上传题目图片
+    Admin._uploadQuestionImage = function() {
+        ImageUploader.showDialog((url) => {
+            document.getElementById('eq-img').value = url;
+            const preview = document.getElementById('eq-img-preview');
+            const thumb = document.getElementById('eq-img-thumb');
+            thumb.src = url;
+            preview.style.display = 'block';
+            this._preview();
+        });
+    };
+
+    // 删除题目图片
+    Admin._removeQuestionImage = function() {
+        document.getElementById('eq-img').value = '';
+        document.getElementById('eq-img-preview').style.display = 'none';
+        this._preview();
+    };
+
+    // 上传选项图片
+    Admin._uploadOptionImage = function(btn) {
+        ImageUploader.showDialog((url) => {
+            const item = btn.closest('.qe-opt-item');
+            const imgInput = item.querySelector('.qe-opt-img');
+            imgInput.value = url;
+            // 更新预览
+            let imgPreview = item.querySelector('img');
+            if (!imgPreview) {
+                imgPreview = document.createElement('img');
+                imgPreview.style.cssText = 'max-width:60px;max-height:40px;border-radius:4px;margin-left:4px;vertical-align:middle;border:1px solid var(--border)';
+                btn.parentNode.insertBefore(imgPreview, btn);
+            }
+            imgPreview.src = url;
+            this._preview();
+        });
     };
 
     Admin.saveNewQuestion = async function(bankId) {
