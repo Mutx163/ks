@@ -21,11 +21,12 @@ function corsHeaders(origin) {
     };
 }
 
-function json(data, status = 200, origin = '*') {
-    return new Response(JSON.stringify(data), {
-        status,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) }
-    });
+function json(data, status = 200, origin = '*', cacheMaxAge = 0) {
+    const headers = { 'Content-Type': 'application/json', ...corsHeaders(origin) };
+    if (cacheMaxAge > 0) {
+        headers['Cache-Control'] = `public, max-age=${cacheMaxAge}`;
+    }
+    return new Response(JSON.stringify(data), { status, headers });
 }
 
 function error(msg, status = 400, origin = '*') {
@@ -970,7 +971,8 @@ async function handleGetBanks(env, origin) {
         enabled: b.enabled !== 0, // 转为布尔值
         allowed_modes: b.allowed_modes ? JSON.parse(b.allowed_modes) : null
     }));
-    return json({ ok: true, banks }, 200, origin);
+    // 缓存 5 分钟（减少重复请求，更新延迟最多 5 分钟）
+    return json({ ok: true, banks }, 200, origin, 300);
 }
 
 // 前端：获取题库完整数据（含题目）
@@ -985,6 +987,7 @@ async function handleGetBank(bankId, env, origin) {
     let questions = [];
     try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
 
+    // 缓存 5 分钟（减少重复请求，更新延迟最多 5 分钟）
     return json({
         ok: true,
         bank: {
@@ -996,7 +999,7 @@ async function handleGetBank(bankId, env, origin) {
             allowed_modes: bank.allowed_modes ? JSON.parse(bank.allowed_modes) : null,
             questions
         }
-    }, 200, origin);
+    }, 200, origin, 300);
 }
 
 // 管理员：导入/替换题库
