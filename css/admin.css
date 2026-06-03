@@ -273,14 +273,38 @@ tbody tr:last-child td { border-bottom: none; }
 .announce-input textarea:focus { outline: none; border-color: var(--primary); }
 
 /* ===== 趋势图 ===== */
-.trend-chart { display: flex; align-items: flex-end; gap: 4px; height: 80px; padding: 8px 12px; }
-.trend-bar {
-    flex: 1; border-radius: 2px 2px 0 0;
-    background: var(--primary); min-width: 16px; position: relative; opacity: .8;
+.trend-chart { 
+    display: flex; align-items: flex-end; gap: 8px; 
+    height: 120px; padding: 16px 20px 28px;
+    background: linear-gradient(to bottom, rgba(102, 126, 234, 0.03), transparent);
+    border-radius: 12px;
 }
-.trend-bar:hover { opacity: 1; }
-.trend-label { position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--text-tertiary); white-space: nowrap; }
-.trend-value { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: 600; color: var(--primary); }
+.trend-bar {
+    flex: 1; border-radius: 8px 8px 4px 4px;
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    min-width: 24px; position: relative; 
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px -2px rgba(102, 126, 234, 0.4);
+    animation: trendGrow 0.6s ease-out;
+}
+@keyframes trendGrow {
+    from { height: 0 !important; opacity: 0; }
+    to { opacity: 1; }
+}
+.trend-bar:hover { 
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px -4px rgba(102, 126, 234, 0.5);
+}
+.trend-label { 
+    position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); 
+    font-size: 11px; color: #6b7280; white-space: nowrap; font-weight: 500;
+}
+.trend-value { 
+    position: absolute; top: -28px; left: 50%; transform: translateX(-50%); 
+    font-size: 13px; font-weight: 700; color: #667eea;
+    background: #fff; padding: 2px 8px; border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
 
 /* ===== 弹窗 ===== */
 .modal-mask {
