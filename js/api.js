@@ -314,6 +314,10 @@ const API = {
                 deviceId: this.getDeviceId(),
                 settings
             })
+        }).then(data => {
+            if (data && data.disabled) {
+                this._showBanNotice();
+            }
         });
     },
 
@@ -330,6 +334,10 @@ const API = {
                     deviceId: this.getDeviceId(),
                     progress
                 })
+            }).then(data => {
+                if (data && data.disabled) {
+                    this._showBanNotice();
+                }
             });
         }, 5000);
     },
