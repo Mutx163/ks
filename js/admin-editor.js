@@ -66,6 +66,7 @@ export function initEditor(Admin) {
                 const letter = letters[i];
                 const selected = answerStr.includes(letter);
                 const imgPreview = opt.img ? `<img src="${Utils.escapeHtml(opt.img)}" style="max-width:60px;max-height:40px;border-radius:4px;margin-left:4px;vertical-align:middle;border:1px solid var(--border)">` : '';
+                const deleteImgBtn = opt.img ? `<button type="button" class="abtn danger" style="padding:1px 4px;font-size:10px" onclick="event.stopPropagation();Admin._removeOptionImage(this)" title="删除选项图片">🗑️</button>` : '';
                 return `<div class="qe-opt-item ${selected ? 'selected' : ''}" data-letter="${letter}" onclick="Admin._selectOption('${letter}')">
                     <span class="qe-opt-indicator ${type === 'multiple' || type === 'multi' ? 'checkbox' : 'radio'}">${selected ? (type === 'multiple' || type === 'multi' ? '☑' : '●') : (type === 'multiple' || type === 'multi' ? '☐' : '○')}</span>
                     <span class="qe-opt-letter">${letter}.</span>
@@ -73,6 +74,7 @@ export function initEditor(Admin) {
                     <input type="hidden" class="qe-opt-img" value="${Utils.escapeHtml(opt.img)}">
                     ${imgPreview}
                     <button type="button" class="abtn" style="padding:1px 4px;font-size:10px" onclick="event.stopPropagation();Admin._uploadOptionImage(this)" title="添加选项图片">📷</button>
+                    ${deleteImgBtn}
                     <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>
                 </div>`;
             }).join('');
@@ -381,8 +383,33 @@ export function initEditor(Admin) {
                 btn.parentNode.insertBefore(imgPreview, btn);
             }
             imgPreview.src = url;
+            // 添加删除按钮（如果没有）
+            let deleteBtn = item.querySelector('.opt-img-delete');
+            if (!deleteBtn) {
+                deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'abtn danger opt-img-delete';
+                deleteBtn.style.cssText = 'padding:1px 4px;font-size:10px';
+                deleteBtn.textContent = '🗑️';
+                deleteBtn.title = '删除选项图片';
+                deleteBtn.onclick = (e) => { e.stopPropagation(); Admin._removeOptionImage(deleteBtn); };
+                btn.parentNode.insertBefore(deleteBtn, btn.nextSibling);
+            }
             this._preview();
         });
+    };
+
+    // 删除选项图片
+    Admin._removeOptionImage = function(btn) {
+        const item = btn.closest('.qe-opt-item');
+        const imgInput = item.querySelector('.qe-opt-img');
+        imgInput.value = '';
+        // 移除图片预览
+        const imgPreview = item.querySelector('img');
+        if (imgPreview) imgPreview.remove();
+        // 移除删除按钮
+        btn.remove();
+        this._preview();
     };
 
     Admin.saveNewQuestion = async function(bankId) {
