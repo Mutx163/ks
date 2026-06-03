@@ -45,6 +45,11 @@ const BankLoader = {
             
             if (data?.ok && data.banks) {
                 const allBanks = data.banks;
+                
+                // 同步启用状态到本地缓存
+                console.log('[BankLoader] 🔄 同步题库启用状态到本地缓存...');
+                this._syncEnabledStatus(allBanks);
+                
                 const enabledBanks = allBanks.filter(b => b.enabled !== false);
                 const disabledCount = allBanks.length - enabledBanks.length;
                 
@@ -68,6 +73,30 @@ const BankLoader = {
         }
         console.log('[BankLoader] ========== 题库列表加载结束 ==========');
         return [];
+    },
+
+    /**
+     * 同步题库启用状态到本地缓存
+     */
+    _syncEnabledStatus(banksFromApi) {
+        const metaList = Storage.get(Storage.KEYS.BANKS_META) || [];
+        let updated = false;
+        
+        for (const apiBank of banksFromApi) {
+            const localMeta = metaList.find(m => m.id === apiBank.id);
+            if (localMeta && localMeta.enabled !== apiBank.enabled) {
+                console.log(`[BankLoader] 🔄 更新题库 ${apiBank.id} 启用状态:`, localMeta.enabled, '->', apiBank.enabled);
+                localMeta.enabled = apiBank.enabled;
+                updated = true;
+            }
+        }
+        
+        if (updated) {
+            Storage.set(Storage.KEYS.BANKS_META, metaList);
+            console.log('[BankLoader] ✅ 启用状态同步完成');
+        } else {
+            console.log('[BankLoader] ⏭️ 启用状态无需更新');
+        }
     },
 
     /**
