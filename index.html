@@ -6,6 +6,12 @@
         <title>城科卷王</title>
         <script>window._pageStartTime = Date.now();</script>
 
+        <!-- DNS 预解析 + 预连接（减少首次请求延迟） -->
+        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc">
+        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin>
+        <link rel="dns-prefetch" href="https://unpkg.com">
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
         <!-- Lucide 图标（最先加载，页面需要） -->
         <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
 

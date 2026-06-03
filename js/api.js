@@ -95,6 +95,8 @@ const API = {
             const data = await res.json();
             if (!res.ok) {
                 console.warn(`[API] ❌ 请求失败: ${data.error || '未知错误'}`);
+                // 403 表示资源被禁用，返回特殊标记以区分网络错误
+                if (res.status === 403) return { ok: false, disabled: true, error: data.error };
                 return null;
             }
             return data;

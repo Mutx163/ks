@@ -37,17 +37,20 @@ const App = {
             console.warn('[App] ⚠️ 题库加载超时或失败:', e.message);
         }
 
-        // 云同步（静默，3秒超时）
+        // 云同步（异步执行，不阻塞页面渲染）
+        // 排行榜页面会自己调用 API.autoSync()，这里只是预同步
         Perf.mark('开始云同步');
-        console.log('[App] ☁️ 开始云同步...');
-        try { 
-            await Promise.race([API.autoSync(), new Promise(r => setTimeout(r, 3000))]); 
-            Perf.mark('云同步完成');
-            console.log('[App] ✅ 云同步完成');
-        } catch (e) {
-            Perf.mark('云同步失败');
-            console.warn('[App] ⚠️ 云同步失败:', e.message);
-        }
+        console.log('[App] ☁️ 开始云同步（异步）...');
+        API.autoSync()
+            .then(() => {
+                console.log('[App] ✅ 云同步完成（后台）');
+                // 同步完成后刷新统计数据
+                this.state.stats = Storage.getGlobalStats();
+            })
+            .catch(e => {
+                console.warn('[App] ⚠️ 云同步失败（后台）:', e.message);
+            });
+        Perf.mark('云同步已启动');
 
         Perf.mark('加载本地数据');
         console.log('[App] 📦 加载本地数据...');
@@ -440,11 +443,11 @@ const App = {
             case 'count':
                 return banks.sort((a, b) => (b.questions?.length || 0) - (a.questions?.length || 0));
             case 'progress': {
-                return banks.sort((a, b) => {
-                    const pa = Storage.getBankStats(a.id).progress || 0;
-                    const pb = Storage.getBankStats(b.id).progress || 0;
-                    return pb - pa;
-                });
+                // 预计算 progress，避免在比较函数中 O(n log n) 次重复调用
+                const progressMap = new Map(
+                    banks.map(b => [b.id, Storage.getBankStats(b.id).progress || 0])
+                );
+                return banks.sort((a, b) => progressMap.get(b.id) - progressMap.get(a.id));
             }
             default:
                 return banks;

@@ -119,6 +119,14 @@ const Quiz = {
             setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
+
+        // 检查题库是否已被禁用
+        if (this.state.bank.enabled === false) {
+            console.warn('[Quiz] 🚫 题库已被管理员禁用:', this.state.bankId);
+            Utils.showToast('该题库已被管理员禁用', 'error');
+            setTimeout(() => (window.location.href = 'index.html'), 1000);
+            return;
+        }
         
         Perf.mark('题库加载完成');
         console.log('[Quiz] ✅ 题库加载成功:', {

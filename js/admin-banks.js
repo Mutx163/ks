@@ -30,13 +30,13 @@ export function initBanks(Admin) {
                                 <td>${Utils.escapeHtml(b.category||'-')}</td>
                                 <td>v${b.version}</td>
                                 <td>
-                                    <button class="abtn ${b.enabled !== false ? 'success' : ''}" style="padding:2px 8px;font-size:10px;${b.enabled === false ? 'background:var(--bg-hover);color:var(--text-tertiary);' : ''}" onclick="Admin.toggleBank('${b.id}', ${b.enabled === false})">${b.enabled !== false ? '已启用' : '已禁用'}</button>
+                                    <button class="abtn ${b.enabled !== false ? 'success' : ''}" style="padding:2px 8px;font-size:10px;${b.enabled === false ? 'background:var(--bg-hover);color:var(--text-tertiary);' : ''}" onclick="Admin.toggleBank('${Utils.jsSafe(b.id)}', ${b.enabled === false})">${b.enabled !== false ? '已启用' : '已禁用'}</button>
                                 </td>
                                 <td style="font-size:11px">${Admin.fmtTime(b.updated_at)||'-'}</td>
                                 <td>
-                                    <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.viewBank('${b.id}')">管理</button>
-                                    <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.uploadBank('${b.id}')">替换</button>
-                                    <button class="abtn danger" style="padding:2px 8px;font-size:10px" onclick="Admin.confirmDeleteBank('${b.id}', '${Utils.escapeHtml(b.name)}')">删除</button>
+                                    <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.viewBank('${Utils.jsSafe(b.id)}')">管理</button>
+                                    <button class="abtn primary" style="padding:2px 8px;font-size:10px" onclick="Admin.uploadBank('${Utils.jsSafe(b.id)}')">替换</button>
+                                    <button class="abtn danger" style="padding:2px 8px;font-size:10px" onclick="Admin.confirmDeleteBank('${Utils.jsSafe(b.id)}', '${Utils.jsSafe(b.name)}')">删除</button>
                                 </td>
                             </tr>
                         `).join('')}</tbody>
@@ -242,15 +242,17 @@ export function initBanks(Admin) {
 
     // 确认删除题库
     Admin.confirmDeleteBank = function(bankId, bankName) {
+        const safeId = Utils.jsSafe(bankId);
+        const safeName = Utils.jsSafe(bankName);
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="modal-box" style="max-width:400px">
                     <h3>⚠️ 确认删除题库</h3>
-                    <p style="margin:12px 0;color:var(--text-secondary)">确定要删除题库 "${bankName}" 吗？</p>
+                    <p style="margin:12px 0;color:var(--text-secondary)">确定要删除题库 "${safeName}" 吗？</p>
                     <p style="margin:8px 0;font-size:12px;color:var(--danger)">此操作不可撤销，题库内所有题目和修改历史将被永久删除。</p>
                     <div class="modal-actions">
                         <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
-                        <button class="mp" style="background:var(--danger)" onclick="Admin.deleteBank('${bankId}')">确认删除</button>
+                        <button class="mp" style="background:var(--danger)" onclick="Admin.deleteBank('${safeId}')">确认删除</button>
                     </div>
                 </div>
             </div>`;

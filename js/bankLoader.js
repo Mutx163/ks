@@ -138,9 +138,14 @@ const BankLoader = {
             const elapsed = Date.now() - startTime;
 
             if (!data?.ok || !data.bank) {
+                // 403 禁用响应：不回退到缓存
+                if (data?.disabled) {
+                    console.warn(`[BankLoader] 🚫 题库已被管理员禁用:`, bankId);
+                    return null;
+                }
                 console.error(`[BankLoader] ❌ API 返回失败 (${elapsed}ms):`, bankId, data);
-                // 尝试使用本地缓存
-                if (existing && existing.questions) {
+                // 网络错误时尝试使用本地缓存（但检查 enabled 状态）
+                if (existing && existing.questions && existing.enabled !== false) {
                     console.warn(`[BankLoader] ⚠️ API 失败，降级使用本地缓存:`, bankId, `(${existing.questions.length} 题)`);
                     return existing;
                 }
@@ -230,9 +235,13 @@ const BankLoader = {
     async loadBankById(bankId) {
         console.log(`[BankLoader] 📡 按 ID 加载题库: ${bankId}`);
         const existing = Storage.getBank(bankId);
-        if (existing && existing.questions) {
+        if (existing && existing.questions && existing.enabled !== false) {
             console.log(`[BankLoader] ⚡ 从本地缓存加载:`, bankId, `(${existing.questions.length} 题)`);
             return existing;
+        }
+        if (existing && existing.enabled === false) {
+            console.warn(`[BankLoader] 🚫 题库已禁用:`, bankId);
+            return null;
         }
         console.log(`[BankLoader] 📡 本地无缓存，从 API 加载:`, bankId);
         return await this.loadBank(bankId);

@@ -1076,10 +1076,11 @@ async function handleAdminDeleteBank(bankId, request, env, origin) {
     const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
     if (!bank) return error('题库不存在', 404, origin);
 
-    // 删除题库和相关历史记录
+    // 删除题库、历史记录和统计数据
     await env.DB.batch([
         env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId),
-        env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId)
+        env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId),
+        env.DB.prepare('DELETE FROM stats WHERE bank_id = ?').bind(bankId)
     ]);
 
     return json({ ok: true, message: `题库 "${bank.name}" 已删除` }, 200, origin);
