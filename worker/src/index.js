@@ -421,6 +421,10 @@ async function handleSync(request, env, origin) {
     const userId = await resolveUser(deviceId, env);
     if (!userId) return error('设备未注册', 400, origin);
 
+    // 检查用户是否被封禁
+    const isBanned = await checkUserBanned(userId, env);
+    if (isBanned) return error('账号已被封禁，无法同步数据', 403, origin);
+
     const now = new Date().toISOString();
     await env.DB.prepare(`
         INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
@@ -446,6 +450,10 @@ async function handleSyncSettings(request, env, origin) {
     const userId = await resolveUser(deviceId, env);
     if (!userId) return error('设备未注册', 400, origin);
 
+    // 检查用户是否被封禁
+    const isBanned = await checkUserBanned(userId, env);
+    if (isBanned) return error('账号已被封禁', 403, origin);
+
     const now = new Date().toISOString();
     await env.DB.prepare(
         'UPDATE users SET settings = ?, last_sync_at = ? WHERE id = ?'
@@ -463,6 +471,10 @@ async function handleSyncProgress(request, env, origin) {
 
     const userId = await resolveUser(deviceId, env);
     if (!userId) return error('设备未注册', 400, origin);
+
+    // 检查用户是否被封禁
+    const isBanned = await checkUserBanned(userId, env);
+    if (isBanned) return error('账号已被封禁', 403, origin);
 
     const now = new Date().toISOString();
     await env.DB.prepare(
@@ -520,6 +532,7 @@ async function handleLeaderboard(url, env, origin) {
             MAX(s.updated_at) as last_active
         FROM users u
         INNER JOIN stats s ON u.id = s.user_id
+        WHERE u.banned = 0 OR u.banned IS NULL
         GROUP BY u.id
         ORDER BY ${orderBy}
         LIMIT ?
@@ -584,6 +597,14 @@ async function resolveUser(deviceId, env) {
         'SELECT user_id FROM devices WHERE device_id = ?'
     ).bind(deviceId).first();
     return device?.user_id || null;
+}
+
+// 检查用户是否被封禁
+async function checkUserBanned(userId, env) {
+    const user = await env.DB.prepare(
+        'SELECT banned FROM users WHERE id = ?'
+    ).bind(userId).first();
+    return user?.banned === 1;
 }
 
 // 管理员密码（SHA-256 哈希）
