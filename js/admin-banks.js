@@ -137,14 +137,18 @@ export function initBanks(Admin) {
     Admin._renderQuestionList = function(bankId, qs) {
         const typeLabels = {single:'单选',multiple:'多选',judge:'判断',fill:'填空',essay:'简答',multi:'多选'};
         return qs.map(q => `
-            <div style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer" onclick="Admin.editQuestion('${bankId}',${q.id})">
+            <div class="question-item" data-qid="${q.id}" style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer;transition:all 0.3s" onclick="Admin.editQuestion('${bankId}',${q.id})">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
                     <div style="flex:1;min-width:0">
                         <span style="color:var(--text-tertiary);font-size:10px">#${q.id}</span>
-                        <span style="background:var(--bg-hover);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">${typeLabels[q.type]||q.type||'?'}</span>
-                        <span style="margin-left:4px">${Utils.escapeHtml((q.question||'').slice(0,80))}${(q.question||'').length>80?'...':''}</span>
+                        <span class="question-type" style="background:var(--bg-hover);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">${typeLabels[q.type]||q.type||'?'}</span>
+                        ${q.category ? `<span class="question-category" style="background:var(--primary-light);color:var(--primary);padding:1px 6px;border-radius:10px;font-size:10px;margin-left:4px">${Utils.escapeHtml(q.category)}</span>` : ''}
+                        <span class="question-preview" style="margin-left:4px">${Utils.escapeHtml((q.question||'').slice(0,80))}${(q.question||'').length>80?'...':''}</span>
                     </div>
-                    <button class="abtn danger" style="padding:1px 6px;font-size:10px;flex-shrink:0" onclick="event.stopPropagation();Admin.deleteQuestion('${bankId}',${q.id})">删除</button>
+                    <div style="display:flex;gap:4px;flex-shrink:0">
+                        <button class="abtn" style="padding:1px 6px;font-size:10px" onclick="event.stopPropagation();Admin.editQuestion('${bankId}',${q.id})">编辑</button>
+                        <button class="abtn danger" style="padding:1px 6px;font-size:10px" onclick="event.stopPropagation();Admin.deleteQuestion('${bankId}',${q.id})">删除</button>
+                    </div>
                 </div>
             </div>
         `).join('');

@@ -415,23 +415,82 @@ export function initEditor(Admin) {
     Admin.saveNewQuestion = async function(bankId) {
         const question = this._collectQuestion();
         if (!question) return;
+        const btn = document.querySelector('.qe-footer .abtn.primary');
+        if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
         const r = await this.post(`/api/admin/bank/${bankId}/question`, { question });
-        if (r?.ok) { Utils.showToast('已添加', 'success'); document.querySelector('.modal-mask')?.remove(); this.viewBank(bankId); }
-        else { Utils.showToast(r?.error || '添加失败', 'error'); }
+        if (r?.ok) { 
+            Utils.showToast('已添加', 'success'); 
+            document.querySelector('.modal-mask')?.remove(); 
+            // 刷新题目列表
+            this.viewBank(bankId);
+        } else { 
+            Utils.showToast(r?.error || '添加失败', 'error'); 
+            if (btn) { btn.disabled = false; btn.textContent = '保存'; }
+        }
     };
 
     Admin.saveEditQuestion = async function(bankId, qid) {
         const question = this._collectQuestion();
         if (!question) return;
+        const btn = document.querySelector('.qe-footer .abtn.primary');
+        if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
         const r = await this.put(`/api/admin/bank/${bankId}/question/${qid}`, { question });
-        if (r?.ok) { Utils.showToast('已保存', 'success'); document.querySelector('.modal-mask')?.remove(); this.viewBank(bankId); }
-        else { Utils.showToast(r?.error || '保存失败', 'error'); }
+        if (r?.ok) { 
+            Utils.showToast('已保存', 'success'); 
+            document.querySelector('.modal-mask')?.remove(); 
+            // 更新列表中该题目的显示，而不是重新加载整个列表
+            this._updateQuestionInList(bankId, qid, question);
+        } else { 
+            Utils.showToast(r?.error || '保存失败', 'error'); 
+            if (btn) { btn.disabled = false; btn.textContent = '保存'; }
+        }
+    };
+
+    // 更新列表中单个题目的显示
+    Admin._updateQuestionInList = function(bankId, qid, question) {
+        const item = document.querySelector(`.question-item[data-qid="${qid}"]`);
+        if (!item) return;
+        
+        // 更新题目预览
+        const preview = item.querySelector('.question-preview');
+        if (preview) {
+            const qText = question.question || '';
+            preview.textContent = qText.length > 60 ? qText.substring(0, 60) + '...' : qText;
+        }
+        
+        // 更新题型标签
+        const typeTag = item.querySelector('.question-type');
+        if (typeTag) {
+            const typeLabels = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答'};
+            typeTag.textContent = typeLabels[question.type] || question.type;
+        }
+        
+        // 更新分类
+        const catTag = item.querySelector('.question-category');
+        if (catTag && question.category) {
+            catTag.textContent = question.category;
+        }
+        
+        // 高亮显示已更新
+        item.style.background = 'var(--success-light)';
+        setTimeout(() => { item.style.background = ''; }, 1500);
     };
 
     Admin.deleteQuestion = async function(bankId, qid) {
         if (!confirm(`确定删除题目 #${qid}？`)) return;
         const r = await this.post(`/api/admin/bank/${bankId}/question/${qid}`, {});
-        if (r?.ok) { Utils.showToast('已删除', 'success'); this.viewBank(bankId); }
+        if (r?.ok) { 
+            Utils.showToast('已删除', 'success'); 
+            // 从列表中移除该题目
+            const item = document.querySelector(`.question-item[data-qid="${qid}"]`);
+            if (item) {
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(20px)';
+                setTimeout(() => item.remove(), 300);
+            } else {
+                this.viewBank(bankId);
+            }
+        }
     };
 
     Admin._preview = function() {
