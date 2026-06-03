@@ -33,7 +33,32 @@ const Admin = {
         Perf.init('管理后台');
         document.getElementById('btn-login').addEventListener('click', () => this.login());
         document.getElementById('admin-password').addEventListener('keydown', e => { if (e.key === 'Enter') this.login(); });
-        if (this.password) await this.loadAll();
+        
+        if (this.password) {
+            // 快速显示界面，后台验证密码
+            console.log('[Admin] ⚡ 快速进入模式');
+            this.showApp();
+            this.loadAllInBackground();
+        }
+    },
+
+    // 后台验证密码（不阻塞界面显示）
+    async loadAllInBackground() {
+        try {
+            const d = await this.get('/api/admin/users');
+            if (d?.ok) {
+                console.log('[Admin] ✅ 后台验证成功');
+                this.users = d.users;
+                this._loginVerified = true;
+                this.renderTab();
+            } else {
+                console.warn('[Admin] ⚠️ 密码已过期，需要重新登录');
+                this.logout();
+            }
+        } catch (e) {
+            console.warn('[Admin] ⚠️ 验证失败，保留本地数据:', e.message);
+            // 网络错误不清除密码，使用缓存数据
+        }
     },
 
     // ==================== 登录 ====================
@@ -88,14 +113,8 @@ const Admin = {
             console.log('[Admin] ✅ 登录验证成功');
             this.users = d.users;
             this._loginVerified = true;
-            this.showApp();
         } catch (e) { 
             console.error('[Admin] ❌ 登录验证异常:', e.message);
-            // 网络错误时不清除密码，下次刷新再试
-            if (!this._loginVerified) {
-                localStorage.removeItem('admin_pwd'); 
-                sessionStorage.removeItem('admin_pwd'); 
-            }
         }
     },
 
