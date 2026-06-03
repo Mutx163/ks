@@ -490,7 +490,7 @@ async function handleGetCloudData(did, env, origin) {
     if (!userId) return json({ ok: false }, 200, origin);
 
     const user = await env.DB.prepare(
-        'SELECT initials, settings, progress, last_sync_at FROM users WHERE id = ?'
+        'SELECT initials, settings, progress, last_sync_at, banned FROM users WHERE id = ?'
     ).bind(userId).first();
 
     if (!user) return json({ ok: false }, 200, origin);
@@ -502,7 +502,10 @@ async function handleGetCloudData(did, env, origin) {
 
     return json({
         ok: true,
-        user: { initials: user.initials },
+        user: { 
+            initials: user.initials,
+            banned: user.banned || 0
+        },
         settings,
         progress,
         lastSyncAt: user.last_sync_at

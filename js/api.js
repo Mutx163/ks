@@ -185,6 +185,13 @@ const API = {
             console.log('[API] ✅ 同步码已恢复');
         }
 
+        // 检查封禁状态
+        const isBanned = await this.checkBanStatus();
+        if (isBanned) {
+            console.log('[API] 🚫 用户已被封禁');
+            return false;
+        }
+
         console.log('[API] ☁️ 拉取云端数据...');
         await this.pullCloudData();
         
@@ -194,6 +201,38 @@ const API = {
         const elapsed = Date.now() - startTime;
         console.log(`[API] ========== 自动同步完成 (${elapsed}ms) ==========`);
         return true;
+    },
+
+    // 检查封禁状态
+    async checkBanStatus() {
+        // 从本地缓存检查，避免频繁请求
+        const cached = localStorage.getItem('ks_ban_status');
+        if (cached) {
+            const { banned, ts } = JSON.parse(cached);
+            // 缓存 5 分钟有效
+            if (Date.now() - ts < 300000) {
+                if (banned) this._showBanNotice();
+                return banned;
+            }
+        }
+
+        // 从云端检查
+        try {
+            const data = await this.request(`/api/cloud-data/${this.getDeviceId()}`);
+            const banned = data && data.user && data.user.banned === 1;
+            
+            // 缓存结果
+            localStorage.setItem('ks_ban_status', JSON.stringify({
+                banned: !!banned,
+                ts: Date.now()
+            }));
+            
+            if (banned) this._showBanNotice();
+            return !!banned;
+        } catch (e) {
+            console.warn('[API] 检查封禁状态失败:', e.message);
+            return false;
+        }
     },
 
     /**
