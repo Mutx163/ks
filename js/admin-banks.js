@@ -83,121 +83,73 @@ export function initBanks(Admin) {
             const typeCount = {};
             qs.forEach(q => { const t = q.type || 'unknown'; typeCount[t] = (typeCount[t]||0) + 1; });
             const typeLabels = {single:'单选',multiple:'多选',judge:'判断',fill:'填空',essay:'简答',multi:'多选'};
-            const typeColors = {single:'#667eea',multiple:'#8b5cf6',judge:'#10b981',fill:'#f59e0b',essay:'#ef4444',multi:'#8b5cf6'};
             
             el.innerHTML = `
                 <!-- 返回按钮 -->
-                <div style="margin-bottom:20px">
-                    <button class="abtn" onclick="Admin.renderBanks()" style="display:flex;align-items:center;gap:6px;font-size:13px">
-                        ← 返回题库列表
-                    </button>
+                <div style="margin-bottom:16px">
+                    <button class="abtn" onclick="Admin.renderBanks()">← 返回题库列表</button>
                 </div>
                 
-                <!-- 题库头部信息 -->
-                <div style="
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    border-radius: 16px; padding: 28px; margin-bottom: 20px;
-                    color: #fff; position: relative; overflow: hidden;
-                ">
-                    <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
-                    <div style="position:absolute;bottom:-30px;right:60px;width:80px;height:80px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
-                    <div style="position:relative;z-index:1">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                            <div>
-                                <h2 style="font-size:22px;font-weight:700;margin-bottom:8px">${Utils.escapeHtml(b.name)}</h2>
-                                <p style="font-size:13px;opacity:0.8">${b.id} · ${Utils.escapeHtml(b.category||'未分类')}</p>
-                            </div>
-                            <span style="background:rgba(255,255,255,0.2);padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600">
-                                ${b.enabled !== false ? '✅ 已启用' : '⏸️ 已禁用'}
-                            </span>
-                        </div>
-                        <div style="display:flex;gap:24px;margin-top:20px">
-                            <div>
-                                <div style="font-size:28px;font-weight:800">${qs.length}</div>
-                                <div style="font-size:12px;opacity:0.7">题目总数</div>
-                            </div>
-                            <div>
-                                <div style="font-size:28px;font-weight:800">v${b.version}</div>
-                                <div style="font-size:12px;opacity:0.7">当前版本</div>
-                            </div>
-                            <div>
-                                <div style="font-size:28px;font-weight:800">${Object.keys(typeCount).length}</div>
-                                <div style="font-size:12px;opacity:0.7">题型数量</div>
-                            </div>
+                <!-- 题库信息 -->
+                <div class="card" style="margin-bottom:12px">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <h3>${Utils.escapeHtml(b.name)} <span style="font-size:11px;color:var(--text-tertiary)">${b.id}</span></h3>
+                        <span class="badge ${b.enabled !== false ? 'b-admin' : 'b-ban'}">${b.enabled !== false ? '已启用' : '已禁用'}</span>
+                    </div>
+                    <div class="card-body" style="padding:12px">
+                        <div class="d-grid">
+                            <div class="d-item"><div class="dl">题目数</div><div class="dv">${qs.length}</div></div>
+                            <div class="d-item"><div class="dl">版本</div><div class="dv">v${b.version}</div></div>
+                            <div class="d-item"><div class="dl">分类</div><div class="dv">${Utils.escapeHtml(b.category||'未分类')}</div></div>
+                            <div class="d-item"><div class="dl">更新时间</div><div class="dv">${Admin.fmtTime(b.updated_at)||'-'}</div></div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- 操作按钮区 -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px">
-                    <button onclick="Admin.showQuestionList('${Utils.jsSafe(bankId)}', '${Utils.jsSafe(b.name)}')" style="
-                        background:#fff;border:2px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;
-                        display:flex;flex-direction:column;align-items:center;gap:8px;transition:all 0.2s;
-                    " onmouseover="this.style.borderColor='#667eea';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(102,126,234,0.2)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
-                        <span style="font-size:24px">📝</span>
-                        <span style="font-size:13px;font-weight:600;color:#1f2937">管理题目</span>
-                        <span style="font-size:11px;color:#6b7280">${qs.length} 题</span>
-                    </button>
-                    <button onclick="Admin.addQuestion('${Utils.jsSafe(bankId)}')" style="
-                        background:#fff;border:2px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;
-                        display:flex;flex-direction:column;align-items:center;gap:8px;transition:all 0.2s;
-                    " onmouseover="this.style.borderColor='#10b981';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(16,185,129,0.2)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
-                        <span style="font-size:24px">➕</span>
-                        <span style="font-size:13px;font-weight:600;color:#1f2937">添加题目</span>
-                        <span style="font-size:11px;color:#6b7280">手动添加</span>
-                    </button>
-                    <button onclick="Admin.importQuestions('${Utils.jsSafe(bankId)}')" style="
-                        background:#fff;border:2px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;
-                        display:flex;flex-direction:column;align-items:center;gap:8px;transition:all 0.2s;
-                    " onmouseover="this.style.borderColor='#f59e0b';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(245,158,11,0.2)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
-                        <span style="font-size:24px">📥</span>
-                        <span style="font-size:13px;font-weight:600;color:#1f2937">批量导入</span>
-                        <span style="font-size:11px;color:#6b7280">JSON导入</span>
-                    </button>
-                    <button onclick="Admin.viewBankHistory('${Utils.jsSafe(bankId)}')" style="
-                        background:#fff;border:2px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;
-                        display:flex;flex-direction:column;align-items:center;gap:8px;transition:all 0.2s;
-                    " onmouseover="this.style.borderColor='#8b5cf6';this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(139,92,246,0.2)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
-                        <span style="font-size:24px">📋</span>
-                        <span style="font-size:13px;font-weight:600;color:#1f2937">修改历史</span>
-                        <span style="font-size:11px;color:#6b7280">查看记录</span>
-                    </button>
-                </div>
-                
                 <!-- 题型分布 -->
-                <div class="card" style="margin-bottom:20px">
-                    <div class="card-header"><h3>📊 题型分布</h3></div>
-                    <div class="card-body" style="padding:16px">
-                        <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div class="card" style="margin-bottom:12px">
+                    <div class="card-header"><h3>题型分布</h3></div>
+                    <div class="card-body" style="padding:12px">
+                        <div style="display:flex;gap:8px;flex-wrap:wrap">
                             ${Object.entries(typeCount).map(([type, count]) => `
-                                <div style="
-                                    flex:1;min-width:100px;padding:12px;background:var(--bg-hover);
-                                    border-radius:10px;text-align:center;border-left:4px solid ${typeColors[type]||'#667eea'};
-                                ">
-                                    <div style="font-size:20px;font-weight:700;color:${typeColors[type]||'#667eea'}">${count}</div>
-                                    <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px">${typeLabels[type]||type}</div>
+                                <div style="flex:1;min-width:80px;padding:8px;background:var(--bg-hover);border-radius:var(--radius);text-align:center">
+                                    <div style="font-size:16px;font-weight:700;color:var(--primary)">${count}</div>
+                                    <div style="font-size:11px;color:var(--text-tertiary)">${typeLabels[type]||type}</div>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
                 </div>
                 
-                <!-- 做题模式设置 -->
-                <div class="card" style="margin-bottom:20px">
-                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-                        <h3>🎯 允许的做题模式</h3>
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <label style="font-size:12px;color:var(--text-tertiary);cursor:pointer"><input type="checkbox" id="modes-select-all" onchange="Admin.toggleAllModes(this.checked)" ${!allowed?'checked':''}> 全选</label>
-                            <button class="abtn primary" style="padding:4px 12px;font-size:11px" onclick="Admin.saveBankModes('${Utils.jsSafe(bankId)}')">保存</button>
+                <!-- 操作 -->
+                <div class="card" style="margin-bottom:12px">
+                    <div class="card-header"><h3>题目操作</h3></div>
+                    <div class="card-body" style="padding:12px">
+                        <div style="display:flex;gap:6px;flex-wrap:wrap">
+                            <button class="abtn primary" onclick="Admin.showQuestionList('${Utils.jsSafe(bankId)}', '${Utils.jsSafe(b.name)}')">管理题目 (${qs.length})</button>
+                            <button class="abtn primary" onclick="Admin.addQuestion('${Utils.jsSafe(bankId)}')">添加题目</button>
+                            <button class="abtn primary" onclick="Admin.importQuestions('${Utils.jsSafe(bankId)}')">批量导入</button>
+                            <button class="abtn" onclick="Admin.viewBankHistory('${Utils.jsSafe(bankId)}')">修改历史</button>
                         </div>
                     </div>
-                    <div class="card-body" style="padding:16px">
-                        <div id="bank-modes-list" style="display:flex;flex-wrap:wrap;gap:8px">${modesHtml}</div>
+                </div>
+                
+                <!-- 做题模式设置 -->
+                <div class="card" style="margin-bottom:12px">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+                        <h3>允许的做题模式</h3>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <label style="font-size:12px;color:var(--text-tertiary);cursor:pointer"><input type="checkbox" id="modes-select-all" onchange="Admin.toggleAllModes(this.checked)" ${!allowed?'checked':''}> 全选</label>
+                            <button class="abtn primary" style="padding:3px 10px;font-size:11px" onclick="Admin.saveBankModes('${Utils.jsSafe(bankId)}')">保存</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:12px">
+                        <div id="bank-modes-list" style="display:flex;flex-wrap:wrap;gap:6px">${modesHtml}</div>
                     </div>
                 </div>
                 
                 <!-- 底部操作 -->
-                <div style="display:flex;gap:8px;justify-content:flex-end">
+                <div style="display:flex;gap:6px;justify-content:flex-end">
                     <button class="abtn ${b.enabled !== false ? 'success' : ''}" onclick="Admin.toggleBank('${Utils.jsSafe(bankId)}', ${b.enabled === false})">${b.enabled !== false ? '已启用' : '已禁用'}</button>
                     <button class="abtn" onclick="Admin.uploadBank('${Utils.jsSafe(bankId)}')">替换题库</button>
                     <button class="abtn danger" onclick="Admin.confirmDeleteBank('${Utils.jsSafe(bankId)}', '${Utils.jsSafe(b.name)}')">删除题库</button>
