@@ -554,12 +554,12 @@ const API = {
                             输入姓名首字母，即可开始刷题！
                         </p>
                         <input type="text" id="reg-initials"
-                            placeholder="输入你的缩写代号"
+                            placeholder="输入你的代号"
                             maxlength="4"
                             style="text-transform: uppercase; text-align: center; font-size: 24px; letter-spacing: 8px; width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--bg);"
                             autocomplete="off">
-                        <p style="color: var(--text-tertiary); font-size: 12px; margin-top: 8px; text-align: center;">
-                            1-4个字母，如 XKJ、ABC、KZ
+                        <p style="color: var(--text-tertiary); font-size: 22px; margin-top: 8px; text-align: center;">
+                            1-4个字母，随意组合
                         </p>
                     </div>
                     
