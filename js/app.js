@@ -906,6 +906,9 @@ const App = {
         const aiEngine = settings.aiEngine || 'metaso';
         const customAiEngine = settings.customAiEngine || '';
 
+        // 检查是否有管理员密码
+        const hasAdminPwd = !!localStorage.getItem('admin_pwd');
+        
         const content = `
             <label>字体大小</label>
             <select id="setting-font-size">
@@ -942,6 +945,20 @@ const App = {
                 <input type="text" id="setting-custom-engine" placeholder="https://example.com/search?q={keyword}" value="${Utils.escapeHtml(customAiEngine)}">
                 <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">用 {keyword} 表示搜索关键词</p>
             </div>
+            
+            ${hasAdminPwd ? `
+            <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <button onclick="window.open('admin.html', '_blank'); this.closest('.modal').remove();" style="
+                    width: 100%; padding: 12px; 
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    color: #fff; border: none; border-radius: 10px;
+                    font-size: 14px; font-weight: 600; cursor: pointer;
+                    display: flex; align-items: center; justify-content: center; gap: 8px;
+                ">
+                    👑 进入管理后台
+                </button>
+            </div>
+            ` : ''}
         `;
 
         Utils.showModal({
