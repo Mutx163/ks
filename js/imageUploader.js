@@ -59,8 +59,24 @@ const ImageUploader = {
                         try {
                             const result = JSON.parse(xhr.responseText);
                             if (result.code === 0 && result.data?.url) {
-                                console.log('[ImageUploader] ✅ Wkds 原始链接:', result.data.url);
-                                resolve({ success: true, url: result.data.url });
+                                const linkUrl = result.data.url;
+                                console.log('[ImageUploader] ✅ Wkds 链接:', linkUrl);
+                                // 尝试跟随重定向获取最终URL
+                                const redirXhr = new XMLHttpRequest();
+                                redirXhr.open('GET', linkUrl, true);
+                                redirXhr.onreadystatechange = function() {
+                                    if (redirXhr.readyState === 2) {
+                                        // readyState 2 = headers received
+                                        const finalUrl = redirXhr.responseURL || linkUrl;
+                                        console.log('[ImageUploader] 📍 最终URL:', finalUrl);
+                                        redirXhr.abort();
+                                        resolve({ success: true, url: finalUrl });
+                                    }
+                                };
+                                redirXhr.onerror = function() {
+                                    resolve({ success: true, url: linkUrl });
+                                };
+                                redirXhr.send();
                             } else {
                                 resolve({ success: false, error: result.message || '上传失败' });
                             }
