@@ -59,19 +59,8 @@ const ImageUploader = {
                         try {
                             const result = JSON.parse(xhr.responseText);
                             if (result.code === 0 && result.data?.url) {
-                                // 跟随重定向获取最终图片 URL
-                                const linkUrl = result.data.url;
-                                fetch(linkUrl, { redirect: 'follow' })
-                                    .then(r => {
-                                        // 使用重定向后的最终 URL
-                                        const finalUrl = r.url || linkUrl;
-                                        console.log('[ImageUploader] 📍 最终URL:', finalUrl);
-                                        resolve({ success: true, url: finalUrl });
-                                    })
-                                    .catch(() => {
-                                        // 跟随失败，用原始链接
-                                        resolve({ success: true, url: linkUrl });
-                                    });
+                                console.log('[ImageUploader] ✅ Wkds 原始链接:', result.data.url);
+                                resolve({ success: true, url: result.data.url });
                             } else {
                                 resolve({ success: false, error: result.message || '上传失败' });
                             }
