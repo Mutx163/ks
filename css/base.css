@@ -233,6 +233,20 @@ select {
     outline-offset: 2px;
 }
 
+/* 移动端点击后不保持焦点高亮 */
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+.btn:focus:not(:focus-visible) {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 所有可点击元素点击后不保持高亮 */
+*:focus:not(:focus-visible):not(input):not(textarea):not(select) {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
 /* ================= 布局 ================= */
 .container {
     max-width: 1200px;
