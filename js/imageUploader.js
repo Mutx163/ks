@@ -59,7 +59,17 @@ const ImageUploader = {
                         try {
                             const result = JSON.parse(xhr.responseText);
                             if (result.code === 0 && result.data?.url) {
-                                resolve({ success: true, url: result.data.url });
+                                // 跟随重定向获取最终图片 URL
+                                const linkUrl = result.data.url;
+                                fetch(linkUrl, { method: 'HEAD', redirect: 'follow' })
+                                    .then(r => {
+                                        // 使用重定向后的最终 URL
+                                        resolve({ success: true, url: r.url || linkUrl });
+                                    })
+                                    .catch(() => {
+                                        // 跟随失败，用原始链接
+                                        resolve({ success: true, url: linkUrl });
+                                    });
                             } else {
                                 resolve({ success: false, error: result.message || '上传失败' });
                             }
