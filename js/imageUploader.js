@@ -40,62 +40,12 @@ const ImageUploader = {
                     xhr.send(formData);
                 });
             }
-        },
-        wkds: {
-            name: 'Wkds',
-            upload: (file, onProgress) => {
-                return new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    xhr.upload.addEventListener('progress', (e) => {
-                        if (e.lengthComputable && onProgress) {
-                            onProgress(Math.round((e.loaded / e.total) * 100));
-                        }
-                    });
-
-                    xhr.addEventListener('load', () => {
-                        try {
-                            const result = JSON.parse(xhr.responseText);
-                            if (result.code === 0 && result.data?.url) {
-                                const linkUrl = result.data.url;
-                                console.log('[ImageUploader] ✅ Wkds 链接:', linkUrl);
-                                // 尝试跟随重定向获取最终URL
-                                const redirXhr = new XMLHttpRequest();
-                                redirXhr.open('GET', linkUrl, true);
-                                redirXhr.onload = function() {
-                                    const finalUrl = redirXhr.responseURL || linkUrl;
-                                    console.log('[ImageUploader] 📍 最终URL:', finalUrl);
-                                    resolve({ success: true, url: finalUrl });
-                                };
-                                redirXhr.onerror = function() {
-                                    resolve({ success: true, url: linkUrl });
-                                };
-                                redirXhr.send();
-                            } else {
-                                resolve({ success: false, error: result.message || '上传失败' });
-                            }
-                        } catch (e) {
-                            resolve({ success: false, error: '解析响应失败' });
-                        }
-                    });
-
-                    xhr.addEventListener('error', () => resolve({ success: false, error: '网络错误' }));
-                    xhr.open('POST', 'https://img.wkds.eu.org/api/open/upload?token=a4d7768708a31de66547dbf08b065abecef32c425e541d5a6acb895dbc685192');
-                    xhr.send(formData);
-                });
-            }
         }
     },
 
     // 当前使用的图床
     getProvider() {
-        return localStorage.getItem('ks_image_provider') || 'wkds';
-    },
-
-    setProvider(name) {
-        localStorage.setItem('ks_image_provider', name);
+        return 'wwpic';
     },
 
     /**
@@ -150,15 +100,10 @@ const ImageUploader = {
         modal.innerHTML = `
             <div class="modal-box" style="max-width: 400px;">
                 <h3>📤 上传图片</h3>
-                <div style="margin-bottom:12px">
-                    <label style="font-size:12px;color:var(--text-tertiary)">图床选择</label>
-                    <select id="upload-provider" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:4px;background:var(--bg-card);color:var(--text)">
-                        ${Object.entries(this.PROVIDERS).map(([k, v]) => `<option value="${k}" ${k === currentProvider ? 'selected' : ''}>${v.name}</option>`).join('')}
-                    </select>
-                </div>
                 <div id="upload-area" style="border: 2px dashed var(--border); border-radius: var(--radius); padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s;">
                     <div style="font-size: 36px; margin-bottom: 8px;">📁</div>
                     <div style="color: var(--text-secondary);">点击选择图片或拖拽到此处</div>
+                    <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">支持 JPG/PNG/GIF/WebP，最大 10MB</div>
                     <input type="file" id="upload-file" accept="image/*" style="display: none;">
                 </div>
                 <div id="upload-preview" style="display: none; margin-top: 12px;">
@@ -180,13 +125,7 @@ const ImageUploader = {
         const previewImg = modal.querySelector('#preview-img');
         const statusEl = modal.querySelector('#upload-status');
         const btnUpload = modal.querySelector('#btn-upload');
-        const providerSelect = modal.querySelector('#upload-provider');
         let selectedFile = null;
-
-        // 切换图床时保存设置
-        providerSelect.addEventListener('change', () => {
-            this.setProvider(providerSelect.value);
-        });
 
         // 点击选择文件
         uploadArea.addEventListener('click', () => fileInput.click());
