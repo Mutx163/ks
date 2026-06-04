@@ -8,43 +8,70 @@ const ImageUploader = {
     PROVIDERS: {
         wwpic: {
             name: 'WwoPic',
-            upload: async (file) => {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('storage_id', '3');
+            upload: (file, onProgress) => {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('storage_id', '3');
 
-                const response = await fetch('https://img.wwoyun.cn/api/v2/upload', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Bearer 171|ZDEnLUKTwjfvXblPTp7mPsJnB71HZZOcB8fHeiyj401e1955',
-                        'Accept': 'application/json'
-                    },
-                    body: formData
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable && onProgress) {
+                            onProgress(Math.round((e.loaded / e.total) * 100));
+                        }
+                    });
+
+                    xhr.addEventListener('load', () => {
+                        try {
+                            const result = JSON.parse(xhr.responseText);
+                            if (result.status === 'success' && result.data?.public_url) {
+                                resolve({ success: true, url: result.data.public_url });
+                            } else {
+                                resolve({ success: false, error: result.message || '上传失败' });
+                            }
+                        } catch (e) {
+                            resolve({ success: false, error: '解析响应失败' });
+                        }
+                    });
+
+                    xhr.addEventListener('error', () => resolve({ success: false, error: '网络错误' }));
+                    xhr.open('POST', 'https://img.wwoyun.cn/api/v2/upload');
+                    xhr.setRequestHeader('Authorization', 'Bearer 171|ZDEnLUKTwjfvXblPTp7mPsJnB71HZZOcB8fHeiyj401e1955');
+                    xhr.send(formData);
                 });
-
-                const result = await response.json();
-                if (result.status === 'success' && result.data?.public_url) {
-                    return { success: true, url: result.data.public_url };
-                }
-                return { success: false, error: result.message || '上传失败' };
             }
         },
         wkds: {
             name: 'Wkds',
-            upload: async (file) => {
-                const formData = new FormData();
-                formData.append('file', file);
+            upload: (file, onProgress) => {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    const formData = new FormData();
+                    formData.append('file', file);
 
-                const response = await fetch('https://img.wkds.eu.org/api/open/upload?token=a4d7768708a31de66547dbf08b065abecef32c425e541d5a6acb895dbc685192', {
-                    method: 'POST',
-                    body: formData
+                    xhr.upload.addEventListener('progress', (e) => {
+                        if (e.lengthComputable && onProgress) {
+                            onProgress(Math.round((e.loaded / e.total) * 100));
+                        }
+                    });
+
+                    xhr.addEventListener('load', () => {
+                        try {
+                            const result = JSON.parse(xhr.responseText);
+                            if (result.code === 0 && result.data?.url) {
+                                resolve({ success: true, url: result.data.url });
+                            } else {
+                                resolve({ success: false, error: result.message || '上传失败' });
+                            }
+                        } catch (e) {
+                            resolve({ success: false, error: '解析响应失败' });
+                        }
+                    });
+
+                    xhr.addEventListener('error', () => resolve({ success: false, error: '网络错误' }));
+                    xhr.open('POST', 'https://img.wkds.eu.org/api/open/upload?token=a4d7768708a31de66547dbf08b065abecef32c425e541d5a6acb895dbc685192');
+                    xhr.send(formData);
                 });
-
-                const result = await response.json();
-                if (result.code === 0 && result.data?.url) {
-                    return { success: true, url: result.data.url };
-                }
-                return { success: false, error: result.message || '上传失败' };
             }
         }
     },
@@ -61,9 +88,10 @@ const ImageUploader = {
     /**
      * 上传图片
      * @param {File} file - 图片文件
+     * @param {Function} onProgress - 进度回调 (0-100)
      * @returns {Promise<{success: boolean, url?: string, error?: string}>}
      */
-    async upload(file) {
+    async upload(file, onProgress) {
         if (!file) {
             return { success: false, error: '请选择文件' };
         }
@@ -87,7 +115,7 @@ const ImageUploader = {
 
         try {
             console.log(`[ImageUploader] 📤 上传到 ${provider.name}...`);
-            const result = await provider.upload(file);
+            const result = await provider.upload(file, onProgress);
             if (result.success) {
                 console.log('[ImageUploader] ✅ 上传成功:', result.url);
             }
@@ -191,20 +219,38 @@ const ImageUploader = {
 
             btnUpload.disabled = true;
             btnUpload.textContent = '上传中...';
-            statusEl.textContent = '正在上传...';
+            statusEl.style.color = 'var(--text-tertiary)';
 
-            const result = await ImageUploader.upload(selectedFile);
+            // 进度条
+            statusEl.innerHTML = `
+                <div style="margin-top:8px">
+                    <div style="background:var(--bg-hover);border-radius:4px;height:6px;overflow:hidden">
+                        <div id="upload-progress-bar" style="background:var(--primary);height:100%;width:0%;transition:width 0.2s"></div>
+                    </div>
+                    <div id="upload-progress-text" style="font-size:11px;margin-top:4px;text-align:center">准备上传...</div>
+                </div>
+            `;
+            const progressBar = modal.querySelector('#upload-progress-bar');
+            const progressText = modal.querySelector('#upload-progress-text');
+
+            const result = await ImageUploader.upload(selectedFile, (percent) => {
+                progressBar.style.width = percent + '%';
+                progressText.textContent = `上传中... ${percent}%`;
+            });
 
             if (result.success) {
-                statusEl.textContent = '✅ 上传成功！';
-                statusEl.style.color = 'var(--success)';
+                progressBar.style.width = '100%';
+                progressBar.style.background = 'var(--success)';
+                progressText.textContent = '✅ 上传成功！';
+                progressText.style.color = 'var(--success)';
                 setTimeout(() => {
                     modal.remove();
                     if (callback) callback(result.url);
                 }, 500);
             } else {
-                statusEl.textContent = '❌ ' + result.error;
-                statusEl.style.color = 'var(--danger)';
+                progressBar.style.background = 'var(--danger)';
+                progressText.textContent = '❌ ' + result.error;
+                progressText.style.color = 'var(--danger)';
                 btnUpload.disabled = false;
                 btnUpload.textContent = '重试';
             }
