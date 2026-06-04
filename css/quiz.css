@@ -583,6 +583,7 @@
 
 .option-item:active {
     transform: scale(0.98);
+    transition: none;
 }
 
 .option-item.selected {
@@ -754,6 +755,7 @@
 
 .judge-option:active {
     transform: scale(0.97);
+    transition: none;
 }
 .judge-option.selected {
     border-color: var(--primary);

@@ -997,6 +997,7 @@
 
 .bank-type-btn:active {
     transform: scale(0.96);
+    transition: none;
 }
 
 .bank-type-btn.active {
