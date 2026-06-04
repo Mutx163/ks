@@ -1035,6 +1035,12 @@ const App = {
      * 绑定事件
      */
     bindEvents() {
+        // 移动端：点击按钮后立即 blur，防止焦点高亮粘连
+        document.addEventListener('pointerup', (e) => {
+            const btn = e.target.closest('button, .btn, .bank-card, .bank-type-btn');
+            if (btn) btn.blur();
+        });
+
         // 导入按钮
         const importBtn = document.getElementById('btn-import');
         if (importBtn) {

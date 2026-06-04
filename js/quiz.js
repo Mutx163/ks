@@ -2042,6 +2042,12 @@ const Quiz = {
     },
 
     bindEvents() {
+        // 移动端：点击按钮后立即 blur，防止焦点高亮粘连
+        document.addEventListener('pointerup', (e) => {
+            const btn = e.target.closest('button, .btn, .option-item, .judge-option');
+            if (btn) btn.blur();
+        });
+
         window.addEventListener('beforeunload', () => this.saveSession());
 
         // 移动端 beforeunload 不可靠，visibilitychange 作为备份保存触发器
