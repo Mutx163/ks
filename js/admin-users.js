@@ -239,6 +239,7 @@ export function initUsers(Admin) {
     Admin.viewCloudData = async function(uid) {
         const d = await this.get(`/api/admin/user-cloud-data/${uid}`);
         if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
+        const preStyle = 'background:#f9fafb;padding:8px;border-radius:6px;font-size:11px;overflow-x:auto;margin-top:4px;color:#1f2937';
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="modal-box" style="max-width:500px;max-height:80vh;overflow-y:auto">
@@ -246,11 +247,11 @@ export function initUsers(Admin) {
                     <p style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px">最后同步: ${Admin.fmtTime(d.user?.lastSyncAt)||'无'}</p>
                     <div style="margin-bottom:8px">
                         <strong style="font-size:12px">设置:</strong>
-                        <pre style="background:var(--bg-hover);padding:8px;border-radius:6px;font-size:11px;overflow-x:auto;margin-top:4px">${Utils.escapeHtml(JSON.stringify(d.settings||{}, null, 2))}</pre>
+                        <pre style="${preStyle}">${Utils.escapeHtml(JSON.stringify(d.settings||{}, null, 2))}</pre>
                     </div>
                     <div>
                         <strong style="font-size:12px">进度:</strong>
-                        <pre style="background:var(--bg-hover);padding:8px;border-radius:6px;font-size:11px;overflow-x:auto;margin-top:4px">${Utils.escapeHtml(JSON.stringify(d.progress||{}, null, 2))}</pre>
+                        <pre style="${preStyle}">${Utils.escapeHtml(JSON.stringify(d.progress||{}, null, 2))}</pre>
                     </div>
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">关闭</button></div>
                 </div>
