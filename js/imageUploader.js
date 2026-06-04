@@ -64,14 +64,10 @@ const ImageUploader = {
                                 // 尝试跟随重定向获取最终URL
                                 const redirXhr = new XMLHttpRequest();
                                 redirXhr.open('GET', linkUrl, true);
-                                redirXhr.onreadystatechange = function() {
-                                    if (redirXhr.readyState === 2) {
-                                        // readyState 2 = headers received
-                                        const finalUrl = redirXhr.responseURL || linkUrl;
-                                        console.log('[ImageUploader] 📍 最终URL:', finalUrl);
-                                        redirXhr.abort();
-                                        resolve({ success: true, url: finalUrl });
-                                    }
+                                redirXhr.onload = function() {
+                                    const finalUrl = redirXhr.responseURL || linkUrl;
+                                    console.log('[ImageUploader] 📍 最终URL:', finalUrl);
+                                    resolve({ success: true, url: finalUrl });
                                 };
                                 redirXhr.onerror = function() {
                                     resolve({ success: true, url: linkUrl });
