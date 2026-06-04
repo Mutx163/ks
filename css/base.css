@@ -272,7 +272,6 @@ a:focus:not(:focus-visible) {
 
 .btn:active {
     transform: scale(0.97);
-    transition: none;
 }
 
 .btn-primary {
@@ -281,7 +280,7 @@ a:focus:not(:focus-visible) {
 }
 
 .btn-primary:hover {
-    background: var(--primary-dark);
+    /* 不变色 */
 }
 
 .btn-secondary {
@@ -291,7 +290,7 @@ a:focus:not(:focus-visible) {
 }
 
 .btn-secondary:hover {
-    background: var(--bg-hover);
+    /* 不变色 */
 }
 
 .btn-ghost {
