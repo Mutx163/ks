@@ -237,7 +237,7 @@ export function initUsers(Admin) {
     };
 
     Admin.viewCloudData = async function(uid) {
-        const d = await this.get(`/api/admin/cloud-data/${uid}`);
+        const d = await this.get(`/api/admin/user-cloud-data/${uid}`);
         if (!d?.ok) { Utils.showToast('获取失败', 'error'); return; }
         const data = d.data;
         document.getElementById('modal-root').innerHTML = `
