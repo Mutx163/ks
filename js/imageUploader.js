@@ -1,16 +1,65 @@
 /**
  * 图片上传模块
- * 使用 WwoPic 图床 API
+ * 支持多个图床：WwoPic、Wkds
  */
 
 const ImageUploader = {
-    // API 配置
-    API_BASE: 'https://img.wwoyun.cn/api/v2',
-    TOKEN: '171|ZDEnLUKTwjfvXblPTp7mPsJnB71HZZOcB8fHeiyj401e1955',
-    STORAGE_ID: '3',
+    // 图床配置
+    PROVIDERS: {
+        wwpic: {
+            name: 'WwoPic',
+            upload: async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('storage_id', '3');
+
+                const response = await fetch('https://img.wwoyun.cn/api/v2/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer 171|ZDEnLUKTwjfvXblPTp7mPsJnB71HZZOcB8fHeiyj401e1955',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.status === 'success' && result.data?.public_url) {
+                    return { success: true, url: result.data.public_url };
+                }
+                return { success: false, error: result.message || '上传失败' };
+            }
+        },
+        wkds: {
+            name: 'Wkds',
+            upload: async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('https://img.wkds.eu.org/api/open/upload?token=a4d7768708a31de66547dbf08b065abecef32c425e541d5a6acb895dbc685192', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.code === 0 && result.data?.url) {
+                    return { success: true, url: result.data.url };
+                }
+                return { success: false, error: result.message || '上传失败' };
+            }
+        }
+    },
+
+    // 当前使用的图床
+    getProvider() {
+        return localStorage.getItem('ks_image_provider') || 'wkds';
+    },
+
+    setProvider(name) {
+        localStorage.setItem('ks_image_provider', name);
+    },
 
     /**
-     * 上传图片到图床
+     * 上传图片
      * @param {File} file - 图片文件
      * @returns {Promise<{success: boolean, url?: string, error?: string}>}
      */
@@ -30,30 +79,19 @@ const ImageUploader = {
             return { success: false, error: '文件大小不能超过 10MB' };
         }
 
+        const providerKey = this.getProvider();
+        const provider = this.PROVIDERS[providerKey];
+        if (!provider) {
+            return { success: false, error: '未知图床' };
+        }
+
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('storage_id', this.STORAGE_ID);
-            // is_public 不传，默认就是公开的
-
-            const response = await fetch(`${this.API_BASE}/upload`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.TOKEN}`,
-                    'Accept': 'application/json'
-                },
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.status === 'success' && result.data?.public_url) {
-                console.log('[ImageUploader] ✅ 上传成功:', result.data.public_url);
-                return { success: true, url: result.data.public_url };
-            } else {
-                console.error('[ImageUploader] ❌ 上传失败:', result);
-                return { success: false, error: result.message || '上传失败' };
+            console.log(`[ImageUploader] 📤 上传到 ${provider.name}...`);
+            const result = await provider.upload(file);
+            if (result.success) {
+                console.log('[ImageUploader] ✅ 上传成功:', result.url);
             }
+            return result;
         } catch (e) {
             console.error('[ImageUploader] ❌ 上传异常:', e);
             return { success: false, error: '网络错误: ' + e.message };
@@ -65,14 +103,18 @@ const ImageUploader = {
      * @param {Function} callback - 上传成功回调，参数为图片 URL
      */
     showDialog(callback) {
+        const currentProvider = this.getProvider();
         const modal = document.createElement('div');
         modal.className = 'modal-mask';
         modal.innerHTML = `
             <div class="modal-box" style="max-width: 400px;">
                 <h3>📤 上传图片</h3>
-                <p style="font-size: 12px; color: var(--text-tertiary); margin-bottom: 12px;">
-                    支持 JPG/PNG/GIF/WebP，最大 10MB
-                </p>
+                <div style="margin-bottom:12px">
+                    <label style="font-size:12px;color:var(--text-tertiary)">图床选择</label>
+                    <select id="upload-provider" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;margin-top:4px;background:var(--bg-card);color:var(--text)">
+                        ${Object.entries(this.PROVIDERS).map(([k, v]) => `<option value="${k}" ${k === currentProvider ? 'selected' : ''}>${v.name}</option>`).join('')}
+                    </select>
+                </div>
                 <div id="upload-area" style="border: 2px dashed var(--border); border-radius: var(--radius); padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s;">
                     <div style="font-size: 36px; margin-bottom: 8px;">📁</div>
                     <div style="color: var(--text-secondary);">点击选择图片或拖拽到此处</div>
@@ -97,7 +139,13 @@ const ImageUploader = {
         const previewImg = modal.querySelector('#preview-img');
         const statusEl = modal.querySelector('#upload-status');
         const btnUpload = modal.querySelector('#btn-upload');
+        const providerSelect = modal.querySelector('#upload-provider');
         let selectedFile = null;
+
+        // 切换图床时保存设置
+        providerSelect.addEventListener('change', () => {
+            this.setProvider(providerSelect.value);
+        });
 
         // 点击选择文件
         uploadArea.addEventListener('click', () => fileInput.click());
@@ -143,7 +191,7 @@ const ImageUploader = {
 
             btnUpload.disabled = true;
             btnUpload.textContent = '上传中...';
-            statusEl.textContent = '正在上传到图床...';
+            statusEl.textContent = '正在上传...';
 
             const result = await ImageUploader.upload(selectedFile);
 
