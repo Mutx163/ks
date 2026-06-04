@@ -61,10 +61,12 @@ const ImageUploader = {
                             if (result.code === 0 && result.data?.url) {
                                 // 跟随重定向获取最终图片 URL
                                 const linkUrl = result.data.url;
-                                fetch(linkUrl, { method: 'HEAD', redirect: 'follow' })
+                                fetch(linkUrl, { redirect: 'follow' })
                                     .then(r => {
                                         // 使用重定向后的最终 URL
-                                        resolve({ success: true, url: r.url || linkUrl });
+                                        const finalUrl = r.url || linkUrl;
+                                        console.log('[ImageUploader] 📍 最终URL:', finalUrl);
+                                        resolve({ success: true, url: finalUrl });
                                     })
                                     .catch(() => {
                                         // 跟随失败，用原始链接
