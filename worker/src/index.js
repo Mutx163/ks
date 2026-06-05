@@ -1102,8 +1102,21 @@ async function handleAdminToggleBank(bankId, request, env, origin) {
 // 管理员：删除题库
 async function handleAdminDeleteBank(bankId, request, env, origin) {
     try {
-        const body = await request.json();
-        const { deviceId, password } = body;
+        // 支持从body或URL参数获取认证信息
+        let deviceId, password;
+        
+        // 尝试从body获取
+        try {
+            const body = await request.json();
+            deviceId = body.deviceId;
+            password = body.password;
+        } catch (e) {
+            // body解析失败，尝试从URL参数获取
+            const url = new URL(request.url);
+            deviceId = url.searchParams.get('deviceId');
+            password = url.searchParams.get('password');
+        }
+        
         const admin = await requireAdmin(deviceId, password, env);
         if (!admin) return error('无权限', 403, origin);
 
