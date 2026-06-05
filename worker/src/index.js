@@ -172,6 +172,11 @@ export default {
                 return await handleAdminImportBank(request, env, origin);
             }
 
+            // POST /api/admin/upload-bank（前端题库上传接口）
+            if (method === 'POST' && path === '/api/admin/upload-bank') {
+                return await handleAdminUploadBank(request, env, origin);
+            }
+
             // GET /api/admin/bank/:id/history（必须在 :id 前面）
             if (method === 'GET' && path.match(/\/api\/admin\/bank\/[^/]+\/history$/)) {
                 const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
@@ -1096,22 +1101,25 @@ async function handleAdminToggleBank(bankId, request, env, origin) {
 
 // 管理员：删除题库
 async function handleAdminDeleteBank(bankId, request, env, origin) {
-    const body = await request.json();
-    const { deviceId, password } = body;
-    const admin = await requireAdmin(deviceId, password, env);
-    if (!admin) return error('无权限', 403, origin);
+    try {
+        const body = await request.json();
+        const { deviceId, password } = body;
+        const admin = await requireAdmin(deviceId, password, env);
+        if (!admin) return error('无权限', 403, origin);
 
-    const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
-    if (!bank) return error('题库不存在', 404, origin);
+        const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
+        if (!bank) return error('题库不存在', 404, origin);
 
-    // 删除题库、历史记录和统计数据
-    await env.DB.batch([
-        env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId),
-        env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId),
-        env.DB.prepare('DELETE FROM stats WHERE bank_id = ?').bind(bankId)
-    ]);
+        // 删除题库、历史记录和统计数据
+        await env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId).run();
+        await env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId).run();
+        await env.DB.prepare('DELETE FROM stats WHERE bank_id = ?').bind(bankId).run();
 
-    return json({ ok: true, message: `题库 "${bank.name}" 已删除` }, 200, origin);
+        return json({ ok: true, message: `题库 "${bank.name}" 已删除` }, 200, origin);
+    } catch (e) {
+        console.error('删除题库失败:', e);
+        return error('删除失败: ' + e.message, 500, origin);
+    }
 }
 
 // 管理员：添加单题
@@ -1295,4 +1303,49 @@ async function handleAdminUpdateBankSettings(bankId, request, env, origin) {
     ).bind(bankId, 'update_settings', `更新做题模式: ${modesJson || '全部'}`, admin.id, now).run();
 
     return json({ ok: true, allowed_modes: allowed_modes || null }, 200, origin);
+}
+
+// 管理员：上传题库（前端专用接口）
+async function handleAdminUploadBank(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, bank, existingId } = body;
+    
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    
+    if (!bank || !bank.id || !bank.name || !bank.questions) {
+        return error('题库格式错误，缺少必要字段', 400, origin);
+    }
+    
+    const id = existingId || bank.id;
+    const now = new Date().toISOString();
+    const existing = await env.DB.prepare('SELECT version, allowed_modes FROM banks WHERE id = ?').bind(id).first();
+    const version = existing ? (existing.version || 0) + 1 : 1;
+    const modesJson = existing?.allowed_modes || '';
+    
+    // 处理 categories 字段（前端用 categories，后端用 category）
+    const category = bank.category || (Array.isArray(bank.categories) ? bank.categories.join(', ') : '');
+    
+    await env.DB.prepare(`
+        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+        id,
+        bank.name,
+        bank.description || '',
+        category,
+        version,
+        bank.questions.length,
+        JSON.stringify(bank.questions),
+        modesJson,
+        now,
+        now
+    ).run();
+    
+    // 记录历史
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(id, existing ? 'replace' : 'create', `${bank.questions.length}道题`, admin.id, now).run();
+    
+    return json({ ok: true, version, count: bank.questions.length }, 200, origin);
 }
