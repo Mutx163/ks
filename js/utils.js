@@ -184,7 +184,7 @@ const Utils = {
         html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
             const id = placeholders.length;
             placeholders.push(
-                `<img src="${this.escapeHtml(url.trim())}" alt="${this.escapeHtml(alt)}" class="markdown-image" loading="lazy">`
+                `<div class="img-loading-wrap"><div class="img-loading-icon"></div><img src="${this.escapeHtml(url.trim())}" alt="${this.escapeHtml(alt)}" class="markdown-image" loading="lazy" onload="this.parentElement.classList.add('img-loaded')" onerror="this.parentElement.classList.add('img-loaded')"></div>`
             );
             return `%%PH${id}%%`;
         });

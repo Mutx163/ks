@@ -484,6 +484,62 @@
     margin-bottom: var(--space-4);
 }
 
+/* ===== 图片加载动画 ===== */
+.img-loading-wrap {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    min-height: 80px;
+    background: var(--bg-hover, #f0f0f0);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.img-loading-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        transparent 100%
+    );
+    animation: img-shimmer 1.5s infinite;
+}
+
+.img-loading-wrap .img-loading-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border, #ddd);
+    border-top-color: var(--primary, #6366f1);
+    border-radius: 50%;
+    animation: img-spin 0.8s linear infinite;
+}
+
+@keyframes img-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes img-spin {
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.img-loading-wrap.img-loaded {
+    background: none;
+    min-height: auto;
+}
+
+.img-loading-wrap.img-loaded::before,
+.img-loading-wrap.img-loaded .img-loading-icon {
+    display: none;
+}
+
 /* ===== 题目图片 ===== */
 .question-image {
     max-width: 100%;

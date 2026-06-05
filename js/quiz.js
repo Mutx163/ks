@@ -718,7 +718,7 @@ const Quiz = {
                         ${Utils.parseMarkdown(question.question)}
                     </div>
 
-                    ${question.img || question.image ? `<img class="question-image" src="${Utils.escapeHtml(question.img || question.image)}" alt="题目图片" loading="lazy">` : ''}
+                    ${question.img || question.image ? `<div class="img-loading-wrap"><div class="img-loading-icon"></div><img class="question-image" src="${Utils.escapeHtml(question.img || question.image)}" alt="题目图片" loading="lazy" onload="this.parentElement.classList.add('img-loaded')" onerror="this.parentElement.classList.add('img-loaded')"></div>` : ''}
 
                     ${this.renderOptions(question, isSubmitted, userAnswer)}
 
@@ -825,7 +825,7 @@ const Quiz = {
                             ${markerHtml}
                             <div class="option-content">
                                 ${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}
-                                ${opt.img ? `<img src="${Utils.escapeHtml(opt.img)}" class="option-image" loading="lazy" alt="选项图片">` : ''}
+                                ${opt.img ? `<div class="img-loading-wrap"><div class="img-loading-icon"></div><img src="${Utils.escapeHtml(opt.img)}" class="option-image" loading="lazy" alt="选项图片" onload="this.parentElement.classList.add('img-loaded')" onerror="this.parentElement.classList.add('img-loaded')"></div>` : ''}
                             </div>
                         </div>
                     `;
@@ -867,7 +867,7 @@ const Quiz = {
                             ${markerHtml}
                             <div class="option-content">
                                 ${Utils.parseMarkdown(opt.text.replace(/^[A-Z]\.\s*/, ''))}
-                                ${opt.img ? `<img src="${Utils.escapeHtml(opt.img)}" class="option-image" loading="lazy" alt="选项图片">` : ''}
+                                ${opt.img ? `<div class="img-loading-wrap"><div class="img-loading-icon"></div><img src="${Utils.escapeHtml(opt.img)}" class="option-image" loading="lazy" alt="选项图片" onload="this.parentElement.classList.add('img-loaded')" onerror="this.parentElement.classList.add('img-loaded')"></div>` : ''}
                             </div>
                         </div>
                     `;
