@@ -95,9 +95,13 @@ export function initBanks(Admin) {
                 <div class="card" style="margin-bottom:12px">
                     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
                         <h3>${Utils.escapeHtml(b.name)} <span style="font-size:11px;color:var(--text-tertiary)">${b.id}</span></h3>
-                        <span class="badge ${b.enabled !== false ? 'b-admin' : 'b-ban'}">${b.enabled !== false ? '已启用' : '已禁用'}</span>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <button class="abtn" onclick="Admin.editBankInfo('${Utils.jsSafe(bankId)}')" style="font-size:11px;padding:3px 10px">✏️ 编辑信息</button>
+                            <span class="badge ${b.enabled !== false ? 'b-admin' : 'b-ban'}">${b.enabled !== false ? '已启用' : '已禁用'}</span>
+                        </div>
                     </div>
                     <div class="card-body" style="padding:12px">
+                        ${b.description ? `<div style="margin-bottom:12px;padding:8px 12px;background:var(--bg-hover);border-radius:var(--radius);font-size:13px;color:var(--text-secondary)">${Utils.escapeHtml(b.description)}</div>` : ''}
                         <div class="d-grid">
                             <div class="d-item"><div class="dl">题目数</div><div class="dv">${qs.length}</div></div>
                             <div class="d-item"><div class="dl">版本</div><div class="dv">v${b.version}</div></div>
@@ -360,6 +364,57 @@ export function initBanks(Admin) {
         } catch (e) {
             console.error('[Admin] 清除缓存失败:', e);
             Utils.showToast('清除失败: ' + e.message, 'error');
+        }
+    };
+
+    // ==================== 编辑题库信息 ====================
+    Admin.editBankInfo = async function(bankId) {
+        // 获取当前题库信息
+        const d = await this.get(`/api/admin/bank/${bankId}`);
+        if (!d?.ok) { Utils.showToast('获取题库信息失败', 'error'); return; }
+        
+        const b = d.bank;
+        
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:450px">
+                    <h3>编辑题库信息</h3>
+                    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">ID: ${Utils.escapeHtml(b.id)}</p>
+                    
+                    <label style="font-size:12px;font-weight:600;margin-bottom:4px;display:block">题库名称 *</label>
+                    <input id="edit-bank-name" value="${Utils.escapeHtml(b.name)}" placeholder="题库名称" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg-card);color:var(--text);margin-bottom:12px">
+                    
+                    <label style="font-size:12px;font-weight:600;margin-bottom:4px;display:block">题库描述</label>
+                    <textarea id="edit-bank-desc" rows="3" placeholder="题库描述（可选）" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg-card);color:var(--text);margin-bottom:12px;resize:vertical">${Utils.escapeHtml(b.description || '')}</textarea>
+                    
+                    <label style="font-size:12px;font-weight:600;margin-bottom:4px;display:block">分类</label>
+                    <input id="edit-bank-category" value="${Utils.escapeHtml(b.category || '')}" placeholder="如：数学、编程、英语" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg-card);color:var(--text);margin-bottom:16px">
+                    
+                    <div class="modal-actions">
+                        <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
+                        <button class="mp" onclick="Admin.doEditBankInfo('${Utils.jsSafe(bankId)}')">保存</button>
+                    </div>
+                </div>
+            </div>`;
+    };
+    
+    Admin.doEditBankInfo = async function(bankId) {
+        const name = document.getElementById('edit-bank-name').value.trim();
+        const description = document.getElementById('edit-bank-desc').value.trim();
+        const category = document.getElementById('edit-bank-category').value.trim();
+        
+        if (!name) {
+            Utils.showToast('题库名称不能为空', 'error');
+            return;
+        }
+        
+        const r = await this.put(`/api/admin/bank/${bankId}/settings`, { name, description, category });
+        if (r?.ok) {
+            Utils.showToast('题库信息已更新', 'success');
+            document.querySelector('.modal-mask')?.remove();
+            this.showBankDetail(bankId); // 刷新详情页
+        } else {
+            Utils.showToast(r?.error || '更新失败', 'error');
         }
     };
 

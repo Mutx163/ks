@@ -1302,25 +1302,73 @@ async function handleAdminBankHistory(bankId, url, env, origin) {
 // 管理员：更新题库设置（allowed_modes等）
 async function handleAdminUpdateBankSettings(bankId, request, env, origin) {
     const body = await request.json();
-    const { deviceId, password, allowed_modes } = body;
+    const { deviceId, password, allowed_modes, name, description, category } = body;
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const bank = await env.DB.prepare('SELECT id FROM banks WHERE id = ?').bind(bankId).first();
+    const bank = await env.DB.prepare('SELECT id, name, description, category FROM banks WHERE id = ?').bind(bankId).first();
     if (!bank) return error('题库不存在', 404, origin);
 
-    const modesJson = Array.isArray(allowed_modes) ? JSON.stringify(allowed_modes) : '';
     const now = new Date().toISOString();
+    const changes = [];
 
-    await env.DB.prepare(
-        'UPDATE banks SET allowed_modes = ?, updated_at = ? WHERE id = ?'
-    ).bind(modesJson, now, bankId).run();
+    // 构建更新字段
+    let updateSql = 'UPDATE banks SET updated_at = ?';
+    let params = [now];
 
-    await env.DB.prepare(
-        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(bankId, 'update_settings', `更新做题模式: ${modesJson || '全部'}`, admin.id, now).run();
+    // 更新名称
+    if (name !== undefined && name !== bank.name) {
+        updateSql += ', name = ?';
+        params.push(name);
+        changes.push(`名称: "${bank.name}" -> "${name}"`);
+    }
 
-    return json({ ok: true, allowed_modes: allowed_modes || null }, 200, origin);
+    // 更新描述
+    if (description !== undefined && description !== (bank.description || '')) {
+        updateSql += ', description = ?';
+        params.push(description);
+        changes.push(`描述已更新`);
+    }
+
+    // 更新分类
+    if (category !== undefined && category !== (bank.category || '')) {
+        updateSql += ', category = ?';
+        params.push(category);
+        changes.push(`分类: "${bank.category || '未分类'}" -> "${category}"`);
+    }
+
+    // 更新做题模式
+    if (allowed_modes !== undefined) {
+        const modesJson = Array.isArray(allowed_modes) ? JSON.stringify(allowed_modes) : '';
+        updateSql += ', allowed_modes = ?';
+        params.push(modesJson);
+        changes.push(`做题模式: ${modesJson || '全部'}`);
+    }
+
+    updateSql += ' WHERE id = ?';
+    params.push(bankId);
+
+    // 只有有变更时才更新
+    if (changes.length > 0) {
+        await env.DB.prepare(updateSql).bind(...params).run();
+
+        await env.DB.prepare(
+            'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+        ).bind(bankId, 'update_settings', changes.join('; '), admin.id, now).run();
+    }
+
+    // 查询更新后的数据
+    const updated = await env.DB.prepare('SELECT name, description, category, allowed_modes FROM banks WHERE id = ?').bind(bankId).first();
+
+    return json({ 
+        ok: true, 
+        bank: {
+            name: updated.name,
+            description: updated.description,
+            category: updated.category,
+            allowed_modes: updated.allowed_modes ? JSON.parse(updated.allowed_modes) : null
+        }
+    }, 200, origin);
 }
 
 // 管理员：上传题库（前端专用接口）
