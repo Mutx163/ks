@@ -539,7 +539,7 @@ export function initEditor(Admin) {
         // 更新题型标签
         const typeTag = item.querySelector('.question-type');
         if (typeTag) {
-            const typeLabels = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答'};
+            const typeLabels = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答',code:'编程'};
             typeTag.textContent = typeLabels[question.type] || question.type;
         }
         
