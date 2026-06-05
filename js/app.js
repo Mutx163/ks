@@ -808,7 +808,7 @@ const App = {
                 if (!confirmed) return;
             }
 
-            Storage.addBank(data);
+            Storage.setBank(data);
             Tracker.importBank(data.name, data.questions?.length || 0);
             Utils.showToast(`题库 "${data.name}" 导入成功！`, 'success');
             this.loadData();

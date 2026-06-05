@@ -342,9 +342,9 @@ export function initBanks(Admin) {
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="modal-box" style="max-width:400px">
-                    <h3>清除本地缓存</h3>
-                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">清除浏览器中缓存的题库数据和元数据。</p>
-                    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">⚠️ 清除后需要重新从云端加载题库，本地进度和设置不会丢失。</p>
+                    <h3>清除本地数据</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">清除浏览器中的所有本地数据（进度、设置、历史、收藏）。</p>
+                    <p style="font-size:12px;color:var(--danger);margin-bottom:16px">⚠️ 此操作不可恢复！所有本地进度和设置将丢失！</p>
                     <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="abtn danger" onclick="Admin.doClearLocalCache()">确认清除</button></div>
                 </div>
             </div>`;
@@ -352,17 +352,13 @@ export function initBanks(Admin) {
 
     Admin.doClearLocalCache = function() {
         try {
-            localStorage.removeItem('quiz_banks_meta');
-            localStorage.removeItem('quiz_bank_versions');
-            if (window.Storage && window.Storage._bankData) {
-                window.Storage._bankData.clear();
-            }
-            console.log('[Admin] ✅ 本地缓存已清除');
-            Utils.showToast('本地缓存已清除，2秒后刷新页面', 'success');
+            Storage.clearAll();
+            console.log('[Admin] ✅ 本地数据已清除');
+            Utils.showToast('本地数据已清除，2秒后刷新页面', 'success');
             document.querySelector('.modal-mask')?.remove();
             setTimeout(() => location.reload(), 2000);
         } catch (e) {
-            console.error('[Admin] 清除缓存失败:', e);
+            console.error('[Admin] 清除数据失败:', e);
             Utils.showToast('清除失败: ' + e.message, 'error');
         }
     };
