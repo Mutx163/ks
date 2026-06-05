@@ -1117,17 +1117,22 @@ async function handleAdminDeleteBank(bankId, request, env, origin) {
             password = url.searchParams.get('password');
         }
         
+        console.log('删除题库请求:', { bankId, deviceId: deviceId ? '已提供' : '未提供', password: password ? '已提供' : '未提供' });
+        
         const admin = await requireAdmin(deviceId, password, env);
         if (!admin) return error('无权限', 403, origin);
 
         const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
         if (!bank) return error('题库不存在', 404, origin);
 
-        // 删除题库、历史记录和统计数据
-        await env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId).run();
-        await env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId).run();
+        console.log('开始删除题库:', bank.name);
+        
+        // 删除题库、历史记录和统计数据（注意顺序：先删子表，再删父表）
         await env.DB.prepare('DELETE FROM stats WHERE bank_id = ?').bind(bankId).run();
+        await env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId).run();
+        await env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId).run();
 
+        console.log('题库删除成功:', bank.name);
         return json({ ok: true, message: `题库 "${bank.name}" 已删除` }, 200, origin);
     } catch (e) {
         console.error('删除题库失败:', e);

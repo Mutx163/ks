@@ -16,6 +16,7 @@ export function initBanks(Admin) {
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
                     <h3 style="font-size:16px;font-weight:700">题库管理</h3>
                     <div style="display:flex;gap:8px">
+                        <button class="abtn" onclick="Admin.clearLocalCache()">清除本地缓存</button>
                         <button class="abtn primary" onclick="Admin.uploadBank()">上传题库</button>
                         <button class="abtn primary" onclick="Admin.createBank()">新建题库</button>
                     </div>
@@ -331,6 +332,35 @@ export function initBanks(Admin) {
         const r = await this.delete(`/api/admin/bank/${bankId}`);
         if (r?.ok) { Utils.showToast('已删除', 'success'); document.querySelector('.modal-mask')?.remove(); this.renderBanks(); }
         else Utils.showToast(r?.error || '失败', 'error');
+    };
+
+    Admin.clearLocalCache = function() {
+        document.getElementById('modal-root').innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+                <div class="modal-box" style="max-width:400px">
+                    <h3>清除本地缓存</h3>
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">清除浏览器中缓存的题库数据和元数据。</p>
+                    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:16px">⚠️ 清除后需要重新从云端加载题库，本地进度和设置不会丢失。</p>
+                    <div class="modal-actions"><button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button><button class="abtn danger" onclick="Admin.doClearLocalCache()">确认清除</button></div>
+                </div>
+            </div>`;
+    };
+
+    Admin.doClearLocalCache = function() {
+        try {
+            localStorage.removeItem('quiz_banks_meta');
+            localStorage.removeItem('quiz_bank_versions');
+            if (window.Storage && window.Storage._bankData) {
+                window.Storage._bankData.clear();
+            }
+            console.log('[Admin] ✅ 本地缓存已清除');
+            Utils.showToast('本地缓存已清除，2秒后刷新页面', 'success');
+            document.querySelector('.modal-mask')?.remove();
+            setTimeout(() => location.reload(), 2000);
+        } catch (e) {
+            console.error('[Admin] 清除缓存失败:', e);
+            Utils.showToast('清除失败: ' + e.message, 'error');
+        }
     };
 
     Admin.viewBankHistory = async function(bankId) {
