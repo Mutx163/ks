@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>管理后台 - 城科卷王</title>
+        
+        <!-- DNS 预解析 -->
+        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc">
+        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin>
+        <link rel="dns-prefetch" href="https://unpkg.com">
+        
+        <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
+      <script type="module" crossorigin src="/assets/admin-B5TSvLvc.js"></script>
+      <link rel="modulepreload" crossorigin href="/assets/perf-DqLayIAb.js">
+      <link rel="stylesheet" crossorigin href="/assets/perf-CYdPjB7w.css">
+      <link rel="stylesheet" crossorigin href="/assets/admin-CPkGyXin.css">
+    </head>
+    <body>
+        <!-- 登录页 -->
+        <div class="login-page" id="login-page">
+            <div class="login-card">
+                <div class="logo-icon">👑</div>
+                <h2>管理后台</h2>
+                <p>城科卷王 · 数据管理中心</p>
+                <div class="input-group">
+                    <span class="ic">🔒</span>
+                    <input type="password" id="admin-password" placeholder="请输入管理密码" autocomplete="off" />
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer">
+                        <input type="checkbox" id="remember-me" checked style="margin:0">
+                        <span>记住我（7天）</span>
+                    </label>
+                </div>
+                <button class="btn-login" id="btn-login">登 录</button>
+                <div class="login-error" id="login-error"></div>
+                <div style="font-size:10px;color:var(--text-tertiary);margin-top:8px;text-align:center">
+                    勾选"记住我"保存7天，不勾选保存24小时
+                </div>
+            </div>
+        </div>
+
+        <!-- 管理页 -->
+        <div id="admin-app" style="display: none">
+            <div class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-logo">👑</div>
+                    <span class="topbar-title">管理后台</span>
+                </div>
+                <div class="topbar-right">
+                    <button class="tb-btn" onclick="location.href='index.html'">🏠 首页</button>
+                    <button class="tb-btn" onclick="Admin.exportCSV()">📥 导出CSV</button>
+                    <button class="tb-btn danger" onclick="Admin.logout()">退出</button>
+                </div>
+            </div>
+
+            <div class="tabs" id="tabs">
+                <div class="tab active" data-tab="overview" onclick="Admin.switchTab('overview')">📊 总览</div>
+                <div class="tab" data-tab="users" onclick="Admin.switchTab('users')">👥 用户</div>
+                <div class="tab" data-tab="banks" onclick="Admin.switchTab('banks')">📚 题库</div>
+                <div class="tab" data-tab="activity" onclick="Admin.switchTab('activity')">⚡ 活跃</div>
+                <div class="tab" data-tab="announce" onclick="Admin.switchTab('announce')">📢 公告</div>
+            </div>
+
+            <div class="main">
+                <div class="section active" id="sec-overview"></div>
+                <div class="section" id="sec-users"></div>
+                <div class="section" id="sec-banks"></div>
+                <div class="section" id="sec-activity"></div>
+                <div class="section" id="sec-announce"></div>
+            </div>
+        </div>
+
+        <!-- 弹窗挂载点 -->
+        <div id="modal-root"></div>
+
+        <script>
+            setTimeout(function() {
+                if (!window.Admin) {
+                    document.getElementById('login-page').innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;max-width:400px;margin:80px auto"><h3>模块加载失败</h3><p style="margin-top:12px;font-size:13px">请打开 F12 控制台查看红色错误</p><p style="margin-top:8px;font-size:12px;color:#888">常见原因：网络问题或浏览器不支持 ES Module</p></div>';
+                }
+            }, 5000);
+        </script>
+        <script defer src="js/debug.js"></script>
+    </body>
+</html>
