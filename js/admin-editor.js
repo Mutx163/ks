@@ -40,6 +40,7 @@ export function initEditor(Admin) {
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
+        const isCode = type === 'code';
 
         // 规范化答案为字符串
         let answerStr = '';
@@ -88,6 +89,29 @@ export function initEditor(Admin) {
             </div>`;
         }
 
+        // 编程题代码区
+        const codeLanguage = q?.codeLanguage || 'c';
+        const codeContent = q?.code || '';
+        let codeEditorHTML = '';
+        if (isCode) {
+            codeEditorHTML = `<div class="qe-fill-wrap">
+                <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+                    <label style="font-size:12px;font-weight:600;">代码语言：</label>
+                    <select id="eq-code-lang" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg-card);color:var(--text)">
+                        <option value="c" ${codeLanguage==='c'?'selected':''}>C</option>
+                        <option value="cpp" ${codeLanguage==='cpp'?'selected':''}>C++</option>
+                        <option value="java" ${codeLanguage==='java'?'selected':''}>Java</option>
+                        <option value="python" ${codeLanguage==='python'?'selected':''}>Python</option>
+                        <option value="javascript" ${codeLanguage==='javascript'?'selected':''}>JavaScript</option>
+                        <option value="go" ${codeLanguage==='go'?'selected':''}>Go</option>
+                        <option value="rust" ${codeLanguage==='rust'?'selected':''}>Rust</option>
+                        <option value="sql" ${codeLanguage==='sql'?'selected':''}>SQL</option>
+                    </select>
+                </div>
+                <textarea id="eq-code" rows="8" placeholder="输入代码..." style="font-family:monospace;font-size:13px;line-height:1.5" oninput="Admin._preview()">${Utils.escapeHtml(codeContent)}</textarea>
+            </div>`;
+        }
+
         return `
         <div class="qe-tabs">
             <button class="qe-tab active" onclick="Admin._switchEditorTab('edit')" id="qe-tab-edit">编辑</button>
@@ -104,6 +128,7 @@ export function initEditor(Admin) {
                             <option value="judge" ${type==='judge'?'selected':''}>判断题</option>
                             <option value="fill" ${type==='fill'?'selected':''}>填空题</option>
                             <option value="essay" ${type==='essay'?'selected':''}>简答题</option>
+                            <option value="code" ${type==='code'?'selected':''}>编程题</option>
                         </select>
                     </div>
                     <div class="qe-field">
@@ -145,6 +170,10 @@ export function initEditor(Admin) {
                 <div class="qe-field" id="eq-fill-wrap" style="${isEssay?'':'display:none'}">
                     <label>参考答案</label>
                     ${fillAnswerHTML}
+                </div>
+                <div class="qe-field" id="eq-code-wrap" style="${isCode?'':'display:none'}">
+                    <label>代码 <span class="qe-hint">支持代码高亮</span></label>
+                    ${codeEditorHTML}
                 </div>
                 <input type="hidden" id="eq-answer" value="${Utils.escapeHtml(answerStr)}">
                 <div class="qe-field">
@@ -256,15 +285,39 @@ export function initEditor(Admin) {
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
+        const isCode = type === 'code';
 
         document.getElementById('eq-options-wrap').style.display = isChoice ? '' : 'none';
         document.getElementById('eq-judge-wrap').style.display = isJudge ? '' : 'none';
         document.getElementById('eq-fill-wrap').style.display = isEssay ? '' : 'none';
+        document.getElementById('eq-code-wrap').style.display = isCode ? '' : 'none';
 
         // 重置答案
         document.getElementById('eq-answer').value = '';
         if (isEssay) {
             document.getElementById('eq-fill-answer').value = '';
+        }
+        if (isCode && !document.getElementById('eq-code')) {
+            // 如果切换到编程题但代码编辑器不存在，需要创建
+            const codeWrap = document.getElementById('eq-code-wrap');
+            codeWrap.innerHTML = `
+                <label>代码 <span class="qe-hint">支持代码高亮</span></label>
+                <div class="qe-fill-wrap">
+                    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+                        <label style="font-size:12px;font-weight:600;">代码语言：</label>
+                        <select id="eq-code-lang" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg-card);color:var(--text)">
+                            <option value="c">C</option>
+                            <option value="cpp">C++</option>
+                            <option value="java">Java</option>
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="go">Go</option>
+                            <option value="rust">Rust</option>
+                            <option value="sql">SQL</option>
+                        </select>
+                    </div>
+                    <textarea id="eq-code" rows="8" placeholder="输入代码..." style="font-family:monospace;font-size:13px;line-height:1.5" oninput="Admin._preview()"></textarea>
+                </div>`;
         }
 
         // 如果切换到选择题，重建选项
@@ -305,6 +358,7 @@ export function initEditor(Admin) {
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
+        const isCode = type === 'code';
 
         // 收集选项（支持图片）
         let options = [];
@@ -342,6 +396,13 @@ export function initEditor(Admin) {
             answer,
             explanation: document.getElementById('eq-explanation').value.trim()
         };
+
+        // 编程题额外字段
+        if (isCode) {
+            question.code = document.getElementById('eq-code')?.value || '';
+            question.codeLanguage = document.getElementById('eq-code-lang')?.value || 'c';
+        }
+
         if (!question.question) { Utils.showToast('题目内容不能为空', 'error'); return null; }
         return question;
     };
@@ -498,10 +559,11 @@ export function initEditor(Admin) {
         const explanation = document.getElementById('eq-explanation').value;
         const difficulty = parseInt(document.getElementById('eq-difficulty').value) || 1;
         const category = document.getElementById('eq-category').value;
-        const typeLabel = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答'}[type] || type;
+        const typeLabel = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答',code:'编程'}[type] || type;
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
+        const isCode = type === 'code';
 
         // 收集选项
         let options = [];
@@ -516,6 +578,14 @@ export function initEditor(Admin) {
         let fillAnswer = '';
         if (isEssay) {
             fillAnswer = document.getElementById('eq-fill-answer')?.value || '';
+        }
+
+        // 编程题代码
+        let codeContent = '';
+        let codeLang = 'c';
+        if (isCode) {
+            codeContent = document.getElementById('eq-code')?.value || '';
+            codeLang = document.getElementById('eq-code-lang')?.value || 'c';
         }
 
         let html = '<div class="qe-preview-card">';
@@ -541,9 +611,14 @@ export function initEditor(Admin) {
             html += '</div>';
         } else if (isEssay && fillAnswer) {
             html += `<div class="qe-preview-answer"><b>参考答案：</b>${Utils.escapeHtml(fillAnswer)}</div>`;
+        } else if (isCode && codeContent) {
+            html += `<div class="qe-preview-answer" style="margin-top:8px">
+                <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">代码 (${codeLang})</div>
+                <pre style="background:var(--bg-hover);padding:12px;border-radius:var(--radius);font-family:monospace;font-size:13px;line-height:1.5;overflow-x:auto;white-space:pre-wrap;margin:0">${Utils.escapeHtml(codeContent)}</pre>
+            </div>`;
         }
 
-        if (answer && !isJudge && !isEssay) {
+        if (answer && !isJudge && !isEssay && !isCode) {
             html += `<div class="qe-preview-answer">答案: <b>${Utils.escapeHtml(String(answer))}</b></div>`;
         }
         if (explanation) {

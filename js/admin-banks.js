@@ -5,6 +5,11 @@ import Utils from './utils.js';
 
 export function initBanks(Admin) {
 
+    // viewBank 别名（兼容 editor 中的调用）
+    Admin.viewBank = function(bankId, bankName) {
+        return this.showQuestionList(bankId, bankName);
+    };
+
     // ==================== 题库列表页 ====================
     Admin.renderBanks = async function() {
         const el = document.getElementById('sec-banks');
@@ -83,7 +88,7 @@ export function initBanks(Admin) {
             // 统计题目类型分布
             const typeCount = {};
             qs.forEach(q => { const t = q.type || 'unknown'; typeCount[t] = (typeCount[t]||0) + 1; });
-            const typeLabels = {single:'单选',multiple:'多选',judge:'判断',fill:'填空',essay:'简答',multi:'多选'};
+            const typeLabels = {single:'单选',multiple:'多选',judge:'判断',fill:'填空',essay:'简答',multi:'多选',code:'编程'};
             
             el.innerHTML = `
                 <!-- 返回按钮 -->
@@ -201,7 +206,7 @@ export function initBanks(Admin) {
                         <div style="display:flex;gap:8px;margin-bottom:12px">
                             <input type="text" id="bank-search" placeholder="搜索题目..." style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--bg-card);color:var(--text)" oninput="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
                             <select id="bank-type-filter" style="padding:8px;border:1px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg-card);color:var(--text)" onchange="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
-                                <option value="">全部题型</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option><option value="fill">填空</option><option value="essay">简答</option>
+                                <option value="">全部题型</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option><option value="fill">填空</option><option value="essay">简答</option><option value="code">编程</option>
                             </select>
                         </div>
                         <div id="bank-questions-list">${this._renderQuestionList(bankId, qs)}</div>
@@ -235,7 +240,7 @@ export function initBanks(Admin) {
     };
 
     Admin._renderQuestionList = function(bankId, qs) {
-        const typeLabels = {single:'单选',multiple:'多选',judge:'判断',fill:'填空',essay:'简答',multi:'多选'};
+        const typeLabels = {single:'单选',multiple:'多选',judge:'判断',fill:'填空',essay:'简答',multi:'多选',code:'编程'};
         return qs.map(q => `
             <div class="question-item" data-qid="${q.id}" style="padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:all 0.2s" onclick="Admin.editQuestion('${Utils.jsSafe(bankId)}',${q.id})">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
