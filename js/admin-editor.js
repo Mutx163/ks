@@ -592,7 +592,8 @@ export function initEditor(Admin) {
         html += '<div class="qe-preview-meta">';
         if (category) html += `<span class="qe-preview-tag">${Utils.escapeHtml(category)}</span>`;
         html += `<span class="qe-preview-tag type">${typeLabel}</span>`;
-        html += `<span class="qe-preview-tag">${'★'.repeat(difficulty)}${'☆'.repeat(3-difficulty)}</span>`;
+        const safeDiff = Math.max(1, Math.min(3, difficulty));
+        html += `<span class="qe-preview-tag">${'★'.repeat(safeDiff)}${'☆'.repeat(3-safeDiff)}</span>`;
         html += '</div>';
         html += `<div class="qe-preview-question">${Utils.escapeHtml(question) || '<span style="color:var(--text-tertiary)">题目内容...</span>'}</div>`;
 
