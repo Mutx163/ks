@@ -171,10 +171,16 @@
 
         <script type="module" src="js/quiz.js"></script>
         <script>
-            // 初始化 Lucide 图标
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
+            // 初始化 Lucide 图标（等待加载完成）
+            function initLucide() {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                } else {
+                    // 如果还没加载，等待后重试
+                    setTimeout(initLucide, 50);
+                }
             }
+            initLucide();
         </script>
         <script src="js/debug.js"></script>
         <!-- 51.la 统计 -->
