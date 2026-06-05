@@ -41,6 +41,8 @@ export function initEditor(Admin) {
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
         const isCode = type === 'code';
+        // 判断是否需要显示代码区：type=code 或有 code 字段的题
+        const hasCodeField = isCode || !!q?.code;
 
         // 规范化答案为字符串
         let answerStr = '';
@@ -89,11 +91,12 @@ export function initEditor(Admin) {
             </div>`;
         }
 
-        // 编程题代码区
+        // 编程题/带代码的题 代码区
         const codeLanguage = q?.codeLanguage || 'c';
-        const codeContent = q?.code || '';
+        // type=code 时如果 code 为空，从 answer 中取
+        const codeContent = q?.code || (isCode ? (q?.answer || '') : '');
         let codeEditorHTML = '';
-        if (isCode) {
+        if (hasCodeField) {
             codeEditorHTML = `<div class="qe-fill-wrap">
                 <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
                     <label style="font-size:12px;font-weight:600;">代码语言：</label>
@@ -171,7 +174,7 @@ export function initEditor(Admin) {
                     <label>参考答案</label>
                     ${fillAnswerHTML}
                 </div>
-                <div class="qe-field" id="eq-code-wrap" style="${isCode?'':'display:none'}">
+                <div class="qe-field" id="eq-code-wrap" style="${hasCodeField?'':'display:none'}">
                     <label>代码 <span class="qe-hint">支持代码高亮</span></label>
                     ${codeEditorHTML}
                 </div>
@@ -290,7 +293,12 @@ export function initEditor(Admin) {
         document.getElementById('eq-options-wrap').style.display = isChoice ? '' : 'none';
         document.getElementById('eq-judge-wrap').style.display = isJudge ? '' : 'none';
         document.getElementById('eq-fill-wrap').style.display = isEssay ? '' : 'none';
-        document.getElementById('eq-code-wrap').style.display = isCode ? '' : 'none';
+        // 切换到 code 类型时显示代码区，切换到其他类型时如果有 code 内容也保留显示
+        const codeWrap = document.getElementById('eq-code-wrap');
+        if (isCode) {
+            codeWrap.style.display = '';
+        }
+        // 如果没有切换到 code，不自动隐藏（用户可能手动加了代码）
 
         // 重置答案
         document.getElementById('eq-answer').value = '';
@@ -397,10 +405,23 @@ export function initEditor(Admin) {
             explanation: document.getElementById('eq-explanation').value.trim()
         };
 
-        // 编程题额外字段
-        if (isCode) {
-            question.code = document.getElementById('eq-code')?.value || '';
-            question.codeLanguage = document.getElementById('eq-code-lang')?.value || 'c';
+        // 代码字段（编程题或带代码的题都保存）
+        const codeEl = document.getElementById('eq-code');
+        const codeLangEl = document.getElementById('eq-code-lang');
+        if (codeEl) {
+            const codeVal = codeEl.value || '';
+            if (codeVal) {
+                question.code = codeVal;
+                question.codeLanguage = codeLangEl?.value || 'c';
+                // type=code 时，answer 就是代码
+                if (isCode) {
+                    question.answer = codeVal;
+                }
+            } else if (isCode) {
+                // type=code 时即使代码为空也保留字段
+                question.code = '';
+                question.codeLanguage = codeLangEl?.value || 'c';
+            }
         }
 
         if (!question.question) { Utils.showToast('题目内容不能为空', 'error'); return null; }
@@ -580,12 +601,14 @@ export function initEditor(Admin) {
             fillAnswer = document.getElementById('eq-fill-answer')?.value || '';
         }
 
-        // 编程题代码
+        // 代码字段（所有题型都可能有）
         let codeContent = '';
         let codeLang = 'c';
-        if (isCode) {
-            codeContent = document.getElementById('eq-code')?.value || '';
-            codeLang = document.getElementById('eq-code-lang')?.value || 'c';
+        const codeEl = document.getElementById('eq-code');
+        const codeLangEl = document.getElementById('eq-code-lang');
+        if (codeEl) {
+            codeContent = codeEl.value || '';
+            codeLang = codeLangEl?.value || 'c';
         }
 
         let html = '<div class="qe-preview-card">';
@@ -612,9 +635,12 @@ export function initEditor(Admin) {
             html += '</div>';
         } else if (isEssay && fillAnswer) {
             html += `<div class="qe-preview-answer"><b>参考答案：</b>${Utils.escapeHtml(fillAnswer)}</div>`;
-        } else if (isCode && codeContent) {
+        }
+
+        // 代码预览（所有题型）
+        if (codeContent) {
             html += `<div class="qe-preview-answer" style="margin-top:8px">
-                <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">代码 (${codeLang})</div>
+                <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px">代码 (${Utils.escapeHtml(codeLang)})</div>
                 <pre style="background:var(--bg-hover);padding:12px;border-radius:var(--radius);font-family:monospace;font-size:13px;line-height:1.5;overflow-x:auto;white-space:pre-wrap;margin:0">${Utils.escapeHtml(codeContent)}</pre>
             </div>`;
         }
