@@ -4,6 +4,7 @@
  */
 
 import API from './api.js';
+import Storage from './storage.js';
 
 const BankLoader = {
     /**
@@ -85,6 +86,9 @@ const BankLoader = {
                 questionCount: bank.questions?.length,
                 enabled: bank.enabled
             });
+
+            // 存储到内存中
+            Storage.setBank(bank);
 
             console.log(`[BankLoader] ✅ 题库加载成功:`, bankId, `(${bank.questions?.length || 0} 题)`);
             console.log(`[BankLoader] ========== 题库加载完成: ${bankId} ==========`);
