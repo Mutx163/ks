@@ -34,7 +34,9 @@ const Storage = {
                 randomOrder: false,
                 swipeNavigation: true,
                 fontSize: 16,
-                theme: 'auto'
+                theme: 'auto',
+                aiEngine: 'metaso',
+                customAiEngines: []
             });
         }
         if (!this.get(this.KEYS.HISTORY)) {
@@ -376,7 +378,10 @@ const Storage = {
             autoNext: false,
             randomOrder: false,
             swipeNavigation: true,
-            fontSize: 16
+            fontSize: 16,
+            theme: 'auto',
+            aiEngine: 'metaso',
+            customAiEngines: []
         };
     },
 

@@ -8,6 +8,7 @@ import BankLoader from './bankLoader.js';
 import Tracker from './tracker.js';
 import API from './api.js';
 import Perf from './perf.js';
+import AIEngines from './aiEngines.js';
 
 const App = {
     state: {
@@ -922,8 +923,7 @@ const App = {
         const fontSize = settings.fontSize || 16;
         const answerMode = settings.answerMode || 'normal';
         const swipeEnabled = settings.swipeNavigation !== false;
-        const aiEngine = settings.aiEngine || 'metaso';
-        const customAiEngine = settings.customAiEngine || '';
+        const aiSettings = AIEngines.normalizeSettings(settings);
 
         // 检查是否是管理员（本地管理员密码或云端管理员标记）
         const hasAdminPwd = !!localStorage.getItem('admin_pwd');
@@ -952,19 +952,7 @@ const App = {
                 <span>滑动切换题目</span>
             </label>
 
-            <label>AI 搜索引擎</label>
-            <select id="setting-ai-engine">
-                <option value="metaso" ${aiEngine === 'metaso' ? 'selected' : ''}>秘塔搜索 (metaso.cn)</option>
-                <option value="felo" ${aiEngine === 'felo' ? 'selected' : ''}>Felo AI (felo.ai)</option>
-                <option value="andi" ${aiEngine === 'andi' ? 'selected' : ''}>Andi Search (andisearch.com)</option>
-                <option value="baidu" ${aiEngine === 'baidu' ? 'selected' : ''}>百度搜索 (baidu.com)</option>
-                <option value="custom" ${aiEngine === 'custom' ? 'selected' : ''}>自定义引擎</option>
-            </select>
-            <div id="custom-engine-wrap" style="display: ${aiEngine === 'custom' ? 'block' : 'none'}; margin-top: 8px;">
-                <label>自定义引擎 URL</label>
-                <input type="text" id="setting-custom-engine" placeholder="https://example.com/search?q={keyword}" value="${Utils.escapeHtml(customAiEngine)}">
-                <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">用 {keyword} 表示搜索关键词</p>
-            </div>
+            ${AIEngines.renderSettingsFields(aiSettings)}
             
             ${isAdmin ? `
             <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
@@ -991,8 +979,11 @@ const App = {
                     onClick: (modal) => {
                         const size = parseInt(modal.querySelector('#setting-font-size').value);
                         const newAnswerMode = modal.querySelector('#setting-answer-mode').value;
-                        const newAiEngine = modal.querySelector('#setting-ai-engine').value;
-                        const newCustomEngine = modal.querySelector('#setting-custom-engine')?.value || '';
+                        const aiForm = AIEngines.readSettingsForm(modal);
+                        if (aiForm.error) {
+                            Utils.showToast(aiForm.error, 'error');
+                            return;
+                        }
 
                         if (size >= 12 && size <= 24) {
                             Storage.updateSettings({ fontSize: size });
@@ -1004,15 +995,14 @@ const App = {
                         console.log('[Settings] 💾 保存设置:', {
                             answerMode: newAnswerMode,
                             swipeNavigation: newSwipe,
-                            aiEngine: newAiEngine,
-                            customAiEngine: newCustomEngine
+                            aiEngine: aiForm.aiEngine,
+                            customAiEngines: aiForm.customAiEngines
                         });
 
                         Storage.updateSettings({
                             answerMode: newAnswerMode,
                             swipeNavigation: newSwipe,
-                            aiEngine: newAiEngine,
-                            customAiEngine: newCustomEngine
+                            ...aiForm
                         });
 
                         // 同步设置到云端
@@ -1028,17 +1018,11 @@ const App = {
                     onClick: (modal) => modal.remove()
                 }
             ],
-            size: 'sm'
+            size: 'lg'
         });
 
-        // 监听 AI 引擎选择变化（showModal 已同步插入 DOM，元素立即可用）
-        const engineSelect = document.getElementById('setting-ai-engine');
-        const customWrap = document.getElementById('custom-engine-wrap');
-        if (engineSelect && customWrap) {
-            engineSelect.addEventListener('change', () => {
-                customWrap.style.display = engineSelect.value === 'custom' ? 'block' : 'none';
-            });
-        }
+        const settingsModal = document.getElementById('setting-ai-engine')?.closest('.modal-overlay');
+        AIEngines.bindSettingsUI(settingsModal);
     },
 
     /**

@@ -626,6 +626,93 @@ pre[class*="language-"] code[class*="language-"] {
     box-shadow: 0 0 0 2px var(--primary-light);
 }
 
+.custom-ai-manager {
+    margin: 2px 0 var(--space-4);
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-hover);
+}
+
+.custom-ai-manager-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.custom-ai-manager-head label {
+    margin-bottom: 0;
+}
+
+.custom-ai-add,
+.custom-ai-delete {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.custom-ai-add:hover,
+.custom-ai-delete:hover {
+    color: var(--text);
+    border-color: var(--text-tertiary);
+}
+
+.custom-ai-row {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.7fr) minmax(180px, 1.3fr) auto;
+    align-items: end;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--border);
+}
+
+.custom-ai-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.custom-ai-field label {
+    font-size: var(--font-size-xs);
+}
+
+.modal-body .custom-ai-field input {
+    margin-bottom: 0;
+}
+
+.custom-ai-delete {
+    color: var(--danger);
+    border-color: rgba(198, 40, 40, 0.25);
+}
+
+.custom-ai-empty,
+.custom-ai-help {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+}
+
+.custom-ai-empty {
+    padding: var(--space-3) 0;
+    text-align: center;
+}
+
+.custom-ai-help {
+    margin-top: var(--space-2);
+    line-height: 1.5;
+}
+
+.custom-ai-help code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: var(--bg-card);
+    color: var(--primary);
+}
+
 .modal-footer {
     display: flex;
     gap: var(--space-2);
@@ -798,6 +885,16 @@ pre[class*="language-"] code[class*="language-"] {
 @media (max-width: 768px) {
     .container {
         padding: 0 var(--space-4);
+    }
+
+    .custom-ai-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        gap: var(--space-2);
+    }
+
+    .custom-ai-delete {
+        justify-self: flex-end;
     }
 }
 

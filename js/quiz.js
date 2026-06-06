@@ -9,6 +9,7 @@ import BankLoader from './bankLoader.js';
 import Tracker from './tracker.js';
 import API from './api.js';
 import Perf from './perf.js';
+import AIEngines from './aiEngines.js';
 
 const INPUT_SAVE_DEBOUNCE_MS = 300;
 const FILL_AUTO_FOCUS_DELAY_MS = 100;
@@ -1391,8 +1392,7 @@ const Quiz = {
         const fontSize = settings.fontSize || 16;
         const answerMode = settings.answerMode || 'normal';
         const swipeEnabled = settings.swipeNavigation !== false;
-        const aiEngine = settings.aiEngine || 'metaso';
-        const customAiEngine = settings.customAiEngine || '';
+        const aiSettings = AIEngines.normalizeSettings(settings);
 
         const content = `
             <label>字体大小</label>
@@ -1417,19 +1417,7 @@ const Quiz = {
                 <span>滑动切换题目</span>
             </label>
 
-            <label>AI 搜索引擎</label>
-            <select id="setting-ai-engine">
-                <option value="metaso" ${aiEngine === 'metaso' ? 'selected' : ''}>秘塔搜索 (metaso.cn)</option>
-                <option value="felo" ${aiEngine === 'felo' ? 'selected' : ''}>Felo AI (felo.ai)</option>
-                <option value="andi" ${aiEngine === 'andi' ? 'selected' : ''}>Andi Search (andisearch.com)</option>
-                <option value="baidu" ${aiEngine === 'baidu' ? 'selected' : ''}>百度搜索 (baidu.com)</option>
-                <option value="custom" ${aiEngine === 'custom' ? 'selected' : ''}>自定义引擎</option>
-            </select>
-            <div id="custom-engine-wrap" style="display: ${aiEngine === 'custom' ? 'block' : 'none'}; margin-top: 8px;">
-                <label>自定义引擎 URL</label>
-                <input type="text" id="setting-custom-engine" placeholder="https://example.com/search?q={keyword}" value="${Utils.escapeHtml(customAiEngine)}">
-                <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 4px;">用 {keyword} 表示搜索关键词</p>
-            </div>
+            ${AIEngines.renderSettingsFields(aiSettings)}
         `;
 
         Utils.showModal({
@@ -1442,8 +1430,11 @@ const Quiz = {
                     onClick: (modal) => {
                         const size = parseInt(modal.querySelector('#setting-font-size').value);
                         const newAnswerMode = modal.querySelector('#setting-answer-mode').value;
-                        const newAiEngine = modal.querySelector('#setting-ai-engine').value;
-                        const newCustomEngine = modal.querySelector('#setting-custom-engine')?.value || '';
+                        const aiForm = AIEngines.readSettingsForm(modal);
+                        if (aiForm.error) {
+                            Utils.showToast(aiForm.error, 'error');
+                            return;
+                        }
 
                         if (size >= 12 && size <= 24) {
                             Storage.updateSettings({ fontSize: size });
@@ -1455,8 +1446,7 @@ const Quiz = {
                         Storage.updateSettings({
                             answerMode: newAnswerMode,
                             swipeNavigation: newSwipe,
-                            aiEngine: newAiEngine,
-                            customAiEngine: newCustomEngine
+                            ...aiForm
                         });
 
                         // 更新当前答题模式
@@ -1475,17 +1465,11 @@ const Quiz = {
                     onClick: (modal) => modal.remove()
                 }
             ],
-            size: 'sm'
+            size: 'lg'
         });
 
-        // 监听 AI 引擎选择变化
-        const engineSelect = document.getElementById('setting-ai-engine');
-        const customWrap = document.getElementById('custom-engine-wrap');
-        if (engineSelect && customWrap) {
-            engineSelect.addEventListener('change', () => {
-                customWrap.style.display = engineSelect.value === 'custom' ? 'block' : 'none';
-            });
-        }
+        const settingsModal = document.getElementById('setting-ai-engine')?.closest('.modal-overlay');
+        AIEngines.bindSettingsUI(settingsModal);
     },
 
     /**
@@ -1537,42 +1521,12 @@ const Quiz = {
      */
     _buildSearchUrl(keyword) {
         const settings = Storage.getSettings();
-        const aiEngine = settings.aiEngine || 'metaso';
-        const customEngine = settings.customAiEngine || '';
-        const encoded = encodeURIComponent(keyword);
-
-        console.log('[AI] 🔍 构建搜索 URL:', { aiEngine, customEngine, keyword });
-
-        const engines = {
-            felo: `https://felo.ai/search?q=${encoded}`,
-            andi: `https://andisearch.com/?q=${encoded}`,
-            baidu: `https://www.baidu.com/s?wd=${encoded}`,
-            metaso: `https://metaso.cn/?q=${encoded}`
-        };
-
-        // 非自定义引擎，直接返回
-        if (aiEngine !== 'custom') {
-            const url = engines[aiEngine] || engines.metaso;
-            console.log('[AI] ✅ 使用内置引擎:', aiEngine, url);
-            return url;
-        }
-
-        // 自定义引擎
-        if (!customEngine) {
-            console.warn('[AI] ⚠️ 自定义引擎 URL 为空，使用默认引擎');
-            return engines.metaso;
-        }
-
-        // 如果 URL 不包含 {keyword}，自动在末尾添加 ?q={keyword}
-        let url = customEngine;
-        if (!url.includes('{keyword}')) {
-            // 检查 URL 是否已有查询参数
-            url += url.includes('?') ? '&' : '?';
-            url += 'q={keyword}';
-        }
-
-        url = url.replace('{keyword}', encoded);
-        console.log('[AI] ✅ 使用自定义引擎:', url);
+        const url = AIEngines.buildSearchUrl(settings, keyword);
+        console.log('[AI] ✅ 使用搜索引擎:', {
+            aiEngine: AIEngines.normalizeSettings(settings).aiEngine,
+            keyword,
+            url
+        });
         return url;
     },
 
