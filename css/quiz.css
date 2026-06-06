@@ -94,8 +94,9 @@
 /* ===== 主布局（双栏） ===== */
 .quiz-layout {
     display: flex;
-    min-height: calc(100vh - 56px);
-    margin-top: 52px;
+    min-height: 100vh;
+    margin-top: 0;
+    padding-top: 52px;
 }
 
 .quiz-main-col {

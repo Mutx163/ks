@@ -44,8 +44,8 @@
 }
 
 .insight-main {
-    margin-top: 60px;
-    padding: 0 0 var(--space-6);
+    margin-top: 0;
+    padding: 60px 0 var(--space-6);
 }
 
 .insight-summary {
@@ -408,8 +408,8 @@
     }
 
     .insight-main {
-        margin-top: 60px;
-        padding: 0 0 var(--space-4);
+        margin-top: 0;
+        padding: 60px 0 var(--space-4);
     }
 
     .insight-summary {
