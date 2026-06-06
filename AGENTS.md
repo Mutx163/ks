@@ -27,8 +27,12 @@ ks/
 │   ├── quiz.js             # 刷题逻辑
 │   ├── storage.js          # 本地存储管理
 │   └── utils.js            # 工具函数
-├── banks/                  # 内置题库目录
+├── banks/                  # 本地题库备份目录（不参与前端运行时加载）
 │   └── c-language.json     # C语言题库
+├── worker/                 # Cloudflare Worker + D1 后端
+│   ├── src/index.js        # API 入口
+│   ├── schema.sql          # D1 表结构
+│   └── wrangler.toml       # Worker 配置
 ├── 题库导入文档.md          # 题库格式说明
 └── AGENTS.md               # 本文档
 ```
@@ -48,18 +52,18 @@ npm run build
 
 ## 添加新题库
 
-1. 按照 `题库导入文档.md` 格式编写JSON文件
+生产环境题库只从 Cloudflare Worker/D1 加载，必须通过 `admin.html` 管理后台导入并启用云端题库。
+
+`banks/*.json` 仅用于人工备份，不参与前端运行时加载，也不会作为 API 失败时的兜底来源；构建产物不复制 `banks/` 目录。
+
+备份流程：
+
+1. 按照 `题库导入文档.md` 格式编写 JSON 文件
 2. 保存到 `banks/` 目录，如 `banks/new-bank.json`
-3. 编辑 `js/config.js`，在 `builtinBanks` 数组中添加文件名：
-
-```javascript
-export const builtinBanks = [
-    'c-language.json',
-    'new-bank.json'  // 新增
-];
-```
-
-4. 本地测试：`npm run dev`
+3. 如需记录备份清单，可更新 `js/config.js` 的 `backupBankFiles`
+4. 通过管理后台导入云端题库
+5. 本地测试：`npm run dev`
+6. 构建验证：`npm run build`
 
 ## 部署流程
 
@@ -88,17 +92,23 @@ git push origin main
 ### 部署信息
 
 - GitHub仓库：https://github.com/Mutx163/ks
+- Cloudflare Pages 控制台：https://dash.cloudflare.com/29384b90082af8364a4570c7da0b0549/pages/view/ks
 - Cloudflare Pages：https://ks-cjx.pages.dev
 - 自定义域名：https://ks.mutx.ccwu.cc（需配置DNS）
+- Worker API：https://ks-api.mutx.ccwu.cc
 
 ## 本地存储
 
 用户数据存储在浏览器 localStorage：
 
-- `quiz_banks` - 题库数据
-- `quiz_progress` - 答题进度
+- `quiz_progress` - 答题进度、逐题状态和累计时长
 - `quiz_settings` - 用户设置
 - `quiz_history` - 答题历史
+- `quiz_bookmarks` - 收藏题
+- `quiz_session` - 未完成刷题会话
+- `quiz_recent_banks` - 最近使用题库
+- `ks_sync_code` - 云同步码
+- `ks_device_id` - 设备 ID
 
 ## 顾问模型(advisor)使用规则
 

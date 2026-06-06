@@ -27,7 +27,7 @@ const App = {
         console.log('[App] 📚 开始加载题库...');
         try {
             await Promise.race([
-                BankLoader.loadAllBuiltinBanks(),
+                BankLoader.loadAllBanks(),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
             ]);
             Perf.mark('题库加载完成');
@@ -219,8 +219,17 @@ const App = {
         let shown = false;
 
         // 从缓存恢复
-        const cached = (() => { try { return localStorage.getItem(CACHE_KEY); } catch { return null; } })();
-        if (cached) { this._renderAnnounceWrap(el, cached); shown = true; }
+        const cached = (() => {
+            try {
+                return localStorage.getItem(CACHE_KEY);
+            } catch (_e) {
+                return null;
+            }
+        })();
+        if (cached) {
+            this._renderAnnounceWrap(el, cached);
+            shown = true;
+        }
 
         // 尝试云 API
         try {
@@ -229,16 +238,26 @@ const App = {
             console.log('[公告] 响应:', JSON.stringify(d));
             if (d?.ok && d.announce?.content) {
                 const text = Utils.escapeHtml(d.announce.content.replace(/\n/g, ' '));
-                try { localStorage.setItem(CACHE_KEY, text); } catch {}
+                try {
+                    localStorage.setItem(CACHE_KEY, text);
+                } catch (e) {
+                    console.warn('[公告] 缓存公告失败:', e.message);
+                }
                 this._renderAnnounceWrap(el, text);
                 return;
             } else {
                 // 没有公告时清除缓存
-                try { localStorage.removeItem(CACHE_KEY); } catch {}
+                try {
+                    localStorage.removeItem(CACHE_KEY);
+                } catch (e) {
+                    console.warn('[公告] 清除公告缓存失败:', e.message);
+                }
                 if (!shown) el.style.display = 'none';
                 return;
             }
-        } catch {}
+        } catch (e) {
+            console.warn('[公告] 请求失败:', e.message);
+        }
 
         // 全部失败
         if (!shown) el.style.display = 'none';

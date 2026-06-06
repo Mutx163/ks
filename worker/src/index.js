@@ -25,6 +25,10 @@ function json(data, status = 200, origin = '*', cacheMaxAge = 0) {
     const headers = { 'Content-Type': 'application/json', ...corsHeaders(origin) };
     if (cacheMaxAge > 0) {
         headers['Cache-Control'] = `public, max-age=${cacheMaxAge}`;
+    } else {
+        headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0';
+        headers['Pragma'] = 'no-cache';
+        headers['Expires'] = '0';
     }
     return new Response(JSON.stringify(data), { status, headers });
 }
@@ -1001,8 +1005,8 @@ async function handleGetBanks(env, origin) {
         enabled: b.enabled !== 0, // 转为布尔值
         allowed_modes: b.allowed_modes ? JSON.parse(b.allowed_modes) : null
     }));
-    // 缓存 5 分钟（减少重复请求，更新延迟最多 5 分钟）
-    return json({ ok: true, banks }, 200, origin, 300);
+    // 题库启用/禁用需要立即生效，不能缓存列表响应
+    return json({ ok: true, banks }, 200, origin);
 }
 
 // 前端：获取题库完整数据（含题目）

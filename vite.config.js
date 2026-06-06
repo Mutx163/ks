@@ -1,40 +1,37 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { readdirSync, mkdirSync, copyFileSync, existsSync } from 'fs';
+import { readdirSync } from 'fs';
 
-// 获取所有 HTML 文件作为入口
+// 获取所有 HTML 文件作为入口，确保 Cloudflare Pages 构建时包含管理页/排行榜等多页面入口
 const input = {};
-readdirSync('.').filter(f => f.endsWith('.html')).forEach(file => {
-    const name = file.replace('.html', '');
-    input[name] = resolve(__dirname, file);
-});
+readdirSync('.')
+    .filter((file) => file.endsWith('.html'))
+    .forEach((file) => {
+        const name = file.replace('.html', '');
+        input[name] = resolve(__dirname, file);
+    });
 
-// 复制静态资源的插件
-function copyStaticFiles() {
+export default defineConfig(({ mode }) => {
+    const outDir = process.env.VITE_OUT_DIR || 'dist';
+
     return {
-        name: 'copy-static',
-        writeBundle() {
-            // 复制 debug.js
-            if (existsSync('js/debug.js')) {
-                mkdirSync('dist/js', { recursive: true });
-                copyFileSync('js/debug.js', 'dist/js/debug.js');
+        server: {
+            port: 3000,
+            host: '0.0.0.0'
+        },
+        build: {
+            outDir,
+            rollupOptions: {
+                input
             }
-            // 复制 banks 目录
-            if (existsSync('banks')) {
-                mkdirSync('dist/banks', { recursive: true });
-                readdirSync('banks').filter(f => f.endsWith('.json')).forEach(f => {
-                    copyFileSync(`banks/${f}`, `dist/banks/${f}`);
-                });
+        },
+        define: {
+            __APP_MODE__: JSON.stringify(mode)
+        },
+        resolve: {
+            alias: {
+                '@': resolve(__dirname, '.')
             }
         }
     };
-}
-
-export default defineConfig({
-    build: {
-        rollupOptions: {
-            input
-        }
-    },
-    plugins: [copyStaticFiles()]
 });

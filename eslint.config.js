@@ -36,7 +36,18 @@ export default [
                 Blob: 'readonly',
                 URL: 'readonly',
                 URLSearchParams: 'readonly',
-                FileReader: 'readonly'
+                FileReader: 'readonly',
+                location: 'readonly',
+                crypto: 'readonly',
+                AbortController: 'readonly',
+                requestAnimationFrame: 'readonly',
+                XMLHttpRequest: 'readonly',
+                FormData: 'readonly',
+                performance: 'readonly',
+                LA: 'readonly',
+                lucide: 'readonly',
+                eruda: 'readonly',
+                Storage: 'readonly'
             }
         }
     },

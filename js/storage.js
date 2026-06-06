@@ -339,6 +339,7 @@ const Storage = {
 
         if (record.duration && record.duration > 0 && record.mode !== 'review') {
             this.addDuration(record.duration);
+            this.addBankDuration(record.bankId, record.duration);
         }
     },
 
@@ -346,6 +347,16 @@ const Storage = {
         const progress = this.getProgress();
         if (!progress._global) progress._global = {};
         progress._global.totalDuration = (progress._global.totalDuration || 0) + seconds;
+        this.set(this.KEYS.PROGRESS, progress);
+    },
+
+    addBankDuration(bankId, seconds) {
+        if (!bankId || !seconds || seconds <= 0) return;
+        const progress = this.getProgress();
+        if (!progress[bankId]) {
+            progress[bankId] = { answered: 0, correct: 0, wrong: 0, questions: {} };
+        }
+        progress[bankId].duration = (progress[bankId].duration || 0) + seconds;
         this.set(this.KEYS.PROGRESS, progress);
     },
 
@@ -384,7 +395,7 @@ const Storage = {
         let totalAnswered = 0;
         let totalCorrect = 0;
         let totalWrong = 0;
-        let totalDuration = 0;
+        const totalDuration = progress._global?.totalDuration || 0;
 
         banks.forEach((bank) => {
             totalQuestions += bank.questions?.length || bank.questionCount || 0;
@@ -393,8 +404,6 @@ const Storage = {
             totalCorrect += bankProgress.correct || 0;
             totalWrong += bankProgress.wrong || 0;
         });
-
-        totalDuration = progress._global?.totalDuration || 0;
 
         return {
             bankCount: banks.length,

@@ -79,24 +79,44 @@ const API = {
 
     async request(path, options = {}) {
         const startTime = Date.now();
-        const method = options.method || 'GET';
+        const { cacheBust: _cacheBust, ...fetchOptions } = options;
+        const method = fetchOptions.method || 'GET';
         try {
-            const url = this.BASE_URL + path;
+            const urlObj = new URL(path, this.BASE_URL);
+            if (method === 'GET' && options.cacheBust !== false) {
+                urlObj.searchParams.set('_ts', Date.now().toString());
+            }
+            const url = urlObj.toString();
             console.log(`[API] 📡 ${method} ${url}`);
             
             const res = await fetch(url, {
+                cache: 'no-store',
                 headers: { 'Content-Type': 'application/json' },
-                ...options
+                ...fetchOptions
             });
             
             const elapsed = Date.now() - startTime;
             console.log(`[API] ✅ ${method} ${path} (${elapsed}ms) 状态: ${res.status}`);
             
-            const data = await res.json();
+            const text = await res.text();
+            let data = null;
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (_e) {
+                    console.warn(`[API] ❌ 非 JSON 响应: ${text.slice(0, 200)}`);
+                    if (!res.ok) {
+                        if (res.status === 403) return { ok: false, disabled: true, error: '资源不可用' };
+                        return null;
+                    }
+                    return null;
+                }
+            }
+
             if (!res.ok) {
-                console.warn(`[API] ❌ 请求失败: ${data.error || '未知错误'}`);
+                console.warn(`[API] ❌ 请求失败: ${data?.error || '未知错误'}`);
                 // 403 表示资源被禁用，返回特殊标记以区分网络错误
-                if (res.status === 403) return { ok: false, disabled: true, error: data.error };
+                if (res.status === 403) return { ok: false, disabled: true, error: data?.error || '资源不可用' };
                 return null;
             }
             return data;
@@ -448,6 +468,14 @@ const API = {
                 local[bankId] = cloud;
                 changed = true;
             } else {
+                // 合并每题库累计时长（取较大值，避免多设备旧数据覆盖新数据）
+                const cloudDuration = cloud.duration || 0;
+                const localDuration = l.duration || 0;
+                if (cloudDuration > localDuration) {
+                    l.duration = cloudDuration;
+                    changed = true;
+                }
+
                 // 合并逐题数据（取最新时间戳）
                 const localQ = l.questions || {};
                 const cloudQ = cloud.questions || {};
@@ -640,7 +668,9 @@ const API = {
                     initials = data.user.initials;
                     localStorage.setItem(this.KEYS.INITIALS, initials);
                 }
-            } catch {}
+            } catch (e) {
+                console.warn('[API] 获取云端用户名失败:', e.message);
+            }
         }
 
         const content = code ? `

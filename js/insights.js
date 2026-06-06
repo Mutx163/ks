@@ -53,7 +53,7 @@ const Insights = {
     },
 
     async loadBuiltinBanks() {
-        await BankLoader.loadAllBuiltinBanks();
+        await BankLoader.loadAllBanks();
     },
 
     loadData() {

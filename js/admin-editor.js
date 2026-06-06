@@ -382,7 +382,7 @@ export function initEditor(Admin) {
         }
 
         // 收集答案
-        let answer = '';
+        let answer;
         if (isJudge) {
             answer = document.getElementById('eq-answer').value === 'true';
         } else if (isEssay) {
