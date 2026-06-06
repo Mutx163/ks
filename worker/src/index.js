@@ -37,6 +37,16 @@ function error(msg, status = 400, origin = '*') {
     return json({ error: msg }, status, origin);
 }
 
+function streamText(stream, origin = '*') {
+    return new Response(stream, {
+        headers: {
+            ...corsHeaders(origin),
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+        }
+    });
+}
+
 export default {
     async fetch(request, env) {
         const url = new URL(request.url);
@@ -99,6 +109,16 @@ export default {
                 return await handleLeaderboard(url, env, origin);
             }
 
+            // GET /api/ai/config（公开：AI 解读配置，不返回后台密钥）
+            if (method === 'GET' && path === '/api/ai/config') {
+                return await handleGetAIConfig(env, origin);
+            }
+
+            // POST /api/ai/explain（网页内 AI 流式解读）
+            if (method === 'POST' && path === '/api/ai/explain') {
+                return await handleAIExplain(request, env, origin);
+            }
+
             // ========== 管理员接口 ==========
 
             // GET /api/admin/users?syncCode=xxx
@@ -149,6 +169,16 @@ export default {
             // GET /api/admin/overview
             if (method === 'GET' && path === '/api/admin/overview') {
                 return await handleAdminOverview(url, env, origin);
+            }
+
+            // GET /api/admin/ai-config
+            if (method === 'GET' && path === '/api/admin/ai-config') {
+                return await handleAdminGetAIConfig(url, env, origin);
+            }
+
+            // PUT /api/admin/ai-config
+            if (method === 'PUT' && path === '/api/admin/ai-config') {
+                return await handleAdminUpdateAIConfig(request, env, origin);
             }
 
             // POST /api/admin/announce
@@ -276,6 +306,21 @@ export default {
                 return await handleGetAnnounce(env, origin);
             }
 
+            // GET /api/admin/operation-logs
+            if (method === 'GET' && path === '/api/admin/operation-logs') {
+                return await handleAdminOperationLogs(url, env, origin);
+            }
+
+            // POST /api/admin/operation-logs
+            if (method === 'POST' && path === '/api/admin/operation-logs') {
+                return await handleAdminWriteOperationLog(request, env, origin);
+            }
+
+            // GET /api/admin/system-status
+            if (method === 'GET' && path === '/api/admin/system-status') {
+                return await handleAdminSystemStatus(url, env, origin);
+            }
+
             return error('Not Found', 404, origin);
         } catch (e) {
             console.error('Worker error:', e);
@@ -292,6 +337,123 @@ function generateSyncCode() {
         code += chars[Math.floor(Math.random() * chars.length)];
     }
     return code;
+}
+
+
+// ========== 管理员操作日志 ==========
+async function writeAdminOperationLog(env, { action, targetType = '', targetId = '', detail = '', ok = true, operator = '' }) {
+    try {
+        await env.DB.prepare(
+            'INSERT INTO admin_operation_logs (action, target_type, target_id, detail, ok, operator, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(action, targetType, targetId, detail, ok ? 1 : 0, operator, new Date().toISOString()).run();
+    } catch (e) {
+        console.error('writeAdminOperationLog failed:', e);
+    }
+}
+
+async function handleAdminOperationLogs(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10)));
+    const action = url.searchParams.get('action') || '';
+    const targetType = url.searchParams.get('targetType') || '';
+    const okFilter = url.searchParams.get('ok') || '';
+    const offset = (page - 1) * pageSize;
+
+    let where = '1=1';
+    const binds = [];
+    if (action) { where += ' AND action = ?'; binds.push(action); }
+    if (targetType) { where += ' AND target_type = ?'; binds.push(targetType); }
+    if (okFilter === '1') { where += ' AND ok = 1'; }
+    else if (okFilter === '0') { where += ' AND ok = 0'; }
+
+    const countRow = await env.DB.prepare(`SELECT COUNT(*) as cnt FROM admin_operation_logs WHERE ${where}`).bind(...binds).first();
+    const total = countRow?.cnt || 0;
+
+    const logsResult = await env.DB.prepare(
+        `SELECT * FROM admin_operation_logs WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).bind(...binds, pageSize, offset).all();
+    const logs = logsResult?.results || [];
+
+    // Get distinct actions for filter dropdown
+    const actionsResult = await env.DB.prepare('SELECT DISTINCT action FROM admin_operation_logs ORDER BY action').all();
+    const actions = (actionsResult?.results || []).map(r => r.action);
+
+    return json({ ok: true, logs, total, page, pageSize, actions }, 200, origin);
+}
+
+async function handleAdminWriteOperationLog(request, env, origin) {
+    const body = await request.json().catch(() => ({}));
+    const { deviceId, password, action, targetType, targetId, detail, ok } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    if (!action) return error('缺少 action', 400, origin);
+
+    await writeAdminOperationLog(env, {
+        action,
+        targetType: targetType || '',
+        targetId: targetId || '',
+        detail: typeof detail === 'string' ? detail.slice(0, 2000) : JSON.stringify(detail || '').slice(0, 2000),
+        ok: ok !== false,
+        operator: admin.id || admin.initials || ''
+    });
+
+    return json({ ok: true }, 200, origin);
+}
+
+async function handleAdminSystemStatus(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    const status = {};
+
+    // D1 check
+    try {
+        await env.DB.prepare('SELECT 1').first();
+        status.d1 = { ok: true };
+    } catch (e) {
+        status.d1 = { ok: false, error: e.message };
+    }
+
+    // Table counts
+    const tables = [];
+    for (const name of ['users', 'devices', 'stats', 'banks', 'announcements', 'bank_history', 'admin_operation_logs', 'app_config']) {
+        try {
+            const row = await env.DB.prepare(`SELECT COUNT(*) as cnt FROM ${name}`).first();
+            tables.push({ name, count: row?.cnt || 0 });
+        } catch {
+            tables.push({ name, count: -1 });
+        }
+    }
+    status.tables = tables;
+
+    // Logs count
+    try {
+        const logsRow = await env.DB.prepare('SELECT COUNT(*) as cnt FROM admin_operation_logs').first();
+        status.logs = { ok: true, count: logsRow?.cnt || 0 };
+    } catch {
+        status.logs = { ok: false };
+    }
+
+    // User/bank/announcement counts
+    try {
+        status.userCount = (await env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first())?.cnt || 0;
+        status.bankCount = (await env.DB.prepare('SELECT COUNT(*) as cnt FROM banks').first())?.cnt || 0;
+        status.announcementCount = (await env.DB.prepare('SELECT COUNT(*) as cnt FROM announcements').first())?.cnt || 0;
+    } catch {}
+
+    status.workerVersion = 'v2';
+    status.serverTime = new Date().toISOString();
+    status.apiDomain = new URL(url).origin;
+
+    return json({ ok: true, status }, 200, origin);
 }
 
 // ========== 注册用户 ==========
@@ -1418,4 +1580,253 @@ async function handleAdminUploadBank(request, env, origin) {
     ).bind(id, existing ? 'replace' : 'create', `${bank.questions.length}道题`, admin.id, now).run();
     
     return json({ ok: true, version, count: bank.questions.length }, 200, origin);
+}
+
+// ========== AI 解读：自动建表 ==========
+async function ensureAIConfigTable(env) {
+    await env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS app_config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL DEFAULT '',
+            updated_at TEXT
+        )
+    `).run();
+}
+
+async function getAIConfigRaw(env) {
+    const row = await env.DB.prepare(
+        "SELECT value FROM app_config WHERE key = 'ai_config'"
+    ).first();
+    if (!row) return null;
+    try { return JSON.parse(row.value); } catch { return null; }
+}
+
+async function saveAIConfigRaw(env, config) {
+    const now = new Date().toISOString();
+    await env.DB.prepare(`
+        INSERT INTO app_config (key, value, updated_at) VALUES ('ai_config', ?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `).bind(JSON.stringify(config), now).run();
+}
+
+// GET /api/ai/config（公开，不暴露 API 密钥）
+async function handleGetAIConfig(env, origin) {
+    try {
+        await ensureAIConfigTable(env);
+        const c = await getAIConfigRaw(env);
+        if (!c || !c.enabled) {
+            return json({ ok: true, config: { enabled: false, allowUserOverride: false, hasGlobalKey: false, mode: 'search', provider: 'openai', baseUrl: '', model: '' } }, 200, origin, 30);
+        }
+        return json({
+            ok: true,
+            config: {
+                enabled: !!c.enabled,
+                allowUserOverride: !!c.allowUserOverride,
+                hasGlobalKey: !!(c.apiKey && c.apiKey.length > 0),
+                mode: c.mode || 'search',
+                provider: c.provider || 'openai',
+                baseUrl: c.baseUrl || '',
+                model: c.model || ''
+            }
+        }, 200, origin, 30);
+    } catch (e) {
+        return error('获取 AI 配置失败: ' + e.message, 500, origin);
+    }
+}
+
+// GET /api/admin/ai-config（管理员，含密钥标记）
+async function handleAdminGetAIConfig(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    try {
+        await ensureAIConfigTable(env);
+        const c = await getAIConfigRaw(env);
+        if (!c) {
+            return json({ ok: true, config: { enabled: false, allowUserOverride: false, hasGlobalKey: false, mode: 'search', provider: 'openai', baseUrl: '', model: '', systemPrompt: '', updatedAt: null } }, 200, origin);
+        }
+        return json({
+            ok: true,
+            config: {
+                enabled: !!c.enabled,
+                allowUserOverride: !!c.allowUserOverride,
+                hasGlobalKey: !!(c.apiKey && c.apiKey.length > 0),
+                mode: c.mode || 'search',
+                provider: c.provider || 'openai',
+                baseUrl: c.baseUrl || '',
+                model: c.model || '',
+                systemPrompt: c.systemPrompt || '',
+                updatedAt: c.updatedAt || null
+            }
+        }, 200, origin);
+    } catch (e) {
+        return error('获取 AI 配置失败: ' + e.message, 500, origin);
+    }
+}
+
+// PUT /api/admin/ai-config（管理员更新）
+async function handleAdminUpdateAIConfig(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, config } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    if (!config || typeof config !== 'object') return error('缺少 config 参数', 400, origin);
+
+    try {
+        await ensureAIConfigTable(env);
+        const existing = (await getAIConfigRaw(env)) || {};
+        const merged = { ...existing };
+
+        if (config.enabled !== undefined) merged.enabled = !!config.enabled;
+        if (config.allowUserOverride !== undefined) merged.allowUserOverride = !!config.allowUserOverride;
+        if (config.mode !== undefined) merged.mode = config.mode;
+        if (config.provider !== undefined) merged.provider = config.provider;
+        if (config.baseUrl !== undefined) merged.baseUrl = config.baseUrl;
+        if (config.model !== undefined) merged.model = config.model;
+        if (config.systemPrompt !== undefined) merged.systemPrompt = config.systemPrompt;
+        if (config.clearApiKey) {
+            merged.apiKey = '';
+        } else if (config.apiKey && config.apiKey.length > 0) {
+            merged.apiKey = config.apiKey;
+        }
+        merged.updatedAt = new Date().toISOString();
+
+        await saveAIConfigRaw(env, merged);
+        return json({ ok: true }, 200, origin);
+    } catch (e) {
+        return error('保存 AI 配置失败: ' + e.message, 500, origin);
+    }
+}
+
+// POST /api/ai/explain（流式解读）
+async function handleAIExplain(request, env, origin) {
+    const body = await request.json().catch(() => null);
+    if (!body || !body.question || !body.answer) return error('缺少 question 或 answer 参数', 400, origin);
+
+    const { question, answer, analysis, bankName, userProvider, userBaseUrl, userApiKey, userModel } = body;
+
+    try {
+        await ensureAIConfigTable(env);
+        const globalCfg = (await getAIConfigRaw(env)) || {};
+
+        if (!globalCfg.enabled) return error('AI 解读功能未启用', 403, origin);
+
+        const allowUser = !!globalCfg.allowUserOverride;
+        const hasUserKey = allowUser && userApiKey && userApiKey.length > 0;
+
+        const provider = hasUserKey && userProvider ? userProvider : (globalCfg.provider || 'openai');
+        const baseUrl = (hasUserKey && userBaseUrl ? userBaseUrl : (globalCfg.baseUrl || '')).replace(/\/+$/, '');
+        const apiKey = hasUserKey ? userApiKey : (globalCfg.apiKey || '');
+        const model = hasUserKey && userModel ? userModel : (globalCfg.model || 'gpt-4o-mini');
+        const systemPrompt = globalCfg.systemPrompt || '你是一位耐心的辅导老师。根据题目、正确答案和解析，用简洁清晰的中文为学生讲解为什么选这个答案，帮助学生理解知识点。回答控制在 200 字以内。';
+
+        if (!baseUrl) return error('后台未配置 Base URL', 400, origin);
+        if (!apiKey) return error('后台未配置 API 密钥', 400, origin);
+
+        let context = `题目：${question}\n正确答案：${answer}`;
+        if (analysis) context += `\n解析：${analysis}`;
+        if (bankName) context += `\n题库：${bankName}`;
+
+        const userMessage = context;
+
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+            async start(controller) {
+                try {
+                    if (provider === 'gemini') {
+                        const url = `${baseUrl}/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`;
+                        const payload = {
+                            contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userMessage }] }],
+                            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+                        };
+                        const resp = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!resp.ok) {
+                            const errText = await resp.text();
+                            controller.enqueue(encoder.encode(`[AI 接口错误 ${resp.status}] ${errText.slice(0, 200)}`));
+                            controller.close();
+                            return;
+                        }
+                        const reader = resp.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buf = '';
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buf += decoder.decode(value, { stream: true });
+                            const lines = buf.split('\n');
+                            buf = lines.pop() || '';
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                try {
+                                    const d = JSON.parse(line.slice(6));
+                                    const text = d.candidates?.[0]?.content?.parts?.[0]?.text;
+                                    if (text) controller.enqueue(encoder.encode(text));
+                                } catch {}
+                            }
+                        }
+                        controller.close();
+                    } else {
+                        // OpenAI 兼容
+                        const url = `${baseUrl}/chat/completions`;
+                        const payload = {
+                            model,
+                            stream: true,
+                            messages: [
+                                { role: 'system', content: systemPrompt },
+                                { role: 'user', content: userMessage }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 1024
+                        };
+                        const resp = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!resp.ok) {
+                            const errText = await resp.text();
+                            controller.enqueue(encoder.encode(`[AI 接口错误 ${resp.status}] ${errText.slice(0, 200)}`));
+                            controller.close();
+                            return;
+                        }
+                        const reader = resp.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buf = '';
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buf += decoder.decode(value, { stream: true });
+                            const lines = buf.split('\n');
+                            buf = lines.pop() || '';
+                            for (const line of lines) {
+                                if (!line.startsWith('data: ')) continue;
+                                const data = line.slice(6).trim();
+                                if (data === '[DONE]') { controller.close(); return; }
+                                try {
+                                    const d = JSON.parse(data);
+                                    const token = d.choices?.[0]?.delta?.content;
+                                    if (token) controller.enqueue(encoder.encode(token));
+                                } catch {}
+                            }
+                        }
+                        controller.close();
+                    }
+                } catch (e) {
+                    controller.enqueue(encoder.encode(`[错误] ${e.message}`));
+                    controller.close();
+                }
+            }
+        });
+
+        return streamText(stream, origin);
+    } catch (e) {
+        return error('AI 解读失败: ' + e.message, 500, origin);
+    }
 }

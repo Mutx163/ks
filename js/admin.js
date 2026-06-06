@@ -8,6 +8,9 @@ import { initUsers } from './admin-users.js';
 import { initBanks } from './admin-banks.js';
 import { initEditor } from './admin-editor.js';
 import { initAnnounce } from './admin-announce.js';
+import { initAI } from './admin-ai.js';
+import { initLogs } from './admin-logs.js';
+import { initStatus } from './admin-status.js';
 
 const Admin = {
     users: [],
@@ -31,6 +34,7 @@ const Admin = {
     sort: 'time',
     tab: 'overview',
     _loginVerified: false, // 标记是否已验证过密码
+    _routeBound: false,
 
     logAction(action, detail = {}, level = 'info') {
         const time = new Date().toISOString();
@@ -110,6 +114,7 @@ const Admin = {
             if (e.key === 'Enter') this.login();
         });
         this.bindOperationLogger();
+        this.bindRouter();
 
         if (this.password) {
             // 快速显示界面，后台验证密码
@@ -127,7 +132,7 @@ const Admin = {
                 console.log('[Admin] ✅ 后台验证成功');
                 this.users = d.users;
                 this._loginVerified = true;
-                this.renderTab();
+                this.handleRoute();
             } else {
                 console.warn('[Admin] ⚠️ 密码已过期，需要重新登录');
                 this.logout();
@@ -208,15 +213,37 @@ const Admin = {
     showApp() {
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('admin-app').style.display = '';
-        // 恢复上次的标签页
-        const savedTab = localStorage.getItem('admin_tab') || 'overview';
-        this.switchTab(savedTab);
+        this.bindRouter();
+        this.handleRoute();
     },
 
-    switchTab(t) {
-        this.logAction('后台切换标签页', { from: this.tab, to: t });
+    bindRouter() {
+        if (this._routeBound) return;
+        this._routeBound = true;
+        window.addEventListener('hashchange', () => this.handleRoute());
+    },
+
+    hashForTab(t) {
+        const map = {
+            overview: '#/overview',
+            users: '#/users',
+            banks: '#/banks',
+            activity: '#/activity',
+            announce: '#/announce',
+            ai: '#/ai',
+            logs: '#/logs',
+            status: '#/status'
+        };
+        return map[t] || '#/overview';
+    },
+
+    navigate(hash) {
+        if (location.hash === hash) this.handleRoute();
+        else location.hash = hash;
+    },
+
+    activateTab(t) {
         this.tab = t;
-        // 保存当前标签到 localStorage
         localStorage.setItem('admin_tab', t);
         document
             .querySelectorAll('.tab')
@@ -224,7 +251,43 @@ const Admin = {
         document
             .querySelectorAll('.section')
             .forEach((el) => el.classList.toggle('active', el.id === 'sec-' + t));
+    },
+
+    switchTab(t, { pushHash = true } = {}) {
+        this.logAction('后台切换标签页', { from: this.tab, to: t });
+        if (pushHash) {
+            this.navigate(this.hashForTab(t));
+            return;
+        }
+        this.activateTab(t);
         this.renderTab();
+    },
+
+    async handleRoute() {
+        if (document.getElementById('admin-app')?.style.display === 'none') return;
+        const valid = ['overview', 'users', 'banks', 'activity', 'announce', 'ai', 'logs', 'status'];
+        const saved = localStorage.getItem('admin_tab');
+        const fallback = valid.includes(saved) ? saved : 'overview';
+        const parts = decodeURIComponent((location.hash || `#/${fallback}`).replace(/^#\/?/, ''))
+            .split('/')
+            .filter(Boolean);
+        const main = parts[0] || fallback;
+        if (main === 'users' && parts[1]) {
+            this.activateTab('users');
+            await this.showUserDetail(parts[1], { pushHash: false });
+            return;
+        }
+        if (main === 'banks' && parts[1] && parts[2] === 'questions') {
+            this.activateTab('banks');
+            await this.showQuestionList(parts[1], '', { pushHash: false });
+            return;
+        }
+        if (main === 'banks' && parts[1]) {
+            this.activateTab('banks');
+            await this.showBankDetail(parts[1], { pushHash: false });
+            return;
+        }
+        this.switchTab(valid.includes(main) ? main : 'overview', { pushHash: false });
     },
 
     async renderTab() {
@@ -233,10 +296,14 @@ const Admin = {
             users: 'renderUsers',
             banks: 'renderBanks',
             activity: 'renderActivity',
-            announce: 'renderAnnounce'
+            announce: 'renderAnnounce',
+            ai: 'renderAI',
+            logs: 'renderLogs',
+            status: 'renderStatus'
         };
         if (map[this.tab]) await this[map[this.tab]]();
     },
+
 
     pageHeader({ title, description = '', crumbs = ['管理后台'], actions = '' }) {
         const safeCrumbs = crumbs.map((c) => `<span>${Utils.escapeHtml(c)}</span>`).join('');
@@ -258,6 +325,27 @@ const Admin = {
     statusPill(enabled, labels = {}) {
         const label = enabled ? labels.enabled || '启用' : labels.disabled || '禁用';
         return `<span class="status-pill ${enabled ? 'enabled' : 'disabled'}">${Utils.escapeHtml(label)}</span>`;
+    },
+
+    pager({ page = 1, pageSize = 20, total = 0, onPage, onPageSize, pageSizes = [10, 20, 50, 100] }) {
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        const safePage = Math.min(Math.max(1, page), totalPages);
+        const start = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+        const end = Math.min(total, safePage * pageSize);
+        const prev = Math.max(1, safePage - 1);
+        const next = Math.min(totalPages, safePage + 1);
+        return `
+            <div class="pager">
+                <div class="pager-info">显示 ${start}-${end} / 共 ${total} 条</div>
+                <div class="pager-actions">
+                    <select class="admin-select pager-size" onchange="${onPageSize}(parseInt(this.value, 10))">
+                        ${pageSizes.map((size) => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size} 条/页</option>`).join('')}
+                    </select>
+                    <button class="abtn" ${safePage <= 1 ? 'disabled' : ''} onclick="${onPage}(${prev})">上一页</button>
+                    <span class="pager-current">${safePage} / ${totalPages}</span>
+                    <button class="abtn" ${safePage >= totalPages ? 'disabled' : ''} onclick="${onPage}(${next})">下一页</button>
+                </div>
+            </div>`;
     },
 
     async confirmDanger({
@@ -551,6 +639,9 @@ initUsers(Admin);
 initBanks(Admin);
 initEditor(Admin);
 initAnnounce(Admin);
+initAI(Admin);
+initLogs(Admin);
+initStatus(Admin);
 
 // 挂载全局
 window.Admin = Admin;

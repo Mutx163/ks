@@ -145,7 +145,14 @@ export function initBanks(Admin) {
     };
 
     // ==================== 题库详情页（二级页面）====================
-    Admin.showBankDetail = async function (bankId) {
+    Admin.showBankDetail = async function (bankId, { pushHash = true } = {}) {
+        if (pushHash) {
+            const targetHash = `#/banks/${bankId}`;
+            if (location.hash !== targetHash) {
+                this.navigate(targetHash);
+                return;
+            }
+        }
         const el = document.getElementById('sec-banks');
         el.innerHTML = '<div class="loading">加载中...</div>';
 
@@ -261,7 +268,14 @@ export function initBanks(Admin) {
     };
 
     // ==================== 题目列表页（第三级）====================
-    Admin.showQuestionList = async function (bankId, bankName) {
+    Admin.showQuestionList = async function (bankId, bankName = '', { pushHash = true } = {}) {
+        if (pushHash) {
+            const targetHash = `#/banks/${bankId}/questions`;
+            if (location.hash !== targetHash) {
+                this.navigate(targetHash);
+                return;
+            }
+        }
         const el = document.getElementById('sec-banks');
         el.innerHTML = '<div class="loading">加载中...</div>';
 
@@ -323,7 +337,7 @@ export function initBanks(Admin) {
         const allowed = Array.from(cbs)
             .filter((cb) => cb.checked)
             .map((cb) => cb.dataset.mode);
-        const r = await this.post(`/api/admin/bank/${bankId}/modes`, {
+        const r = await this.post(`/api/admin/bank/${bankId}/settings`, {
             allowedModes: allowed.length === MODE_DEFS.length ? null : allowed
         });
         if (r?.ok) Utils.showToast('做题模式已保存', 'success');
@@ -615,7 +629,7 @@ export function initBanks(Admin) {
         try {
             const questions = JSON.parse(document.getElementById('import-questions-json').value);
             if (!Array.isArray(questions)) throw new Error('需要数组格式');
-            const r = await this.post(`/api/admin/bank/${bankId}/import`, { questions });
+            const r = await this.post(`/api/admin/bank/${bankId}/import-questions`, { questions });
             if (r?.ok) {
                 Utils.showToast(`已导入 ${r.added} 题`, 'success');
                 document.querySelector('.modal-mask')?.remove();

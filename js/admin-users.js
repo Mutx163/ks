@@ -5,6 +5,11 @@ import API from './api.js';
 import Utils from './utils.js';
 
 export function initUsers(Admin) {
+    // ==================== 分页/批量状态 ====================
+    Admin.userPage = 1;
+    Admin.userPageSize = 20;
+    Admin.selectedUsers = new Set();
+
     // ==================== 用户列表页 ====================
     Admin.renderUsers = function () {
         const el = document.getElementById('sec-users');
@@ -23,6 +28,17 @@ export function initUsers(Admin) {
         if (this.sort === 'answered') list.sort((a, b) => b.total_answered - a.total_answered);
         else if (this.sort === 'duration') list.sort((a, b) => b.total_duration - a.total_duration);
         else list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+        // 分页
+        const totalFiltered = list.length;
+        const pSize = this.userPageSize || 20;
+        const totalPages = Math.max(1, Math.ceil(totalFiltered / pSize));
+        if (this.userPage > totalPages) this.userPage = totalPages;
+        if (this.userPage < 1) this.userPage = 1;
+        const pageStart = (this.userPage - 1) * pSize;
+        const pageList = list.slice(pageStart, pageStart + pSize);
+        const selectedOnPage = pageList.filter((u) => this.selectedUsers.has(u.id));
+        const allOnPageSelected = pageList.length > 0 && selectedOnPage.length === pageList.length;
 
         const myId = API.getSyncCode();
 
@@ -54,11 +70,26 @@ export function initUsers(Admin) {
                 <div class="card-header"><h3>用户列表</h3><span class="count">${list.length}/${this.users.length}</span></div>
                 <div class="table-wrap">
                     <table>
-                        <thead><tr><th>同步码</th><th>姓名</th><th>角色</th><th>设备</th><th>答题</th><th>正确率</th><th>时长</th><th>注册</th><th>状态</th><th>操作</th></tr></thead>
-                        <tbody>${list.length ? list.map((u) => this._userRow(u, myId)).join('') : `<tr><td colspan="10">${this.emptyState({ title: '没有匹配用户', desc: '请调整搜索词或筛选条件。' })}</td></tr>`}</tbody>
+                        <thead><tr>
+<th><input type="checkbox" ${allOnPageSelected ? 'checked' : ''} onchange="Admin.toggleUsersOnPage(this.checked)" title="全选/取消本页"></th>
+<th>同步码</th><th>姓名</th><th>角色</th><th>设备</th><th>答题</th><th>正确率</th><th>时长</th><th>注册</th><th>状态</th><th>操作</th>
+</tr></thead>
+                        <tbody>${pageList.length ? pageList.map((u) => this._userRow(u, myId, this.selectedUsers.has(u.id))).join('') : `<tr><td colspan="11">${this.emptyState({ title: '没有匹配用户', desc: '请调整搜索词或筛选条件。' })}</td></tr>`}</tbody>
                     </table>
                 </div>
             </div>
+            ${this.selectedUsers.size > 0 ? `
+            <div class="toolbar" style="margin-top:8px;background:var(--admin-primary-weak);border:1px solid var(--admin-primary-border);border-radius:8px;padding:10px 14px">
+                <div class="toolbar-group" style="flex:1">
+                    <span class="status-pill info">已选 ${this.selectedUsers.size} 人</span>
+                </div>
+                <div class="toolbar-group">
+                    <button class="abtn warn" onclick="Admin.bulkBanUsers(true)">批量封禁</button>
+                    <button class="abtn success" onclick="Admin.bulkBanUsers(false)">批量解封</button>
+                    <button class="abtn" onclick="Admin.clearUserSelection()">清空选择</button>
+                </div>
+            </div>` : ''}
+            ${this.pager({ page: this.userPage, pageSize: this.userPageSize, total: totalFiltered, onPage: 'Admin.setUserPage', onPageSize: 'Admin.setUserPageSize' })}
         `;
         document
             .getElementById('search-input')
@@ -66,7 +97,7 @@ export function initUsers(Admin) {
         Utils.initIcons?.();
     };
 
-    Admin._userRow = function (u, myId) {
+    Admin._userRow = function (u, myId, selected = false) {
         const acc =
             u.total_answered > 0 ? Math.round((u.total_correct / u.total_answered) * 100) : 0;
         const c = acc >= 80 ? '#15803d' : acc >= 60 ? '#b45309' : '#b91c1c';
@@ -74,7 +105,9 @@ export function initUsers(Admin) {
         const jsn = Utils.jsSafe(u.initials);
         const jsu = Utils.jsSafe(u.id);
         const role = `${u.is_admin ? '<span class="badge b-admin">管理员</span>' : '<span class="badge">普通用户</span>'}${u.id === myId ? ' <span class="badge b-me">当前设备</span>' : ''}`;
+        const checked = selected ? 'checked' : '';
         return `<tr style="cursor:pointer" onclick="Admin.showUserDetail('${jsu}')">
+            <td onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="Admin.toggleUserSelection('${jsu}')"></td>
             <td><span class="code">${u.id}</span></td>
             <td><strong>${n}</strong></td>
             <td>${role}</td>
@@ -93,15 +126,85 @@ export function initUsers(Admin) {
 
     Admin.setSort = function (s) {
         this.sort = s;
+        this.userPage = 1;
         this.renderUsers();
     };
     Admin.setUserStatus = function (s) {
         this.userStatusFilter = s;
+        this.userPage = 1;
+        this.renderUsers();
+    };
+
+    Admin.setUserPage = function (p) {
+        this.userPage = p;
+        this.renderUsers();
+    };
+
+    Admin.setUserPageSize = function (s) {
+        this.userPageSize = s;
+        this.userPage = 1;
+        this.renderUsers();
+    };
+
+    Admin.toggleUserSelection = function (uid) {
+        if (this.selectedUsers.has(uid)) this.selectedUsers.delete(uid);
+        else this.selectedUsers.add(uid);
+        this.renderUsers();
+    };
+
+    Admin.toggleUsersOnPage = function (checked) {
+        const q = (document.getElementById('search-input')?.value || '').toUpperCase();
+        const status = document.getElementById('user-status-filter')?.value || this.userStatusFilter || 'all';
+        let list = this.users.filter((u) => !q || u.id.includes(q) || u.initials.toUpperCase().includes(q));
+        if (status === 'normal') list = list.filter((u) => !u.banned && !u.is_admin);
+        else if (status === 'banned') list = list.filter((u) => u.banned);
+        else if (status === 'admin') list = list.filter((u) => u.is_admin);
+        if (this.sort === 'answered') list.sort((a, b) => b.total_answered - a.total_answered);
+        else if (this.sort === 'duration') list.sort((a, b) => b.total_duration - a.total_duration);
+        else list.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        const pageStart = (this.userPage - 1) * this.userPageSize;
+        list.slice(pageStart, pageStart + this.userPageSize).forEach((u) => {
+            if (checked) this.selectedUsers.add(u.id);
+            else this.selectedUsers.delete(u.id);
+        });
+        this.renderUsers();
+    };
+
+    Admin.clearUserSelection = function () {
+        this.selectedUsers.clear();
+        this.renderUsers();
+    };
+
+    Admin.bulkBanUsers = async function (ban) {
+        const ids = [...this.selectedUsers];
+        if (!ids.length) return;
+        const ok = await this.confirmDanger({
+            title: ban ? '批量封禁' : '批量解封',
+            message: `将${ban ? '封禁' : '解封'} ${ids.length} 个用户`,
+            confirmText: ban ? '批量封禁' : '批量解封',
+            danger: ban
+        });
+        if (!ok) return;
+        let success = 0;
+        for (const uid of ids) {
+            const r = await this.post('/api/admin/ban-user', { targetUserId: uid, ban: ban ? 1 : 0 });
+            if (r?.ok) success++;
+        }
+        Utils.showToast(`已完成 ${success}/${ids.length}`, success === ids.length ? 'success' : 'warn');
+        this.selectedUsers.clear();
+        await this.loadAll();
         this.renderUsers();
     };
 
     // ==================== 用户详情页（二级页面）====================
-    Admin.showUserDetail = async function (uid) {
+    Admin.showUserDetail = async function (uid, { pushHash = true } = {}) {
+        if (pushHash) {
+            const targetHash = `#/users/${uid}`;
+            if (location.hash !== targetHash) {
+                this.navigate(targetHash);
+                return;
+            }
+        }
         const el = document.getElementById('sec-users');
         el.innerHTML = '<div class="loading">加载中...</div>';
 
@@ -131,7 +234,7 @@ export function initUsers(Admin) {
                     description: `同步码 ${u.id} · ${u.banned ? '当前已封禁' : '当前状态正常'}`,
                     crumbs: ['管理后台', '用户管理', u.initials || uid],
                     actions:
-                        '<button class="abtn" onclick="Admin.renderUsers()">返回用户列表</button>'
+                        '<button class="abtn" onclick="Admin.switchTab(&quot;users&quot;)">返回用户列表</button>'
                 })}
                 <div class="card">
                     <div class="card-header">
@@ -228,7 +331,7 @@ export function initUsers(Admin) {
             `;
         } catch (e) {
             el.innerHTML = `
-                ${this.pageHeader({ title: '用户详情', description: '用户详情加载失败。', crumbs: ['管理后台', '用户管理'], actions: '<button class="abtn" onclick="Admin.renderUsers()">返回用户列表</button>' })}
+                ${this.pageHeader({ title: '用户详情', description: '用户详情加载失败。', crumbs: ['管理后台', '用户管理'], actions: '<button class="abtn" onclick="Admin.switchTab(&quot;users&quot;)">返回用户列表</button>' })}
                 ${this.emptyState({ title: '加载失败', desc: e.message })}
             `;
         }
