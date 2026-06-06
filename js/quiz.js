@@ -10,6 +10,7 @@ import Tracker from './tracker.js';
 import API from './api.js';
 import Perf from './perf.js';
 import AIEngines from './aiEngines.js';
+import AIExplain from './aiExplain.js';
 
 const INPUT_SAVE_DEBOUNCE_MS = 300;
 const FILL_AUTO_FOCUS_DELAY_MS = 100;
@@ -79,6 +80,9 @@ const Quiz = {
         // 从设置读取答题模式
         const settings = Storage.getSettings();
         this.state.answerMode = settings.answerMode || 'normal';
+        const aiConfigPromise = AIExplain.init().catch((e) => {
+            console.warn('[Quiz] AI 解读配置加载失败:', e.message);
+        });
         console.log('[Quiz] ⚙️ 用户设置:', settings);
 
         // 应用字体大小
@@ -191,6 +195,8 @@ const Quiz = {
             console.log('[Quiz] ⏱️ 考试模式：启动计时器');
             this.startExamTimer();
         }
+
+        await aiConfigPromise;
 
         Perf.mark('开始渲染');
         console.log('[Quiz] 🎨 开始渲染页面...');
@@ -686,6 +692,8 @@ const Quiz = {
         const isCorrect = isReviewMode ? true : isSubmitted ? this.checkAnswer(question) : null;
         const showExplanation = isReviewMode || this.state.showExplanation[question.id];
 
+        const canUseAI = isSubmitted && AIExplain.isEnabled();
+
         let html = `
             <div class="question-card" data-question-id="${Utils.escapeHtml(question.id)}">
                 <div class="question-header">
@@ -709,7 +717,7 @@ const Quiz = {
                     </div>
                     <div class="question-actions">
                         ${question.category ? `<span class="question-category">${Utils.escapeHtml(question.category)}</span>` : ''}
-                        ${isSubmitted ? `<button class="btn-ai" onclick="Quiz.openAIAnalysis(${question.id})" title="AI解析" aria-label="AI解析">${Utils.icon('sparkles')} AI</button>` : ''}
+                        ${canUseAI ? `<button class="btn-ai" onclick="Quiz.openAIAnalysis(${question.id})" title="AI解析" aria-label="AI解析">${Utils.icon('sparkles')} AI</button>` : ''}
                         ${!isReviewMode ? `<button class="btn-bookmark ${Storage.isBookmarked(this.state.bankId, question.id) ? 'active' : ''}" onclick="Quiz.toggleBookmark(${question.id})" title="收藏" aria-label="收藏此题">${Storage.isBookmarked(this.state.bankId, question.id) ? Utils.icon('star', 'filled') : Utils.icon('star')}</button>` : ''}
                     </div>
                 </div>
@@ -1387,7 +1395,8 @@ const Quiz = {
     /**
      * 打开设置面板
      */
-    showSettings() {
+    async showSettings() {
+        await AIExplain.init();
         const settings = Storage.getSettings();
         const fontSize = settings.fontSize || 16;
         const answerMode = settings.answerMode || 'normal';
@@ -1418,6 +1427,7 @@ const Quiz = {
             </label>
 
             ${AIEngines.renderSettingsFields(aiSettings)}
+            ${AIExplain.renderSettingsFields()}
         `;
 
         Utils.showModal({
@@ -1448,6 +1458,7 @@ const Quiz = {
                             swipeNavigation: newSwipe,
                             ...aiForm
                         });
+                        AIExplain.saveSettingsFromModal(modal);
 
                         // 更新当前答题模式
                         this.state.answerMode = newAnswerMode;
@@ -1470,6 +1481,7 @@ const Quiz = {
 
         const settingsModal = document.getElementById('setting-ai-engine')?.closest('.modal-overlay');
         AIEngines.bindSettingsUI(settingsModal);
+        AIExplain.bindSettingsUI(settingsModal);
     },
 
     /**
@@ -1534,9 +1546,29 @@ const Quiz = {
      * 打开 AI 解析页面
      * @param {number} questionId - 题目 ID
      */
-    openAIAnalysis(questionId) {
+    async openAIAnalysis(questionId) {
         const question = this.state.questions.find((q) => q.id === questionId);
         if (!question) return;
+
+        await AIExplain.init();
+        if (!AIExplain.isEnabled()) {
+            Utils.showToast('管理员已关闭 AI 解读功能', 'error');
+            return;
+        }
+
+        const isSubmitted = this.state.isReviewMode || this.state.submitted[question.id];
+        const userAnswer = this.state.isReviewMode ? question.answer : this.state.answers[question.id];
+        const isCorrect = this.state.isReviewMode ? true : isSubmitted ? this.checkAnswer(question) : null;
+
+        if (AIExplain.isInPageMode()) {
+            await AIExplain.openExplanation({
+                question,
+                bank: this.state.bank,
+                userAnswer,
+                isCorrect
+            });
+            return;
+        }
 
         const keyword = this._buildSearchKeyword(question);
         const url = this._buildSearchUrl(keyword);

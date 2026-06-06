@@ -9,6 +9,7 @@ import Tracker from './tracker.js';
 import API from './api.js';
 import Perf from './perf.js';
 import AIEngines from './aiEngines.js';
+import AIExplain from './aiExplain.js';
 
 const App = {
     state: {
@@ -22,6 +23,7 @@ const App = {
         Perf.init('首页');
         console.log('[App] ========== 首页初始化开始 ==========');
         window._pageStartTime = window._pageStartTime || Date.now();
+        AIExplain.init().catch((e) => console.warn('[App] AI 解读配置加载失败:', e.message));
 
         // 加载题库（30秒超时，失败不影响页面显示）
         Perf.mark('开始加载题库');
@@ -918,7 +920,8 @@ const App = {
     /**
      * 打开设置面板
      */
-    showSettings() {
+    async showSettings() {
+        await AIExplain.init();
         const settings = Storage.getSettings();
         const fontSize = settings.fontSize || 16;
         const answerMode = settings.answerMode || 'normal';
@@ -953,6 +956,7 @@ const App = {
             </label>
 
             ${AIEngines.renderSettingsFields(aiSettings)}
+            ${AIExplain.renderSettingsFields()}
             
             ${isAdmin ? `
             <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
@@ -1004,6 +1008,7 @@ const App = {
                             swipeNavigation: newSwipe,
                             ...aiForm
                         });
+                        AIExplain.saveSettingsFromModal(modal);
 
                         // 同步设置到云端
                         API.pushSettings(Storage.getSettings());
@@ -1023,6 +1028,7 @@ const App = {
 
         const settingsModal = document.getElementById('setting-ai-engine')?.closest('.modal-overlay');
         AIEngines.bindSettingsUI(settingsModal);
+        AIExplain.bindSettingsUI(settingsModal);
     },
 
     /**

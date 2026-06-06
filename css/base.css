@@ -713,6 +713,182 @@ pre[class*="language-"] code[class*="language-"] {
     color: var(--primary);
 }
 
+.ai-explain-settings {
+    margin: var(--space-4) 0;
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-hover);
+}
+
+.ai-explain-settings.disabled {
+    opacity: 0.78;
+}
+
+.ai-explain-settings-title {
+    margin-bottom: var(--space-2);
+    color: var(--text);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+}
+
+.ai-explain-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.ai-explain-status-grid div {
+    padding: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+}
+
+.ai-explain-status-grid span,
+.ai-explain-note,
+.ai-explain-warning,
+.ai-explain-settings p {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+}
+
+.ai-explain-status-grid span {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.ai-explain-status-grid strong {
+    display: block;
+    color: var(--text);
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-explain-override-toggle {
+    margin: var(--space-3) 0;
+}
+
+.ai-explain-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.ai-explain-modal {
+    width: min(760px, 100%);
+    max-height: min(86vh, 760px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-lg);
+}
+
+.ai-explain-modal-header,
+.ai-explain-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border);
+}
+
+.ai-explain-modal-header h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--font-size-xl);
+}
+
+.ai-explain-modal-header p {
+    margin-top: 2px;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+}
+
+.ai-explain-close {
+    color: var(--text-secondary);
+    font-size: 26px;
+    line-height: 1;
+}
+
+.ai-explain-output {
+    flex: 1;
+    min-height: 260px;
+    max-height: 58vh;
+    padding: var(--space-5);
+    overflow-y: auto;
+    color: var(--text);
+    font-size: var(--font-size-base);
+    line-height: 1.8;
+    white-space: pre-wrap;
+}
+
+.ai-explain-modal-footer {
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+}
+
+.ai-explain-stream-status {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+}
+
+/* 管理后台 AI 配置样式 */
+.ai-admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+}
+
+.ai-admin-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.ai-admin-grid .admin-input,
+.ai-admin-grid .admin-select {
+    margin-top: var(--space-1);
+}
+
+.ai-admin-clear-key {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.ai-admin-prompt-label {
+    display: block;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-1);
+}
+
+.ai-admin-prompt {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+}
+
 .modal-footer {
     display: flex;
     gap: var(--space-2);
