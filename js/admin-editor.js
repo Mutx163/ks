@@ -5,8 +5,7 @@ import Utils from './utils.js';
 import ImageUploader from './imageUploader.js';
 
 export function initEditor(Admin) {
-
-    Admin.addQuestion = function(bankId) {
+    Admin.addQuestion = function (bankId) {
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="qe-modal">
@@ -17,11 +16,14 @@ export function initEditor(Admin) {
         this._preview();
     };
 
-    Admin.editQuestion = async function(bankId, qid) {
+    Admin.editQuestion = async function (bankId, qid) {
         const d = await this.get(`/api/admin/bank/${bankId}`);
         if (!d?.ok) return;
-        const q = (d.bank.questions || []).find(x => x.id === qid);
-        if (!q) { Utils.showToast('题目不存在', 'error'); return; }
+        const q = (d.bank.questions || []).find((x) => x.id === qid);
+        if (!q) {
+            Utils.showToast('题目不存在', 'error');
+            return;
+        }
         document.getElementById('modal-root').innerHTML = `
             <div class="modal-mask" onclick="if(event.target===this)this.remove()">
                 <div class="qe-modal">
@@ -32,7 +34,7 @@ export function initEditor(Admin) {
         this._preview();
     };
 
-    Admin._editorHTML = function(bankId, q, isNew) {
+    Admin._editorHTML = function (bankId, q, isNew) {
         const type = q?.type || 'single';
         const answer = q?.answer;
         const opts = q?.options || [];
@@ -58,20 +60,25 @@ export function initEditor(Admin) {
         let optionsHTML = '';
         if (isChoice) {
             const letters = 'ABCDEFGH';
-            const allOpts = opts.map(opt => {
+            const allOpts = opts.map((opt) => {
                 // 支持字符串或对象格式
                 if (typeof opt === 'string') return { text: opt, img: '' };
                 return { text: opt.text || '', img: opt.img || '' };
             });
             // 确保至少4个选项
             while (allOpts.length < 4) allOpts.push({ text: '', img: '' });
-            optionsHTML = allOpts.map((opt, i) => {
-                const letter = letters[i];
-                const selected = answerStr.includes(letter);
-                const imgPreview = opt.img ? `<img src="${Utils.escapeHtml(opt.img)}" style="max-width:60px;max-height:40px;border-radius:4px;margin-left:4px;vertical-align:middle;border:1px solid var(--border)">` : '';
-                const deleteImgBtn = opt.img ? `<button type="button" class="abtn danger" style="padding:1px 4px;font-size:10px" onclick="event.stopPropagation();Admin._removeOptionImage(this)" title="删除选项图片">🗑️</button>` : '';
-                return `<div class="qe-opt-item ${selected ? 'selected' : ''}" data-letter="${letter}" onclick="Admin._selectOption('${letter}')">
-                    <span class="qe-opt-indicator ${type === 'multiple' || type === 'multi' ? 'checkbox' : 'radio'}">${selected ? (type === 'multiple' || type === 'multi' ? '☑' : '●') : (type === 'multiple' || type === 'multi' ? '☐' : '○')}</span>
+            optionsHTML = allOpts
+                .map((opt, i) => {
+                    const letter = letters[i];
+                    const selected = answerStr.includes(letter);
+                    const imgPreview = opt.img
+                        ? `<img src="${Utils.escapeHtml(opt.img)}" style="max-width:60px;max-height:40px;border-radius:4px;margin-left:4px;vertical-align:middle;border:1px solid var(--border)">`
+                        : '';
+                    const deleteImgBtn = opt.img
+                        ? `<button type="button" class="abtn danger" style="padding:1px 4px;font-size:10px" onclick="event.stopPropagation();Admin._removeOptionImage(this)" title="删除选项图片">🗑️</button>`
+                        : '';
+                    return `<div class="qe-opt-item ${selected ? 'selected' : ''}" data-letter="${letter}" onclick="Admin._selectOption('${letter}')">
+                    <span class="qe-opt-indicator ${type === 'multiple' || type === 'multi' ? 'checkbox' : 'radio'}">${selected ? (type === 'multiple' || type === 'multi' ? '☑' : '●') : type === 'multiple' || type === 'multi' ? '☐' : '○'}</span>
                     <span class="qe-opt-letter">${letter}.</span>
                     <input class="qe-opt-input" value="${Utils.escapeHtml(opt.text)}" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
                     <input type="hidden" class="qe-opt-img" value="${Utils.escapeHtml(opt.img)}">
@@ -80,7 +87,8 @@ export function initEditor(Admin) {
                     ${deleteImgBtn}
                     <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>
                 </div>`;
-            }).join('');
+                })
+                .join('');
         }
 
         // 填空/简答题答案区
@@ -94,21 +102,21 @@ export function initEditor(Admin) {
         // 编程题/带代码的题 代码区
         const codeLanguage = q?.codeLanguage || 'c';
         // type=code 时如果 code 为空，从 answer 中取
-        const codeContent = q?.code || (isCode ? (q?.answer || '') : '');
+        const codeContent = q?.code || (isCode ? q?.answer || '' : '');
         let codeEditorHTML = '';
         if (hasCodeField) {
             codeEditorHTML = `<div class="qe-fill-wrap">
                 <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
                     <label style="font-size:12px;font-weight:600;">代码语言：</label>
                     <select id="eq-code-lang" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg-card);color:var(--text)">
-                        <option value="c" ${codeLanguage==='c'?'selected':''}>C</option>
-                        <option value="cpp" ${codeLanguage==='cpp'?'selected':''}>C++</option>
-                        <option value="java" ${codeLanguage==='java'?'selected':''}>Java</option>
-                        <option value="python" ${codeLanguage==='python'?'selected':''}>Python</option>
-                        <option value="javascript" ${codeLanguage==='javascript'?'selected':''}>JavaScript</option>
-                        <option value="go" ${codeLanguage==='go'?'selected':''}>Go</option>
-                        <option value="rust" ${codeLanguage==='rust'?'selected':''}>Rust</option>
-                        <option value="sql" ${codeLanguage==='sql'?'selected':''}>SQL</option>
+                        <option value="c" ${codeLanguage === 'c' ? 'selected' : ''}>C</option>
+                        <option value="cpp" ${codeLanguage === 'cpp' ? 'selected' : ''}>C++</option>
+                        <option value="java" ${codeLanguage === 'java' ? 'selected' : ''}>Java</option>
+                        <option value="python" ${codeLanguage === 'python' ? 'selected' : ''}>Python</option>
+                        <option value="javascript" ${codeLanguage === 'javascript' ? 'selected' : ''}>JavaScript</option>
+                        <option value="go" ${codeLanguage === 'go' ? 'selected' : ''}>Go</option>
+                        <option value="rust" ${codeLanguage === 'rust' ? 'selected' : ''}>Rust</option>
+                        <option value="sql" ${codeLanguage === 'sql' ? 'selected' : ''}>SQL</option>
                     </select>
                 </div>
                 <textarea id="eq-code" rows="8" placeholder="输入代码..." style="font-family:monospace;font-size:13px;line-height:1.5" oninput="Admin._preview()">${Utils.escapeHtml(codeContent)}</textarea>
@@ -126,62 +134,62 @@ export function initEditor(Admin) {
                     <div class="qe-field">
                         <label>题型</label>
                         <select id="eq-type" onchange="Admin._onTypeChange()">
-                            <option value="single" ${type==='single'?'selected':''}>单选题</option>
-                            <option value="multiple" ${type==='multiple'||type==='multi'?'selected':''}>多选题</option>
-                            <option value="judge" ${type==='judge'?'selected':''}>判断题</option>
-                            <option value="fill" ${type==='fill'?'selected':''}>填空题</option>
-                            <option value="essay" ${type==='essay'?'selected':''}>简答题</option>
-                            <option value="code" ${type==='code'?'selected':''}>编程题</option>
+                            <option value="single" ${type === 'single' ? 'selected' : ''}>单选题</option>
+                            <option value="multiple" ${type === 'multiple' || type === 'multi' ? 'selected' : ''}>多选题</option>
+                            <option value="judge" ${type === 'judge' ? 'selected' : ''}>判断题</option>
+                            <option value="fill" ${type === 'fill' ? 'selected' : ''}>填空题</option>
+                            <option value="essay" ${type === 'essay' ? 'selected' : ''}>简答题</option>
+                            <option value="code" ${type === 'code' ? 'selected' : ''}>编程题</option>
                         </select>
                     </div>
                     <div class="qe-field">
                         <label>难度</label>
                         <div class="qe-stars" id="eq-diff-stars">
-                            ${[1,2,3].map(i => `<span class="qe-star ${i<=diff?'on':''}" onclick="Admin._setDiff(${i})">★</span>`).join('')}
+                            ${[1, 2, 3].map((i) => `<span class="qe-star ${i <= diff ? 'on' : ''}" onclick="Admin._setDiff(${i})">★</span>`).join('')}
                         </div>
                         <input type="hidden" id="eq-difficulty" value="${diff}">
                     </div>
                 </div>
                 <div class="qe-field">
                     <label>分类</label>
-                    <input id="eq-category" value="${Utils.escapeHtml(q?.category||'')}" placeholder="如: 编程指令">
+                    <input id="eq-category" value="${Utils.escapeHtml(q?.category || '')}" placeholder="如: 编程指令">
                 </div>
                 <div class="qe-field">
                     <label>题目内容</label>
-                    <textarea id="eq-question" rows="3" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q?.question||'')}</textarea>
+                    <textarea id="eq-question" rows="3" placeholder="输入题目内容..." oninput="Admin._preview()">${Utils.escapeHtml(q?.question || '')}</textarea>
                     <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
                         <button type="button" class="abtn primary" style="padding:4px 10px;font-size:11px" onclick="Admin._uploadQuestionImage()">📷 添加题目图片</button>
-                        <input type="text" id="eq-img" value="${Utils.escapeHtml(q?.img||q?.image||'')}" placeholder="或直接输入图片URL" style="flex:1;padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text)">
+                        <input type="text" id="eq-img" value="${Utils.escapeHtml(q?.img || q?.image || '')}" placeholder="或直接输入图片URL" style="flex:1;padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text)">
                     </div>
-                    <div id="eq-img-preview" style="${q?.img||q?.image?'':'display:none'};margin-top:6px">
-                        <img id="eq-img-thumb" src="${Utils.escapeHtml(q?.img||q?.image||'')}" style="max-width:200px;max-height:100px;border-radius:var(--radius);border:1px solid var(--border)">
+                    <div id="eq-img-preview" style="${q?.img || q?.image ? '' : 'display:none'};margin-top:6px">
+                        <img id="eq-img-thumb" src="${Utils.escapeHtml(q?.img || q?.image || '')}" style="max-width:200px;max-height:100px;border-radius:var(--radius);border:1px solid var(--border)">
                         <button type="button" class="abtn danger" style="padding:2px 6px;font-size:10px;margin-left:4px" onclick="Admin._removeQuestionImage()">删除</button>
                     </div>
                 </div>
-                <div class="qe-field" id="eq-options-wrap" style="${isChoice?'':'display:none'}">
+                <div class="qe-field" id="eq-options-wrap" style="${isChoice ? '' : 'display:none'}">
                     <label>选项 <span class="qe-hint">点击选项设为答案 | 支持选项图片</span></label>
                     <div class="qe-opt-list" id="eq-options-list">${optionsHTML}</div>
                     <button type="button" class="qe-add-opt" onclick="Admin._addOption()">+ 添加选项</button>
                 </div>
-                <div class="qe-field" id="eq-judge-wrap" style="${isJudge?'':'display:none'}">
+                <div class="qe-field" id="eq-judge-wrap" style="${isJudge ? '' : 'display:none'}">
                     <label>答案</label>
                     <div class="qe-judge-btns">
-                        <button type="button" class="qe-judge-btn ${answerStr==='true'?'active':''}" onclick="Admin._setJudge(true)" id="eq-judge-true">正确</button>
-                        <button type="button" class="qe-judge-btn ${answerStr==='false'?'active':''}" onclick="Admin._setJudge(false)" id="eq-judge-false">错误</button>
+                        <button type="button" class="qe-judge-btn ${answerStr === 'true' ? 'active' : ''}" onclick="Admin._setJudge(true)" id="eq-judge-true">正确</button>
+                        <button type="button" class="qe-judge-btn ${answerStr === 'false' ? 'active' : ''}" onclick="Admin._setJudge(false)" id="eq-judge-false">错误</button>
                     </div>
                 </div>
-                <div class="qe-field" id="eq-fill-wrap" style="${isEssay?'':'display:none'}">
+                <div class="qe-field" id="eq-fill-wrap" style="${isEssay ? '' : 'display:none'}">
                     <label>参考答案</label>
                     ${fillAnswerHTML}
                 </div>
-                <div class="qe-field" id="eq-code-wrap" style="${hasCodeField?'':'display:none'}">
+                <div class="qe-field" id="eq-code-wrap" style="${hasCodeField ? '' : 'display:none'}">
                     <label>代码 <span class="qe-hint">支持代码高亮</span></label>
                     ${codeEditorHTML}
                 </div>
                 <input type="hidden" id="eq-answer" value="${Utils.escapeHtml(answerStr)}">
                 <div class="qe-field">
                     <label>解析 <span class="qe-hint">可选</span></label>
-                    <textarea id="eq-explanation" rows="3" placeholder="答案解析..." oninput="Admin._preview()">${Utils.escapeHtml(q?.explanation||'')}</textarea>
+                    <textarea id="eq-explanation" rows="3" placeholder="答案解析..." oninput="Admin._preview()">${Utils.escapeHtml(q?.explanation || '')}</textarea>
                 </div>
             </div>
             <div class="qe-panel" id="qe-panel-preview"><div id="eq-preview"></div></div>
@@ -196,7 +204,7 @@ export function initEditor(Admin) {
     };
 
     // 选择/取消选择选项作为答案
-    Admin._selectOption = function(letter) {
+    Admin._selectOption = function (letter) {
         const type = document.getElementById('eq-type').value;
         const ansEl = document.getElementById('eq-answer');
         let ans = ansEl.value;
@@ -206,14 +214,14 @@ export function initEditor(Admin) {
             ans = ans === letter ? '' : letter;
         } else {
             // 多选：切换选中状态
-            ans = ans.includes(letter) ? ans.replace(letter, '') : (ans + letter);
+            ans = ans.includes(letter) ? ans.replace(letter, '') : ans + letter;
         }
         // 排序答案
         ans = ans.split('').sort().join('');
         ansEl.value = ans;
 
         // 更新UI
-        document.querySelectorAll('#eq-options-list .qe-opt-item').forEach(item => {
+        document.querySelectorAll('#eq-options-list .qe-opt-item').forEach((item) => {
             const l = item.dataset.letter;
             const selected = ans.includes(l);
             item.className = `qe-opt-item ${selected ? 'selected' : ''}`;
@@ -227,7 +235,7 @@ export function initEditor(Admin) {
         this._preview();
     };
 
-    Admin._addOption = function() {
+    Admin._addOption = function () {
         const list = document.getElementById('eq-options-list');
         const idx = list.children.length;
         const letter = 'ABCDEFGH'[idx] || '?';
@@ -247,9 +255,12 @@ export function initEditor(Admin) {
         this._preview();
     };
 
-    Admin._removeOption = function(btn) {
+    Admin._removeOption = function (btn) {
         const list = document.getElementById('eq-options-list');
-        if (list.children.length <= 2) { Utils.showToast('至少保留2个选项', 'error'); return; }
+        if (list.children.length <= 2) {
+            Utils.showToast('至少保留2个选项', 'error');
+            return;
+        }
         btn.closest('.qe-opt-item').remove();
         // 重新编号
         const letters = 'ABCDEFGH';
@@ -257,25 +268,35 @@ export function initEditor(Admin) {
             row.dataset.letter = letters[i];
             row.querySelector('.qe-opt-letter').textContent = letters[i] + '.';
             row.onclick = () => Admin._selectOption(letters[i]);
-            row.querySelector('.qe-opt-del').onclick = (e) => { e.stopPropagation(); Admin._removeOption(row.querySelector('.qe-opt-del')); };
+            row.querySelector('.qe-opt-del').onclick = (e) => {
+                e.stopPropagation();
+                Admin._removeOption(row.querySelector('.qe-opt-del'));
+            };
         });
         // 更新答案（移除不存在的字母）
         const ansEl = document.getElementById('eq-answer');
         const maxLetter = letters[list.children.length - 1];
-        let ans = ansEl.value.split('').filter(l => l <= maxLetter).join('');
+        let ans = ansEl.value
+            .split('')
+            .filter((l) => l <= maxLetter)
+            .join('');
         ansEl.value = ans;
         this._preview();
     };
 
-    Admin._switchEditorTab = function(tab) {
-        document.getElementById('qe-tab-edit').className = tab === 'edit' ? 'qe-tab active' : 'qe-tab';
-        document.getElementById('qe-tab-preview').className = tab === 'preview' ? 'qe-tab active' : 'qe-tab';
-        document.getElementById('qe-panel-edit').className = tab === 'edit' ? 'qe-panel active' : 'qe-panel';
-        document.getElementById('qe-panel-preview').className = tab === 'preview' ? 'qe-panel active' : 'qe-panel';
+    Admin._switchEditorTab = function (tab) {
+        document.getElementById('qe-tab-edit').className =
+            tab === 'edit' ? 'qe-tab active' : 'qe-tab';
+        document.getElementById('qe-tab-preview').className =
+            tab === 'preview' ? 'qe-tab active' : 'qe-tab';
+        document.getElementById('qe-panel-edit').className =
+            tab === 'edit' ? 'qe-panel active' : 'qe-panel';
+        document.getElementById('qe-panel-preview').className =
+            tab === 'preview' ? 'qe-panel active' : 'qe-panel';
         if (tab === 'preview') this._preview();
     };
 
-    Admin._setDiff = function(n) {
+    Admin._setDiff = function (n) {
         document.getElementById('eq-difficulty').value = n;
         document.querySelectorAll('#eq-diff-stars .qe-star').forEach((s, i) => {
             s.className = i < n ? 'qe-star on' : 'qe-star';
@@ -283,7 +304,7 @@ export function initEditor(Admin) {
         this._preview();
     };
 
-    Admin._onTypeChange = function() {
+    Admin._onTypeChange = function () {
         const type = document.getElementById('eq-type').value;
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         const isJudge = type === 'judge';
@@ -332,20 +353,24 @@ export function initEditor(Admin) {
         if (isChoice) {
             const list = document.getElementById('eq-options-list');
             const currentOpts = [];
-            list.querySelectorAll('.qe-opt-input').forEach(inp => {
+            list.querySelectorAll('.qe-opt-input').forEach((inp) => {
                 if (inp.value.trim()) currentOpts.push(inp.value.trim());
             });
             // 重新渲染选项
             const letters = 'ABCDEFGH';
             const isMulti = type === 'multiple' || type === 'multi';
-            list.innerHTML = currentOpts.map((opt, i) => `
+            list.innerHTML = currentOpts
+                .map(
+                    (opt, i) => `
                 <div class="qe-opt-item" data-letter="${letters[i]}" onclick="Admin._selectOption('${letters[i]}')">
                     <span class="qe-opt-indicator ${isMulti ? 'checkbox' : 'radio'}">${isMulti ? '☐' : '○'}</span>
                     <span class="qe-opt-letter">${letters[i]}.</span>
                     <input class="qe-opt-input" value="${Utils.escapeHtml(opt)}" placeholder="输入选项内容..." oninput="Admin._preview()" onclick="event.stopPropagation()">
                     <button class="qe-opt-del" onclick="event.stopPropagation();Admin._removeOption(this)" title="删除选项">✕</button>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
             // 确保至少4个选项
             while (list.children.length < 4) this._addOption();
         }
@@ -353,15 +378,19 @@ export function initEditor(Admin) {
         this._preview();
     };
 
-    Admin._setJudge = function(val) {
+    Admin._setJudge = function (val) {
         const boolVal = val === true || val === 'true';
         document.getElementById('eq-answer').value = boolVal ? 'true' : 'false';
-        document.getElementById('eq-judge-true').className = boolVal ? 'qe-judge-btn active' : 'qe-judge-btn';
-        document.getElementById('eq-judge-false').className = !boolVal ? 'qe-judge-btn active' : 'qe-judge-btn';
+        document.getElementById('eq-judge-true').className = boolVal
+            ? 'qe-judge-btn active'
+            : 'qe-judge-btn';
+        document.getElementById('eq-judge-false').className = !boolVal
+            ? 'qe-judge-btn active'
+            : 'qe-judge-btn';
         this._preview();
     };
 
-    Admin._collectQuestion = function() {
+    Admin._collectQuestion = function () {
         const type = document.getElementById('eq-type').value;
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         const isJudge = type === 'judge';
@@ -371,7 +400,7 @@ export function initEditor(Admin) {
         // 收集选项（支持图片）
         let options = [];
         if (isChoice) {
-            document.querySelectorAll('#eq-options-list .qe-opt-item').forEach(item => {
+            document.querySelectorAll('#eq-options-list .qe-opt-item').forEach((item) => {
                 const text = item.querySelector('.qe-opt-input').value.trim();
                 const img = item.querySelector('.qe-opt-img')?.value?.trim() || '';
                 if (text || img) {
@@ -399,7 +428,7 @@ export function initEditor(Admin) {
             category: document.getElementById('eq-category').value.trim(),
             difficulty: parseInt(document.getElementById('eq-difficulty').value) || 1,
             question: document.getElementById('eq-question').value.trim(),
-            img: img || '',  // 使用空字符串而不是 undefined
+            img: img || '', // 使用空字符串而不是 undefined
             options,
             answer,
             explanation: document.getElementById('eq-explanation').value.trim()
@@ -424,12 +453,15 @@ export function initEditor(Admin) {
             }
         }
 
-        if (!question.question) { Utils.showToast('题目内容不能为空', 'error'); return null; }
+        if (!question.question) {
+            Utils.showToast('题目内容不能为空', 'error');
+            return null;
+        }
         return question;
     };
 
     // 上传题目图片
-    Admin._uploadQuestionImage = function() {
+    Admin._uploadQuestionImage = function () {
         ImageUploader.showDialog((url) => {
             document.getElementById('eq-img').value = url;
             const preview = document.getElementById('eq-img-preview');
@@ -441,14 +473,14 @@ export function initEditor(Admin) {
     };
 
     // 删除题目图片
-    Admin._removeQuestionImage = function() {
+    Admin._removeQuestionImage = function () {
         document.getElementById('eq-img').value = '';
         document.getElementById('eq-img-preview').style.display = 'none';
         this._preview();
     };
 
     // 上传选项图片
-    Admin._uploadOptionImage = function(btn) {
+    Admin._uploadOptionImage = function (btn) {
         ImageUploader.showDialog((url) => {
             const item = btn.closest('.qe-opt-item');
             const imgInput = item.querySelector('.qe-opt-img');
@@ -457,7 +489,8 @@ export function initEditor(Admin) {
             let imgPreview = item.querySelector('img');
             if (!imgPreview) {
                 imgPreview = document.createElement('img');
-                imgPreview.style.cssText = 'max-width:60px;max-height:40px;border-radius:4px;margin-left:4px;vertical-align:middle;border:1px solid var(--border)';
+                imgPreview.style.cssText =
+                    'max-width:60px;max-height:40px;border-radius:4px;margin-left:4px;vertical-align:middle;border:1px solid var(--border)';
                 btn.parentNode.insertBefore(imgPreview, btn);
             }
             imgPreview.src = url;
@@ -470,7 +503,10 @@ export function initEditor(Admin) {
                 deleteBtn.style.cssText = 'padding:1px 4px;font-size:10px';
                 deleteBtn.textContent = '🗑️';
                 deleteBtn.title = '删除选项图片';
-                deleteBtn.onclick = (e) => { e.stopPropagation(); Admin._removeOptionImage(deleteBtn); };
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    Admin._removeOptionImage(deleteBtn);
+                };
                 btn.parentNode.insertBefore(deleteBtn, btn.nextSibling);
             }
             this._preview();
@@ -478,7 +514,7 @@ export function initEditor(Admin) {
     };
 
     // 删除选项图片
-    Admin._removeOptionImage = function(btn) {
+    Admin._removeOptionImage = function (btn) {
         const item = btn.closest('.qe-opt-item');
         const imgInput = item.querySelector('.qe-opt-img');
         imgInput.value = '';
@@ -490,75 +526,103 @@ export function initEditor(Admin) {
         this._preview();
     };
 
-    Admin.saveNewQuestion = async function(bankId) {
+    Admin.saveNewQuestion = async function (bankId) {
         const question = this._collectQuestion();
         if (!question) return;
-        const btn = document.querySelector('.qe-footer .abtn.primary');
-        if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
+        const btn = document.querySelector('.qe-footer .mp');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+        }
         const r = await this.post(`/api/admin/bank/${bankId}/question`, { question });
-        if (r?.ok) { 
-            Utils.showToast('已添加', 'success'); 
-            document.querySelector('.modal-mask')?.remove(); 
+        if (r?.ok) {
+            Utils.showToast('已添加', 'success');
+            document.querySelector('.modal-mask')?.remove();
             // 刷新题目列表
             this.viewBank(bankId);
-        } else { 
-            Utils.showToast(r?.error || '添加失败', 'error'); 
-            if (btn) { btn.disabled = false; btn.textContent = '保存'; }
+        } else {
+            Utils.showToast(r?.error || '添加失败', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '添加';
+            }
         }
     };
 
-    Admin.saveEditQuestion = async function(bankId, qid) {
+    Admin.saveEditQuestion = async function (bankId, qid) {
         const question = this._collectQuestion();
         if (!question) return;
-        const btn = document.querySelector('.qe-footer .abtn.primary');
-        if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
+        const btn = document.querySelector('.qe-footer .mp');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+        }
         const r = await this.put(`/api/admin/bank/${bankId}/question/${qid}`, { question });
-        if (r?.ok) { 
-            Utils.showToast('已保存', 'success'); 
-            document.querySelector('.modal-mask')?.remove(); 
+        if (r?.ok) {
+            Utils.showToast('已保存', 'success');
+            document.querySelector('.modal-mask')?.remove();
             // 更新列表中该题目的显示，而不是重新加载整个列表
             this._updateQuestionInList(bankId, qid, question);
-        } else { 
-            Utils.showToast(r?.error || '保存失败', 'error'); 
-            if (btn) { btn.disabled = false; btn.textContent = '保存'; }
+        } else {
+            Utils.showToast(r?.error || '保存失败', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '保存';
+            }
         }
     };
 
     // 更新列表中单个题目的显示
-    Admin._updateQuestionInList = function(bankId, qid, question) {
+    Admin._updateQuestionInList = function (bankId, qid, question) {
         const item = document.querySelector(`.question-item[data-qid="${qid}"]`);
         if (!item) return;
-        
+
         // 更新题目预览
         const preview = item.querySelector('.question-preview');
         if (preview) {
             const qText = question.question || '';
             preview.textContent = qText.length > 60 ? qText.substring(0, 60) + '...' : qText;
         }
-        
+
         // 更新题型标签
         const typeTag = item.querySelector('.question-type');
         if (typeTag) {
-            const typeLabels = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答',code:'编程'};
+            const typeLabels = {
+                single: '单选',
+                multiple: '多选',
+                multi: '多选',
+                judge: '判断',
+                fill: '填空',
+                essay: '简答',
+                code: '编程'
+            };
             typeTag.textContent = typeLabels[question.type] || question.type;
         }
-        
+
         // 更新分类
         const catTag = item.querySelector('.question-category');
         if (catTag && question.category) {
             catTag.textContent = question.category;
         }
-        
+
         // 高亮显示已更新
         item.style.background = 'var(--success-light)';
-        setTimeout(() => { item.style.background = ''; }, 1500);
+        setTimeout(() => {
+            item.style.background = '';
+        }, 1500);
     };
 
-    Admin.deleteQuestion = async function(bankId, qid) {
-        if (!confirm(`确定删除题目 #${qid}？`)) return;
+    Admin.deleteQuestion = async function (bankId, qid) {
+        const ok = await this.confirmDanger({
+            title: '删除题目',
+            targetLabel: `题目 #${qid}`,
+            message: '删除后该题目会从题库中移除，此操作不可恢复。',
+            confirmText: '确认删除'
+        });
+        if (!ok) return;
         const r = await this.post(`/api/admin/bank/${bankId}/question/${qid}`, {});
-        if (r?.ok) { 
-            Utils.showToast('已删除', 'success'); 
+        if (r?.ok) {
+            Utils.showToast('已删除', 'success');
             // 从列表中移除该题目
             const item = document.querySelector(`.question-item[data-qid="${qid}"]`);
             if (item) {
@@ -571,7 +635,7 @@ export function initEditor(Admin) {
         }
     };
 
-    Admin._preview = function() {
+    Admin._preview = function () {
         const el = document.getElementById('eq-preview');
         if (!el) return;
         const type = document.getElementById('eq-type').value;
@@ -580,7 +644,16 @@ export function initEditor(Admin) {
         const explanation = document.getElementById('eq-explanation').value;
         const difficulty = parseInt(document.getElementById('eq-difficulty').value) || 1;
         const category = document.getElementById('eq-category').value;
-        const typeLabel = {single:'单选',multiple:'多选',multi:'多选',judge:'判断',fill:'填空',essay:'简答',code:'编程'}[type] || type;
+        const typeLabel =
+            {
+                single: '单选',
+                multiple: '多选',
+                multi: '多选',
+                judge: '判断',
+                fill: '填空',
+                essay: '简答',
+                code: '编程'
+            }[type] || type;
         const isChoice = type === 'single' || type === 'multiple' || type === 'multi';
         const isJudge = type === 'judge';
         const isEssay = type === 'essay' || type === 'fill';
@@ -589,7 +662,7 @@ export function initEditor(Admin) {
         // 收集选项
         let options = [];
         if (isChoice) {
-            document.querySelectorAll('#eq-options-list .qe-opt-input').forEach(inp => {
+            document.querySelectorAll('#eq-options-list .qe-opt-input').forEach((inp) => {
                 const v = inp.value.trim();
                 if (v) options.push(v);
             });
@@ -616,21 +689,21 @@ export function initEditor(Admin) {
         if (category) html += `<span class="qe-preview-tag">${Utils.escapeHtml(category)}</span>`;
         html += `<span class="qe-preview-tag type">${typeLabel}</span>`;
         const safeDiff = Math.max(1, Math.min(3, difficulty));
-        html += `<span class="qe-preview-tag">${'★'.repeat(safeDiff)}${'☆'.repeat(3-safeDiff)}</span>`;
+        html += `<span class="qe-preview-tag">${'★'.repeat(safeDiff)}${'☆'.repeat(3 - safeDiff)}</span>`;
         html += '</div>';
         html += `<div class="qe-preview-question">${Utils.escapeHtml(question) || '<span style="color:var(--text-tertiary)">题目内容...</span>'}</div>`;
 
         if (isJudge) {
             html += '<div class="qe-preview-opts">';
-            html += `<div class="qe-preview-opt ${answer==='true'?'selected':''}">正确</div>`;
-            html += `<div class="qe-preview-opt ${answer==='false'?'selected':''}">错误</div>`;
+            html += `<div class="qe-preview-opt ${answer === 'true' ? 'selected' : ''}">正确</div>`;
+            html += `<div class="qe-preview-opt ${answer === 'false' ? 'selected' : ''}">错误</div>`;
             html += '</div>';
         } else if (isChoice) {
             html += '<div class="qe-preview-opts">';
             options.forEach((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
-                const sel = (answer||'').includes(letter);
-                html += `<div class="qe-preview-opt ${sel?'selected':''}"><b>${letter}.</b> ${Utils.escapeHtml(opt)}</div>`;
+                const sel = (answer || '').includes(letter);
+                html += `<div class="qe-preview-opt ${sel ? 'selected' : ''}"><b>${letter}.</b> ${Utils.escapeHtml(opt)}</div>`;
             });
             html += '</div>';
         } else if (isEssay && fillAnswer) {
