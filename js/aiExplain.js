@@ -269,40 +269,60 @@ const AIExplain = {
 
     buildQuestionPayload({ question, bank, userAnswer, isCorrect, displayOptions }) {
         const qText = this._cleanQuestionText(question.question || '');
-        const opts = displayOptions && displayOptions.length > 0
-            ? displayOptions.map(o => `${o.displayLetter}. ${o.text}`).join('\n')
-            : (question.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+        const optList = displayOptions && displayOptions.length > 0
+            ? displayOptions
+            : (question.options || []).map((o, i) => ({ displayLetter: String.fromCharCode(65 + i), text: typeof o === 'object' ? o.text : o }));
+        const opts = optList.map(o => `${o.displayLetter}. ${o.text}`).join('\n');
         let fullQuestion = qText;
         if (opts) fullQuestion += '\n' + opts;
         if (question.code) fullQuestion += '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
         
+        const type = question.type || 'single';
+        
         // 格式化学生作答，附带选项内容
         if (userAnswer !== undefined && userAnswer !== null) {
             let answerDisplay = '';
-            const type = question.type || 'single';
             
             if (type === 'single' && typeof userAnswer === 'string' && /^[A-Z]$/.test(userAnswer)) {
-                // 单选题：附带选项内容，如 "D. G82"
-                const optIndex = userAnswer.charCodeAt(0) - 65;
-                const optList = displayOptions || question.options || [];
-                const optText = optList[optIndex];
-                answerDisplay = optText ? `${userAnswer}. ${typeof optText === 'object' ? optText.text : optText}` : userAnswer;
+                const opt = optList.find(o => o.displayLetter === userAnswer);
+                answerDisplay = opt ? `${userAnswer}. ${opt.text}` : userAnswer;
             } else if (type === 'multiple' && Array.isArray(userAnswer)) {
-                // 多选题：附带选项内容
-                const optList = displayOptions || question.options || [];
                 answerDisplay = userAnswer.map(letter => {
-                    const idx = letter.charCodeAt(0) - 65;
-                    const opt = optList[idx];
-                    return opt ? `${letter}. ${typeof opt === 'object' ? opt.text : opt}` : letter;
+                    const opt = optList.find(o => o.displayLetter === letter);
+                    return opt ? `${letter}. ${opt.text}` : letter;
                 }).join('、');
             } else if (type === 'judge') {
-                // 判断题
                 answerDisplay = userAnswer === true ? '正确' : '错误';
             } else {
-                // 填空题、编程题、简答题
                 answerDisplay = String(userAnswer);
             }
             fullQuestion += `\n学生作答：${answerDisplay}`;
+        }
+        
+        // 格式化正确答案，附带选项内容
+        const correctAnswer = question.answer;
+        if (correctAnswer !== undefined && correctAnswer !== null) {
+            let correctDisplay = '';
+            
+            if (type === 'single' && typeof correctAnswer === 'string' && /^[A-Z]$/.test(correctAnswer)) {
+                const opt = optList.find(o => o.displayLetter === correctAnswer);
+                correctDisplay = opt ? `${correctAnswer}. ${opt.text}` : correctAnswer;
+            } else if (type === 'multiple' && Array.isArray(correctAnswer)) {
+                correctDisplay = correctAnswer.map(letter => {
+                    const opt = optList.find(o => o.displayLetter === letter);
+                    return opt ? `${letter}. ${opt.text}` : letter;
+                }).join('、');
+            } else if (type === 'judge') {
+                correctDisplay = correctAnswer === true ? '正确' : '错误';
+            } else {
+                correctDisplay = String(correctAnswer);
+            }
+            fullQuestion += `\n正确答案：${correctDisplay}`;
+        }
+        
+        // 附带解析
+        if (question.explanation) {
+            fullQuestion += `\n参考解析：${question.explanation}`;
         }
 
         return {

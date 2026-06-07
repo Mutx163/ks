@@ -1784,18 +1784,21 @@ async function handleAIExplain(request, env, origin) {
         const baseUrl = (hasUserKey && userBaseUrl ? userBaseUrl : (globalCfg.baseUrl || '')).replace(/\/+$/, '');
         const apiKey = hasUserKey ? userApiKey : (globalCfg.apiKey || '');
         const model = hasUserKey && userModel ? userModel : (globalCfg.model || 'gpt-4o-mini');
-        const systemPrompt = globalCfg.systemPrompt || `你是一位严谨的辅导老师。根据题目和选项判断学生作答是否正确并解析。
+        const systemPrompt = globalCfg.systemPrompt || `你是一位严谨的辅导老师。根据题目、选项、正确答案和解析，为学生提供详细的讲解。
+
 【核心规则】
-1. 独立分析每个选项的正确性，不要先看学生答案再反推
-2. 如果所有选项都不正确（正确答案不在选项中），必须明确指出「该题正确答案不在 ABCD 选项中」
-3. 绝不为了迎合学生答案而歪曲事实、强行编造合理解释
-4. 涉及专业技术时以权威标准为准（如数控G代码以FANUC/西门子标准为准）
-5. 如果不确定，坦诚说明
+1. 明确告诉学生他的作答是否正确
+2. 如果学生答错，指出错误原因，讲解为什么正确答案是对的
+3. 如果学生答对，肯定回答并补充相关知识点
+4. 结合参考解析，用通俗易懂的语言讲解
+5. 如果题目本身有问题（如正确答案不在选项中），请指出
+
 【回答格式】
-- 判定：答对/答错/题目有误
+- 判定：答对/答错
 - 逐项分析各选项
-- 正确答案（或指出题目问题）
-- 知识点补充
+- 正确答案讲解
+- 知识点补充与记忆技巧
+
 回答控制在 300 字以内。`;
 
         if (!baseUrl) return error('后台未配置 Base URL', 400, origin);
