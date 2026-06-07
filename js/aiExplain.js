@@ -502,7 +502,6 @@ const AIExplain = {
 
             // 思考/回答分离状态
             const thinkLabel = overlay.querySelector('.ai-think-label');
-            let inThink = false;
             let thinkText = '';
             let answerText = '';
             let hadThink = false;
@@ -511,11 +510,79 @@ const AIExplain = {
 
             const THINK_START = '\x00[THINK]\x00';
             const THINK_END = '\x00[/THINK]\x00';
+            const THOUGHT_RE = /<think>([\s\S]*?)<\/think>/;
+            const THOUGHT_OPEN_RE = /<think>([\s\S]*)$/;
+
+            const showThink = () => {
+                if (!hadThink) {
+                    hadThink = true;
+                    if (thinkSection) thinkSection.style.display = '';
+                    status.textContent = '思考中...';
+                }
+            };
+
+            const collapseThink = () => {
+                if (thinkSection && !thinkSection.classList.contains('collapsed')) {
+                    setTimeout(() => thinkSection.classList.add('collapsed'), 600);
+                }
+            };
+
+            /**
+             * 解析原始缓冲区，分离思考/回答
+             * 支持两种格式：\x00[THINK]\x00 标记 和 <think> 标签
+             */
+            const parseBuffer = () => {
+                thinkText = '';
+                answerText = '';
+                let remaining = rawBuf;
+
+                // 先处理 \x00[THINK]\x00 标记
+                let hasThinkMarker = false;
+                let parsed = '';
+                let cursor = 0;
+                while (cursor < remaining.length) {
+                    const startIdx = remaining.indexOf(THINK_START, cursor);
+                    if (startIdx === -1) {
+                        parsed += remaining.slice(cursor);
+                        break;
+                    }
+                    parsed += remaining.slice(cursor, startIdx);
+                    const endIdx = remaining.indexOf(THINK_END, startIdx + THINK_START.length);
+                    if (endIdx === -1) {
+                        // 还在思考中
+                        thinkText += remaining.slice(startIdx + THINK_START.length);
+                        hasThinkMarker = true;
+                        showThink();
+                        break;
+                    }
+                    thinkText += remaining.slice(startIdx + THINK_START.length, endIdx);
+                    hasThinkMarker = true;
+                    cursor = endIdx + THINK_END.length;
+                }
+                remaining = parsed;
+
+                // 再处理 <think> 标签
+                const closedMatch = remaining.match(THOUGHT_RE);
+                if (closedMatch) {
+                    thinkText += closedMatch[1];
+                    remaining = remaining.replace(THOUGHT_RE, '');
+                } else {
+                    const openMatch = remaining.match(THOUGHT_OPEN_RE);
+                    if (openMatch) {
+                        thinkText += openMatch[1];
+                        remaining = remaining.replace(THOUGHT_OPEN_RE, '');
+                    }
+                }
+
+                if (thinkText) showThink();
+                answerText = remaining;
+            };
 
             const throttledRender = () => {
                 if (renderTimer) return;
                 renderTimer = requestAnimationFrame(() => {
                     renderTimer = null;
+                    parseBuffer();
                     if (thinkText && thinkContent) {
                         this._renderMarkdown(thinkContent, thinkText);
                     }
@@ -525,12 +592,6 @@ const AIExplain = {
                 });
             };
 
-            const collapseThink = () => {
-                if (thinkSection && !thinkSection.classList.contains('collapsed')) {
-                    setTimeout(() => thinkSection.classList.add('collapsed'), 600);
-                }
-            };
-
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -538,50 +599,12 @@ const AIExplain = {
                 if (!chunk) continue;
                 gotAny = true;
                 rawBuf += chunk;
-
-                // 解析 THINK 标记
-                let cursor = 0;
-                while (cursor < rawBuf.length) {
-                    if (inThink) {
-                        const endIdx = rawBuf.indexOf(THINK_END, cursor);
-                        if (endIdx === -1) {
-                            thinkText += rawBuf.slice(cursor);
-                            cursor = rawBuf.length;
-                        } else {
-                            thinkText += rawBuf.slice(cursor, endIdx);
-                            cursor = endIdx + THINK_END.length;
-                            inThink = false;
-                            collapseThink();
-                        }
-                    } else {
-                        const startIdx = rawBuf.indexOf(THINK_START, cursor);
-                        if (startIdx === -1) {
-                            answerText += rawBuf.slice(cursor);
-                            cursor = rawBuf.length;
-                        } else {
-                            answerText += rawBuf.slice(cursor, startIdx);
-                            cursor = startIdx + THINK_START.length;
-                            inThink = true;
-                            if (!hadThink) {
-                                hadThink = true;
-                                if (thinkSection) thinkSection.style.display = '';
-                                status.textContent = '思考中...';
-                            }
-                        }
-                    }
-                }
-                const lastStart = rawBuf.lastIndexOf('\x00');
-                if (lastStart > 0 && lastStart > rawBuf.length - 20) {
-                    rawBuf = rawBuf.slice(lastStart);
-                } else {
-                    rawBuf = '';
-                }
-
                 throttledRender();
             }
 
             // 最终渲染 + 缓存
             if (renderTimer) cancelAnimationFrame(renderTimer);
+            parseBuffer();
             if (thinkText && thinkContent) {
                 this._renderMarkdown(thinkContent, thinkText);
                 if (thinkLabel) thinkLabel.textContent = '思考过程';
