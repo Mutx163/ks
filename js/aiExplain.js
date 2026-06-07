@@ -239,9 +239,11 @@ const AIExplain = {
             .trim();
     },
 
-    buildQuestionPayload({ question, bank, userAnswer, isCorrect }) {
+    buildQuestionPayload({ question, bank, userAnswer, isCorrect, displayOptions }) {
         const qText = this._cleanQuestionText(question.question || '');
-        const opts = (question.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+        const opts = displayOptions && displayOptions.length > 0
+            ? displayOptions.map(o => `${o.displayLetter}. ${o.text}`).join('\n')
+            : (question.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
         let fullQuestion = qText;
         if (opts) fullQuestion += '\n' + opts;
         if (question.code) fullQuestion += '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
@@ -289,7 +291,7 @@ const AIExplain = {
         return overlay;
     },
 
-    async openExplanation({ question, bank, userAnswer, isCorrect }) {
+    async openExplanation({ question, bank, userAnswer, isCorrect, displayOptions }) {
         await this.init();
         const config = this.getConfig();
         if (!config.enabled) {
@@ -308,7 +310,7 @@ const AIExplain = {
         try {
             status.textContent = '连接中...';
             const payload = {
-                ...this.buildQuestionPayload({ question, bank, userAnswer, isCorrect }),
+                ...this.buildQuestionPayload({ question, bank, userAnswer, isCorrect, displayOptions }),
                 override: this.getRequestOverride()
             };
 

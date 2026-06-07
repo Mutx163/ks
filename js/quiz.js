@@ -1508,9 +1508,10 @@ const Quiz = {
     _buildSearchKeyword(question) {
         let keyword = this._cleanMarkdown(question.question);
 
-        // 补充选项（优先于代码，信息密度更高）
-        if (question.options && question.options.length > 0) {
-            keyword += ' ' + question.options.join(' ');
+        // 补充选项（优先于代码，信息密度更高）— 使用乱序后的显示顺序
+        const displayOpts = this.getDisplayOptions(question);
+        if (displayOpts && displayOpts.length > 0) {
+            keyword += ' ' + displayOpts.map(o => `${o.displayLetter}.${o.text}`).join(' ');
         }
 
         // 先截断文本部分
@@ -1565,7 +1566,8 @@ const Quiz = {
                 question,
                 bank: this.state.bank,
                 userAnswer,
-                isCorrect
+                isCorrect,
+                displayOptions: this.getDisplayOptions(question)
             });
             return;
         }
