@@ -36,6 +36,7 @@ const PROVIDERS = {
 const AIExplain = {
     _config: { ...DEFAULT_CONFIG },
     _loaded: false,
+    _cache: new Map(),  // questionId → { answer, think, hadThink }
 
     async init({ force = false } = {}) {
         if (this._loaded && !force) return this._config;
@@ -353,7 +354,10 @@ const AIExplain = {
                         <h3>AI 解读</h3>
                         <p>${Utils.escapeHtml(questionTitle || '正在分析当前题目')}</p>
                     </div>
-                    <button class="ai-explain-close" type="button" aria-label="关闭">×</button>
+                    <div class="ai-explain-header-actions">
+                        <button class="ai-explain-regenerate" id="ai-explain-regenerate" type="button" title="重新生成" aria-label="重新生成">\u21bb</button>
+                        <button class="ai-explain-close" type="button" aria-label="关闭">×</button>
+                    </div>
                 </div>
                 <div class="ai-think-section" id="ai-think-section" style="display:none">
                     <div class="ai-think-header" id="ai-think-header">
@@ -385,6 +389,31 @@ const AIExplain = {
         return overlay;
     },
 
+    /**
+     * 渲染缓存内容到弹窗
+     */
+    _renderCached(overlay, cached) {
+        const output = overlay.querySelector('#ai-explain-output');
+        const status = overlay.querySelector('#ai-explain-stream-status');
+        const thinkSection = overlay.querySelector('#ai-think-section');
+        const thinkContent = overlay.querySelector('#ai-think-content');
+        const thinkLabel = overlay.querySelector('.ai-think-label');
+        const cancel = overlay.querySelector('#ai-explain-cancel');
+
+        if (cached.think && thinkContent && thinkSection) {
+            thinkSection.style.display = '';
+            this._renderMarkdown(thinkContent, cached.think);
+            if (thinkLabel) thinkLabel.textContent = '思考过程';
+            thinkSection.classList.add('collapsed');
+        }
+        if (cached.answer) {
+            this._renderMarkdown(output, cached.answer);
+        }
+        status.textContent = '完成 (缓存)';
+        cancel.textContent = '关闭';
+        cancel.onclick = () => overlay.remove();
+    },
+
     async openExplanation({ question, bank, userAnswer, isCorrect, displayOptions }) {
         await this.init();
         const config = this.getConfig();
@@ -394,12 +423,50 @@ const AIExplain = {
         }
         if (config.mode !== 'inpage') return false;
 
-        const overlay = this._createModal(`第 ${question.id || ''} 题`.trim());
+        const qId = question.id;
+        const overlay = this._createModal(`第 ${qId || ''} 题`.trim());
         const output = overlay.querySelector('#ai-explain-output');
         const status = overlay.querySelector('#ai-explain-stream-status');
         const cancel = overlay.querySelector('#ai-explain-cancel');
+        const regenerateBtn = overlay.querySelector('#ai-explain-regenerate');
         const controller = new AbortController();
         cancel?.addEventListener('click', () => controller.abort());
+
+        // 重新生成：清除缓存并重新请求
+        const doFetch = () => {
+            this._cache.delete(qId);
+            this._doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller, qId });
+        };
+        regenerateBtn?.addEventListener('click', doFetch);
+
+        // 有缓存则直接显示
+        const cached = this._cache.get(qId);
+        if (cached) {
+            this._renderCached(overlay, cached);
+            return true;
+        }
+
+        doFetch();
+        return true;
+    },
+
+    async _doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller, qId }) {
+        const output = overlay.querySelector('#ai-explain-output');
+        const status = overlay.querySelector('#ai-explain-stream-status');
+        const cancel = overlay.querySelector('#ai-explain-cancel');
+
+        // 清空之前的内容
+        output.innerHTML = '';
+        const thinkSection = overlay.querySelector('#ai-think-section');
+        const thinkContent = overlay.querySelector('#ai-think-content');
+        if (thinkSection) {
+            thinkSection.style.display = 'none';
+            thinkSection.classList.remove('collapsed');
+        }
+        if (thinkContent) thinkContent.innerHTML = '';
+
+        cancel.textContent = '停止';
+        cancel.onclick = () => controller.abort();
 
         try {
             status.textContent = '连接中...';
@@ -434,8 +501,6 @@ const AIExplain = {
             let gotAny = false;
 
             // 思考/回答分离状态
-            const thinkSection = overlay.querySelector('#ai-think-section');
-            const thinkContent = overlay.querySelector('#ai-think-content');
             const thinkLabel = overlay.querySelector('.ai-think-label');
             let inThink = false;
             let thinkText = '';
@@ -462,7 +527,6 @@ const AIExplain = {
 
             const collapseThink = () => {
                 if (thinkSection && !thinkSection.classList.contains('collapsed')) {
-                    // 延迟折叠，让用户看到思考结束
                     setTimeout(() => thinkSection.classList.add('collapsed'), 600);
                 }
             };
@@ -481,7 +545,6 @@ const AIExplain = {
                     if (inThink) {
                         const endIdx = rawBuf.indexOf(THINK_END, cursor);
                         if (endIdx === -1) {
-                            // 思考内容还没结束，累积
                             thinkText += rawBuf.slice(cursor);
                             cursor = rawBuf.length;
                         } else {
@@ -493,7 +556,6 @@ const AIExplain = {
                     } else {
                         const startIdx = rawBuf.indexOf(THINK_START, cursor);
                         if (startIdx === -1) {
-                            // 普通回答内容
                             answerText += rawBuf.slice(cursor);
                             cursor = rawBuf.length;
                         } else {
@@ -508,7 +570,6 @@ const AIExplain = {
                         }
                     }
                 }
-                // 保留未处理完的尾部（可能截断了标记）
                 const lastStart = rawBuf.lastIndexOf('\x00');
                 if (lastStart > 0 && lastStart > rawBuf.length - 20) {
                     rawBuf = rawBuf.slice(lastStart);
@@ -519,7 +580,7 @@ const AIExplain = {
                 throttledRender();
             }
 
-            // 最终渲染
+            // 最终渲染 + 缓存
             if (renderTimer) cancelAnimationFrame(renderTimer);
             if (thinkText && thinkContent) {
                 this._renderMarkdown(thinkContent, thinkText);
@@ -529,9 +590,12 @@ const AIExplain = {
             if (answerText) {
                 this._renderMarkdown(output, answerText);
             } else if (!answerText && thinkText) {
-                // 只有思考没有回答
                 this._renderMarkdown(output, '> 模型未生成回答内容');
             }
+
+            // 缓存结果
+            this._cache.set(qId, { answer: answerText, think: thinkText, hadThink });
+
             status.textContent = gotAny ? '完成' : '没有收到内容';
             cancel.textContent = '关闭';
             cancel.onclick = () => overlay.remove();
@@ -540,13 +604,12 @@ const AIExplain = {
                 status.textContent = '已停止';
                 cancel.textContent = '关闭';
                 cancel.onclick = () => overlay.remove();
-                return true;
+                return;
             }
             status.textContent = '失败';
             this._renderMarkdown(output, `\n\n> ⚠️ **错误**：${e.message}`);
             Utils.showToast('AI 解读失败：' + e.message, 'error', 5000);
         }
-        return true;
     }
 };
 

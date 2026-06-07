@@ -824,6 +824,29 @@ pre[class*="language-"] code[class*="language-"] {
     line-height: 1;
 }
 
+.ai-explain-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.ai-explain-regenerate {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm, 6px);
+    color: var(--text-secondary);
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.ai-explain-regenerate:hover {
+    color: var(--primary, #6366f1);
+    border-color: var(--primary, #6366f1);
+}
+
 .ai-explain-output {
     flex: 1;
     min-height: 260px;
