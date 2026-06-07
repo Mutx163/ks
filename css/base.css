@@ -940,6 +940,79 @@ pre[class*="language-"] code[class*="language-"] {
     font-style: italic;
 }
 
+/* AI 思考区域 */
+.ai-think-section {
+    border-bottom: 1px solid var(--border);
+    transition: max-height 0.3s ease;
+}
+
+.ai-think-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-5);
+    cursor: pointer;
+    user-select: none;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    transition: background 0.15s;
+}
+
+.ai-think-header:hover {
+    background: var(--bg-secondary, rgba(0,0,0,0.03));
+}
+
+.ai-think-icon {
+    font-size: 1.1em;
+}
+
+.ai-think-label {
+    flex: 1;
+}
+
+.ai-think-toggle {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 6px;
+    transition: transform 0.3s ease;
+}
+
+.ai-think-content {
+    padding: 0 var(--space-5) var(--space-4);
+    max-height: 240px;
+    overflow-y: auto;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    line-height: 1.7;
+    border-top: 1px solid var(--border-subtle, rgba(0,0,0,0.06));
+}
+
+/* 折叠状态 */
+.ai-think-section.collapsed .ai-think-content {
+    display: none;
+}
+
+.ai-think-section.collapsed .ai-think-toggle {
+    transform: rotate(-90deg);
+}
+
+.ai-think-section.collapsed .ai-think-label {
+    color: var(--text-tertiary);
+}
+
+/* 思考中动画 */
+@keyframes thinkPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.ai-think-section:not(.collapsed) .ai-think-icon {
+    animation: thinkPulse 1.5s ease-in-out infinite;
+}
+
 .ai-explain-modal-footer {
     border-top: 1px solid var(--border);
     border-bottom: 0;

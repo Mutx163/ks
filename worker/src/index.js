@@ -1815,7 +1815,13 @@ async function handleAIExplain(request, env, origin) {
                                 if (data === '[DONE]') { controller.close(); return; }
                                 try {
                                     const d = JSON.parse(data);
-                                    const token = d.choices?.[0]?.delta?.content;
+                                    const delta = d.choices?.[0]?.delta || {};
+                                    // 思考内容（reasoning_content）
+                                    if (delta.reasoning_content) {
+                                        controller.enqueue(encoder.encode('\x00[THINK]\x00' + delta.reasoning_content + '\x00[/THINK]\x00'));
+                                    }
+                                    // 正式回答
+                                    const token = delta.content;
                                     if (token) controller.enqueue(encoder.encode(token));
                                 } catch {}
                             }

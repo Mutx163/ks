@@ -355,6 +355,14 @@ const AIExplain = {
                     </div>
                     <button class="ai-explain-close" type="button" aria-label="关闭">×</button>
                 </div>
+                <div class="ai-think-section" id="ai-think-section" style="display:none">
+                    <div class="ai-think-header" id="ai-think-header">
+                        <span class="ai-think-icon">💭</span>
+                        <span class="ai-think-label">思考中...</span>
+                        <button class="ai-think-toggle" id="ai-think-toggle" type="button" aria-label="展开/收起思考过程">▼</button>
+                    </div>
+                    <div class="ai-think-content" id="ai-think-content"></div>
+                </div>
                 <div class="ai-explain-output" id="ai-explain-output"></div>
                 <div class="ai-explain-modal-footer">
                     <span class="ai-explain-stream-status" id="ai-explain-stream-status">准备中...</span>
@@ -367,6 +375,12 @@ const AIExplain = {
         overlay.querySelector('.ai-explain-close')?.addEventListener('click', close);
         overlay.addEventListener('click', (event) => {
             if (event.target === overlay) close();
+        });
+        // 思考区域展开/收起
+        const thinkHeader = overlay.querySelector('#ai-think-header');
+        thinkHeader?.addEventListener('click', () => {
+            const section = overlay.querySelector('#ai-think-section');
+            section?.classList.toggle('collapsed');
         });
         return overlay;
     },
@@ -418,32 +432,106 @@ const AIExplain = {
             const reader = res.body.getReader();
             const decoder = new globalThis.TextDecoder();
             let gotAny = false;
-            let fullText = '';
+
+            // 思考/回答分离状态
+            const thinkSection = overlay.querySelector('#ai-think-section');
+            const thinkContent = overlay.querySelector('#ai-think-content');
+            const thinkLabel = overlay.querySelector('.ai-think-label');
+            let inThink = false;
+            let thinkText = '';
+            let answerText = '';
+            let hadThink = false;
+            let rawBuf = '';
             let renderTimer = null;
 
-            // 节流渲染：避免每帧都重新解析
+            const THINK_START = '\x00[THINK]\x00';
+            const THINK_END = '\x00[/THINK]\x00';
+
             const throttledRender = () => {
                 if (renderTimer) return;
                 renderTimer = requestAnimationFrame(() => {
                     renderTimer = null;
-                    this._renderMarkdown(output, fullText);
+                    if (thinkText && thinkContent) {
+                        this._renderMarkdown(thinkContent, thinkText);
+                    }
+                    if (answerText) {
+                        this._renderMarkdown(output, answerText);
+                    }
                 });
+            };
+
+            const collapseThink = () => {
+                if (thinkSection && !thinkSection.classList.contains('collapsed')) {
+                    // 延迟折叠，让用户看到思考结束
+                    setTimeout(() => thinkSection.classList.add('collapsed'), 600);
+                }
             };
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 const chunk = decoder.decode(value, { stream: true });
-                if (chunk) {
-                    gotAny = true;
-                    fullText += chunk;
-                    throttledRender();
+                if (!chunk) continue;
+                gotAny = true;
+                rawBuf += chunk;
+
+                // 解析 THINK 标记
+                let cursor = 0;
+                while (cursor < rawBuf.length) {
+                    if (inThink) {
+                        const endIdx = rawBuf.indexOf(THINK_END, cursor);
+                        if (endIdx === -1) {
+                            // 思考内容还没结束，累积
+                            thinkText += rawBuf.slice(cursor);
+                            cursor = rawBuf.length;
+                        } else {
+                            thinkText += rawBuf.slice(cursor, endIdx);
+                            cursor = endIdx + THINK_END.length;
+                            inThink = false;
+                            collapseThink();
+                        }
+                    } else {
+                        const startIdx = rawBuf.indexOf(THINK_START, cursor);
+                        if (startIdx === -1) {
+                            // 普通回答内容
+                            answerText += rawBuf.slice(cursor);
+                            cursor = rawBuf.length;
+                        } else {
+                            answerText += rawBuf.slice(cursor, startIdx);
+                            cursor = startIdx + THINK_START.length;
+                            inThink = true;
+                            if (!hadThink) {
+                                hadThink = true;
+                                if (thinkSection) thinkSection.style.display = '';
+                                status.textContent = '思考中...';
+                            }
+                        }
+                    }
                 }
+                // 保留未处理完的尾部（可能截断了标记）
+                const lastStart = rawBuf.lastIndexOf('\x00');
+                if (lastStart > 0 && lastStart > rawBuf.length - 20) {
+                    rawBuf = rawBuf.slice(lastStart);
+                } else {
+                    rawBuf = '';
+                }
+
+                throttledRender();
             }
 
-            // 最终完整渲染一次
+            // 最终渲染
             if (renderTimer) cancelAnimationFrame(renderTimer);
-            this._renderMarkdown(output, fullText);
+            if (thinkText && thinkContent) {
+                this._renderMarkdown(thinkContent, thinkText);
+                if (thinkLabel) thinkLabel.textContent = '思考过程';
+                collapseThink();
+            }
+            if (answerText) {
+                this._renderMarkdown(output, answerText);
+            } else if (!answerText && thinkText) {
+                // 只有思考没有回答
+                this._renderMarkdown(output, '> 模型未生成回答内容');
+            }
             status.textContent = gotAny ? '完成' : '没有收到内容';
             cancel.textContent = '关闭';
             cancel.onclick = () => overlay.remove();
