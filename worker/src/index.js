@@ -1763,9 +1763,9 @@ async function handleAdminUpdateAIConfig(request, env, origin) {
 // POST /api/ai/explain（流式解读）
 async function handleAIExplain(request, env, origin) {
     const body = await request.json().catch(() => null);
-    if (!body || !body.question || !body.answer) return error('缺少 question 或 answer 参数', 400, origin);
+    if (!body || !body.question) return error('缺少 question 参数', 400, origin);
 
-    const { question, answer, analysis, bankName, override } = body;
+    const { question, bankName, override } = body;
     const userProvider = override?.provider;
     const userBaseUrl = override?.baseUrl;
     const userApiKey = override?.apiKey;
@@ -1784,13 +1784,12 @@ async function handleAIExplain(request, env, origin) {
         const baseUrl = (hasUserKey && userBaseUrl ? userBaseUrl : (globalCfg.baseUrl || '')).replace(/\/+$/, '');
         const apiKey = hasUserKey ? userApiKey : (globalCfg.apiKey || '');
         const model = hasUserKey && userModel ? userModel : (globalCfg.model || 'gpt-4o-mini');
-        const systemPrompt = globalCfg.systemPrompt || '你是一位耐心的辅导老师。根据题目、正确答案和解析，用简洁清晰的中文为学生讲解为什么选这个答案，帮助学生理解知识点。回答控制在 200 字以内。';
+        const systemPrompt = globalCfg.systemPrompt || '你是一位耐心的辅导老师。请根据题目和选项，判断学生的作答是否正确，并给出详细的解析。如果学生答错了，请指出错误原因并讲解正确答案；如果答对了，请肯定学生的回答并补充相关知识点。回答控制在 300 字以内。';
 
         if (!baseUrl) return error('后台未配置 Base URL', 400, origin);
         if (!apiKey) return error('后台未配置 API 密钥', 400, origin);
 
-        let context = `题目：${question}\n正确答案：${answer}`;
-        if (analysis) context += `\n解析：${analysis}`;
+        let context = `题目：${question}`;
         if (bankName) context += `\n题库：${bankName}`;
 
         const userMessage = context;

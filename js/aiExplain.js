@@ -275,12 +275,10 @@ const AIExplain = {
         let fullQuestion = qText;
         if (opts) fullQuestion += '\n' + opts;
         if (question.code) fullQuestion += '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
-        if (userAnswer !== undefined) fullQuestion += `\n学生作答：${userAnswer}（${isCorrect ? '正确' : '错误'}）`;
+        if (userAnswer !== undefined) fullQuestion += `\n学生作答：${userAnswer}`;
 
         return {
             question: fullQuestion,
-            answer: question.answer || '',
-            analysis: question.explanation || '',
             bankName: bank?.name || ''
         };
     },
@@ -456,13 +454,30 @@ const AIExplain = {
         const status = overlay.querySelector('#ai-explain-stream-status');
         const cancel = overlay.querySelector('#ai-explain-cancel');
         const regenerateBtn = overlay.querySelector('#ai-explain-regenerate');
-        const controller = new AbortController();
-        cancel?.addEventListener('click', () => controller.abort());
+        
+        // 存储当前controller，用于取消之前的请求
+        let currentController = new AbortController();
+        cancel?.addEventListener('click', () => currentController.abort());
 
-        // 重新生成：清除缓存并重新请求
+        // 重新生成：取消之前的请求，清除缓存并重新请求
         const doFetch = () => {
+            // 取消之前的请求
+            if (currentController) {
+                currentController.abort();
+            }
+            // 创建新的controller
+            currentController = new AbortController();
+            // 更新取消按钮的事件
+            cancel.onclick = () => currentController.abort();
+            
+            // 禁用重新生成按钮防止重复点击
+            if (regenerateBtn) {
+                regenerateBtn.disabled = true;
+                regenerateBtn.textContent = '生成中...';
+            }
+            
             this._cache.delete(qId);
-            this._doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller, qId });
+            this._doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller: currentController, qId, regenerateBtn });
         };
         regenerateBtn?.addEventListener('click', doFetch);
 
@@ -477,7 +492,7 @@ const AIExplain = {
         return true;
     },
 
-    async _doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller, qId }) {
+    async _doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller, qId, regenerateBtn }) {
         const output = overlay.querySelector('#ai-explain-output');
         const status = overlay.querySelector('#ai-explain-stream-status');
         const cancel = overlay.querySelector('#ai-explain-cancel');
@@ -659,6 +674,12 @@ const AIExplain = {
             status.textContent = '失败';
             this._renderMarkdown(output, `\n\n> ⚠️ **错误**：${e.message}`);
             Utils.showToast('AI 解读失败：' + e.message, 'error', 5000);
+        } finally {
+            // 重新启用重新生成按钮
+            if (regenerateBtn) {
+                regenerateBtn.disabled = false;
+                regenerateBtn.textContent = '重新生成';
+            }
         }
     }
 };
