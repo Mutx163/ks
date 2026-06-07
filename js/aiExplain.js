@@ -7,7 +7,6 @@
 
 import API from './api.js';
 import Utils from './utils.js';
-import { marked } from 'marked';
 
 const LOCAL_KEY = 'quiz_ai_explain_local';
 
@@ -279,7 +278,8 @@ const AIExplain = {
         // 2. Markdown → HTML
         let html;
         try {
-            const parse = typeof marked === 'function' ? marked : marked?.parse;
+            const m = globalThis.marked;
+            const parse = typeof m === 'function' ? m : m?.parse;
             if (typeof parse === 'function') {
                 html = parse(text, { breaks: true, gfm: true });
             } else {
