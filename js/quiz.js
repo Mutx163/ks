@@ -2053,6 +2053,7 @@ const Quiz = {
     },
 
     restart() {
+        document.getElementById('finish-modal')?.remove();
         Storage.clearSession(this.state.bankId, this.state.mode);
 
         this.state.currentIndex = 0;

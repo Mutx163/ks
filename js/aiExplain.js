@@ -275,7 +275,35 @@ const AIExplain = {
         let fullQuestion = qText;
         if (opts) fullQuestion += '\n' + opts;
         if (question.code) fullQuestion += '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
-        if (userAnswer !== undefined) fullQuestion += `\n学生作答：${userAnswer}`;
+        
+        // 格式化学生作答，附带选项内容
+        if (userAnswer !== undefined && userAnswer !== null) {
+            let answerDisplay = '';
+            const type = question.type || 'single';
+            
+            if (type === 'single' && typeof userAnswer === 'string' && /^[A-Z]$/.test(userAnswer)) {
+                // 单选题：附带选项内容，如 "D. G82"
+                const optIndex = userAnswer.charCodeAt(0) - 65;
+                const optList = displayOptions || question.options || [];
+                const optText = optList[optIndex];
+                answerDisplay = optText ? `${userAnswer}. ${typeof optText === 'object' ? optText.text : optText}` : userAnswer;
+            } else if (type === 'multiple' && Array.isArray(userAnswer)) {
+                // 多选题：附带选项内容
+                const optList = displayOptions || question.options || [];
+                answerDisplay = userAnswer.map(letter => {
+                    const idx = letter.charCodeAt(0) - 65;
+                    const opt = optList[idx];
+                    return opt ? `${letter}. ${typeof opt === 'object' ? opt.text : opt}` : letter;
+                }).join('、');
+            } else if (type === 'judge') {
+                // 判断题
+                answerDisplay = userAnswer === true ? '正确' : '错误';
+            } else {
+                // 填空题、编程题、简答题
+                answerDisplay = String(userAnswer);
+            }
+            fullQuestion += `\n学生作答：${answerDisplay}`;
+        }
 
         return {
             question: fullQuestion,
