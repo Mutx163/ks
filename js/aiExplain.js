@@ -267,12 +267,19 @@ const AIExplain = {
             .trim();
     },
 
+    /**
+     * 去掉选项文本开头已有的字母前缀，如 "A. G24" → "G24"，"B.G25" → "G25"
+     */
+    _stripLetterPrefix(text) {
+        return String(text).replace(/^[A-Z][.、．\s]+/, '').trim();
+    },
+
     buildQuestionPayload({ question, bank, userAnswer, isCorrect, displayOptions }) {
         const qText = this._cleanQuestionText(question.question || '');
         const optList = displayOptions && displayOptions.length > 0
             ? displayOptions
             : (question.options || []).map((o, i) => ({ displayLetter: String.fromCharCode(65 + i), text: typeof o === 'object' ? o.text : o }));
-        const opts = optList.map(o => `${o.displayLetter}. ${o.text}`).join('\n');
+        const opts = optList.map(o => `${o.displayLetter}. ${this._stripLetterPrefix(o.text)}`).join('\n');
         let fullQuestion = qText;
         if (opts) fullQuestion += '\n' + opts;
         if (question.code) fullQuestion += '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
@@ -285,11 +292,11 @@ const AIExplain = {
             
             if (type === 'single' && typeof userAnswer === 'string' && /^[A-Z]$/.test(userAnswer)) {
                 const opt = optList.find(o => o.displayLetter === userAnswer);
-                answerDisplay = opt ? `${userAnswer}. ${opt.text}` : userAnswer;
+                answerDisplay = opt ? `${userAnswer}. ${this._stripLetterPrefix(opt.text)}` : userAnswer;
             } else if (type === 'multiple' && Array.isArray(userAnswer)) {
                 answerDisplay = userAnswer.map(letter => {
                     const opt = optList.find(o => o.displayLetter === letter);
-                    return opt ? `${letter}. ${opt.text}` : letter;
+                    return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
                 }).join('、');
             } else if (type === 'judge') {
                 answerDisplay = userAnswer === true ? '正确' : '错误';
@@ -306,11 +313,11 @@ const AIExplain = {
             
             if (type === 'single' && typeof correctAnswer === 'string' && /^[A-Z]$/.test(correctAnswer)) {
                 const opt = optList.find(o => o.displayLetter === correctAnswer);
-                correctDisplay = opt ? `${correctAnswer}. ${opt.text}` : correctAnswer;
+                correctDisplay = opt ? `${correctAnswer}. ${this._stripLetterPrefix(opt.text)}` : correctAnswer;
             } else if (type === 'multiple' && Array.isArray(correctAnswer)) {
                 correctDisplay = correctAnswer.map(letter => {
                     const opt = optList.find(o => o.displayLetter === letter);
-                    return opt ? `${letter}. ${opt.text}` : letter;
+                    return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
                 }).join('、');
             } else if (type === 'judge') {
                 correctDisplay = correctAnswer === true ? '正确' : '错误';
