@@ -899,7 +899,8 @@ async function handleAdminUpdateUser(request, env, origin) {
 // ========== 管理员：封禁/解封用户 ==========
 async function handleAdminBanUser(request, env, origin) {
     const body = await request.json();
-    const { deviceId, password, targetUserId, banned } = body;
+    const { deviceId, password, targetUserId } = body;
+    const banned = body.banned ?? body.ban;
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
     if (targetUserId === admin.id) return error('不能封禁自己', 400, origin);
