@@ -240,21 +240,18 @@ const AIExplain = {
     },
 
     buildQuestionPayload({ question, bank, userAnswer, isCorrect }) {
+        const qText = this._cleanQuestionText(question.question || '');
+        const opts = (question.options || []).map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n');
+        let fullQuestion = qText;
+        if (opts) fullQuestion += '\n' + opts;
+        if (question.code) fullQuestion += '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
+        if (userAnswer !== undefined) fullQuestion += `\n学生作答：${userAnswer}（${isCorrect ? '正确' : '错误'}）`;
+
         return {
-            bankName: bank?.name || '',
-            question: {
-                id: question.id,
-                type: question.type,
-                category: question.category || '',
-                question: this._cleanQuestionText(question.question || ''),
-                options: question.options || [],
-                answer: question.answer,
-                userAnswer,
-                isCorrect,
-                explanation: question.explanation || '',
-                code: question.code || '',
-                codeLanguage: question.codeLanguage || ''
-            }
+            question: fullQuestion,
+            answer: question.answer || '',
+            analysis: question.explanation || '',
+            bankName: bank?.name || ''
         };
     },
 

@@ -1706,7 +1706,11 @@ async function handleAIExplain(request, env, origin) {
     const body = await request.json().catch(() => null);
     if (!body || !body.question || !body.answer) return error('缺少 question 或 answer 参数', 400, origin);
 
-    const { question, answer, analysis, bankName, userProvider, userBaseUrl, userApiKey, userModel } = body;
+    const { question, answer, analysis, bankName, override } = body;
+    const userProvider = override?.provider;
+    const userBaseUrl = override?.baseUrl;
+    const userApiKey = override?.apiKey;
+    const userModel = override?.model;
 
     try {
         await ensureAIConfigTable(env);
