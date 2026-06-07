@@ -859,6 +859,7 @@ async function handleAdminDeleteUser(request, env, origin) {
         env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetUserId)
     ]);
 
+    await writeAdminOperationLog(env, { action: '删除用户', targetType: 'user', targetId: targetUserId, operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: '已删除' }, 200, origin);
 }
 
@@ -871,6 +872,7 @@ async function handleAdminResetStats(request, env, origin) {
 
     await env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId).run();
 
+    await writeAdminOperationLog(env, { action: '重置用户数据', targetType: 'user', targetId: targetUserId, operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: '数据已重置' }, 200, origin);
 }
 
@@ -890,6 +892,7 @@ async function handleAdminUpdateUser(request, env, origin) {
     params.push(targetUserId);
     await env.DB.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
 
+    await writeAdminOperationLog(env, { action: '修改用户', targetType: 'user', targetId: targetUserId, detail: JSON.stringify({ initials, isAdmin }), operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: '已更新' }, 200, origin);
 }
 
@@ -903,6 +906,7 @@ async function handleAdminBanUser(request, env, origin) {
 
     await env.DB.prepare('UPDATE users SET banned = ? WHERE id = ?').bind(banned ? 1 : 0, targetUserId).run();
 
+    await writeAdminOperationLog(env, { action: banned ? '封禁用户' : '解封用户', targetType: 'user', targetId: targetUserId, operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: banned ? '已封禁' : '已解封' }, 200, origin);
 }
 
@@ -1013,6 +1017,7 @@ async function handleAdminAnnounce(request, env, origin) {
         'INSERT INTO announcements (content, created_at) VALUES (?, ?)'
     ).bind(content.trim(), new Date().toISOString()).run();
 
+    await writeAdminOperationLog(env, { action: '发布公告', targetType: 'announcement', detail: content.slice(0, 100), operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: '已发布' }, 200, origin);
 }
 
@@ -1048,6 +1053,7 @@ async function handleAdminDeleteAnnouncement(request, env, origin) {
     if (!id) return error('缺少 id', 400, origin);
 
     await env.DB.prepare('DELETE FROM announcements WHERE id = ?').bind(id).run();
+    await writeAdminOperationLog(env, { action: '删除公告', targetType: 'announcement', targetId: String(id), operator: admin.id || admin.initials || '' });
     return json({ ok: true }, 200, origin);
 }
 
@@ -1061,6 +1067,7 @@ async function handleAdminEditAnnouncement(request, env, origin) {
     if (content.length > 500) return error('公告内容不超过500字', 400, origin);
 
     await env.DB.prepare('UPDATE announcements SET content = ? WHERE id = ?').bind(content.trim(), id).run();
+    await writeAdminOperationLog(env, { action: '编辑公告', targetType: 'announcement', targetId: String(id), detail: content.slice(0, 100), operator: admin.id || admin.initials || '' });
     return json({ ok: true }, 200, origin);
 }
 
@@ -1086,6 +1093,7 @@ async function handleAdminAdjustStats(request, env, origin) {
             updated_at = excluded.updated_at
     `).bind(targetUserId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now).run();
 
+    await writeAdminOperationLog(env, { action: '调整用户数据', targetType: 'user', targetId: targetUserId, detail: JSON.stringify({ bankId, answered, correct, duration }), operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: '已调整' }, 200, origin);
 }
 
@@ -1112,6 +1120,7 @@ async function handleAdminChangeSyncCode(request, env, origin) {
         env.DB.prepare('UPDATE stats SET user_id = ? WHERE user_id = ?').bind(code, targetUserId)
     ]);
 
+    await writeAdminOperationLog(env, { action: '修改同步码', targetType: 'user', targetId: targetUserId, detail: `→ ${code}`, operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: '同步码已修改', newCode: code }, 200, origin);
 }
 
@@ -1132,6 +1141,7 @@ async function handleAdminRemoveDevice(request, env, origin) {
 
     await env.DB.prepare('DELETE FROM devices WHERE device_id = ?').bind(targetDeviceId).run();
 
+    await writeAdminOperationLog(env, { action: '解绑设备', targetType: 'user', targetId: dev.user_id, detail: targetDeviceId, operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: '设备已解绑' }, 200, origin);
 }
 
@@ -1221,6 +1231,7 @@ async function handleAdminImportBank(request, env, origin) {
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
     ).bind(id, existing ? 'upload' : 'create', `${questions.length}道题`, admin.id, now).run();
 
+    await writeAdminOperationLog(env, { action: existing ? '导入题库' : '创建题库', targetType: 'bank', targetId: id, detail: `${name} (${questions.length}题)`, operator: admin.id || admin.initials || '' });
     return json({ ok: true, version, count: questions.length }, 200, origin);
 }
 
@@ -1262,6 +1273,7 @@ async function handleAdminToggleBank(bankId, request, env, origin) {
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
     ).bind(bankId, 'toggle', `${enabled ? '启用' : '禁用'}题库`, admin.id, now).run();
 
+    await writeAdminOperationLog(env, { action: enabled ? '启用题库' : '禁用题库', targetType: 'bank', targetId: bankId, detail: bank.name, operator: admin.id || admin.initials || '' });
     return json({ ok: true, enabled: !!enabledValue }, 200, origin);
 }
 
@@ -1298,6 +1310,7 @@ async function handleAdminDeleteBank(bankId, request, env, origin) {
         await env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId).run();
         await env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId).run();
 
+        await writeAdminOperationLog(env, { action: '删除题库', targetType: 'bank', targetId: bankId, detail: bank.name, operator: admin.id || admin.initials || '' });
         console.log('题库删除成功:', bank.name);
         return json({ ok: true, message: `题库 "${bank.name}" 已删除` }, 200, origin);
     } catch (e) {
@@ -1359,6 +1372,7 @@ async function handleAdminImportQuestions(bankId, request, env, origin) {
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)' 
     ).bind(bankId, 'batch_import', `批量导入 ${added} 题`, admin.id, now).run();
 
+    await writeAdminOperationLog(env, { action: '批量导入题目', targetType: 'bank', targetId: bankId, detail: `${added}题`, operator: admin.id || admin.initials || '' });
     return json({ ok: true, added, total: questions.length }, 200, origin);
 }
 
@@ -1388,6 +1402,7 @@ async function handleAdminAddQuestion(bankId, request, env, origin) {
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
     ).bind(bankId, 'add_question', `添加: ${question.question.slice(0, 50)}`, admin.id, now).run();
 
+    await writeAdminOperationLog(env, { action: '添加题目', targetType: 'question', targetId: `${bankId}#${question.id}`, detail: question.question.slice(0, 80), operator: admin.id || admin.initials || '' });
     return json({ ok: true, id: question.id, count: questions.length }, 200, origin);
 }
 
@@ -1418,6 +1433,7 @@ async function handleAdminEditQuestion(bankId, qid, request, env, origin) {
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
     ).bind(bankId, 'edit_question', `编辑 #${qid}: ${(question.question || '').slice(0, 50)}`, admin.id, now).run();
 
+    await writeAdminOperationLog(env, { action: '编辑题目', targetType: 'question', targetId: `${bankId}#${qid}`, operator: admin.id || admin.initials || '' });
     return json({ ok: true }, 200, origin);
 }
 
@@ -1448,6 +1464,7 @@ async function handleAdminDeleteQuestion(bankId, qid, request, env, origin) {
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
     ).bind(bankId, 'delete_question', `删除 #${qid}: ${(removed.question || '').slice(0, 50)}`, admin.id, now).run();
 
+    await writeAdminOperationLog(env, { action: '删除题目', targetType: 'question', targetId: `${bankId}#${qid}`, detail: (removed.question || '').slice(0, 80), operator: admin.id || admin.initials || '' });
     return json({ ok: true, count: questions.length }, 200, origin);
 }
 
@@ -1521,6 +1538,8 @@ async function handleAdminUpdateBankSettings(bankId, request, env, origin) {
         await env.DB.prepare(
             'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
         ).bind(bankId, 'update_settings', changes.join('; '), admin.id, now).run();
+
+        await writeAdminOperationLog(env, { action: '更新题库设置', targetType: 'bank', targetId: bankId, detail: changes.join('; '), operator: admin.id || admin.initials || '' });
     }
 
     // 查询更新后的数据
@@ -1578,7 +1597,8 @@ async function handleAdminUploadBank(request, env, origin) {
     await env.DB.prepare(
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
     ).bind(id, existing ? 'replace' : 'create', `${bank.questions.length}道题`, admin.id, now).run();
-    
+
+    await writeAdminOperationLog(env, { action: existing ? '替换题库' : '上传题库', targetType: 'bank', targetId: id, detail: `${bank.name} (${bank.questions.length}题)`, operator: admin.id || admin.initials || '' });
     return json({ ok: true, version, count: bank.questions.length }, 200, origin);
 }
 
@@ -1695,6 +1715,7 @@ async function handleAdminUpdateAIConfig(request, env, origin) {
         merged.updatedAt = new Date().toISOString();
 
         await saveAIConfigRaw(env, merged);
+        await writeAdminOperationLog(env, { action: '更新AI配置', targetType: 'system', detail: JSON.stringify({ enabled: merged.enabled, mode: merged.mode, provider: merged.provider }), operator: admin.id || admin.initials || '' });
         return json({ ok: true }, 200, origin);
     } catch (e) {
         return error('保存 AI 配置失败: ' + e.message, 500, origin);
