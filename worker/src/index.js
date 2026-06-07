@@ -156,6 +156,11 @@ export default {
                 return await handleAdminBanUser(request, env, origin);
             }
 
+            // POST /api/admin/batch-ban
+            if (method === 'POST' && path === '/api/admin/batch-ban') {
+                return await handleAdminBatchBan(request, env, origin);
+            }
+
             // GET /api/admin/banks
             if (method === 'GET' && path === '/api/admin/banks') {
                 return await handleAdminBanks(url, env, origin);
@@ -909,6 +914,38 @@ async function handleAdminBanUser(request, env, origin) {
 
     await writeAdminOperationLog(env, { action: banned ? '封禁用户' : '解封用户', targetType: 'user', targetId: targetUserId, operator: admin.id || admin.initials || '' });
     return json({ ok: true, message: banned ? '已封禁' : '已解封' }, 200, origin);
+}
+
+// ========== 管理员：批量封禁/解封 ==========
+async function handleAdminBatchBan(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, userIds } = body;
+    const banned = body.banned ?? body.ban;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!Array.isArray(userIds) || userIds.length === 0) return error('缺少 userIds 数组', 400, origin);
+
+    const bannedValue = banned ? 1 : 0;
+    const adminId = admin.id || '';
+    // 过滤掉自己
+    const targets = userIds.filter(id => id !== adminId);
+    if (targets.length === 0) return error('不能封禁自己', 400, origin);
+
+    // 批量更新
+    const placeholders = targets.map(() => '?').join(', ');
+    await env.DB.prepare(`UPDATE users SET banned = ? WHERE id IN (${placeholders})`)
+        .bind(bannedValue, ...targets)
+        .run();
+
+    await writeAdminOperationLog(env, {
+        action: banned ? '批量封禁' : '批量解封',
+        targetType: 'user',
+        targetId: targets.join(','),
+        detail: `${targets.length}人`,
+        operator: admin.initials || adminId
+    });
+
+    return json({ ok: true, affected: targets.length }, 200, origin);
 }
 
 // ========== 管理员：题库统计 ==========

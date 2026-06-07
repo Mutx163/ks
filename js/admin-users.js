@@ -185,12 +185,12 @@ export function initUsers(Admin) {
             danger: ban
         });
         if (!ok) return;
-        let success = 0;
-        for (const uid of ids) {
-            const r = await this.post('/api/admin/ban-user', { targetUserId: uid, ban: ban ? 1 : 0 });
-            if (r?.ok) success++;
+        const r = await this.post('/api/admin/batch-ban', { userIds: ids, ban: ban ? 1 : 0 });
+        if (r?.ok) {
+            Utils.showToast(`已${ban ? '封禁' : '解封'} ${r.affected} 人`, 'success');
+        } else {
+            Utils.showToast(r?.error || '操作失败', 'error');
         }
-        Utils.showToast(`已完成 ${success}/${ids.length}`, success === ids.length ? 'success' : 'warn');
         this.selectedUsers.clear();
         await this.loadAll();
         this.renderUsers();
