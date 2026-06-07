@@ -337,8 +337,8 @@ export function initBanks(Admin) {
         const allowed = Array.from(cbs)
             .filter((cb) => cb.checked)
             .map((cb) => cb.dataset.mode);
-        const r = await this.post(`/api/admin/bank/${bankId}/settings`, {
-            allowedModes: allowed.length === MODE_DEFS.length ? null : allowed
+        const r = await this.put(`/api/admin/bank/${bankId}/settings`, {
+            allowed_modes: allowed.length === MODE_DEFS.length ? null : allowed
         });
         if (r?.ok) Utils.showToast('做题模式已保存', 'success');
         else Utils.showToast(r?.error || '保存失败', 'error');
