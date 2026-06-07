@@ -833,7 +833,111 @@ pre[class*="language-"] code[class*="language-"] {
     color: var(--text);
     font-size: var(--font-size-base);
     line-height: 1.8;
-    white-space: pre-wrap;
+}
+
+/* AI 输出 Markdown 样式 */
+.ai-explain-output h1,
+.ai-explain-output h2,
+.ai-explain-output h3 {
+    margin: 1em 0 0.5em;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text);
+}
+.ai-explain-output h1 { font-size: 1.3em; }
+.ai-explain-output h2 { font-size: 1.15em; }
+.ai-explain-output h3 { font-size: 1.05em; }
+
+.ai-explain-output p {
+    margin: 0.6em 0;
+}
+
+.ai-explain-output ul,
+.ai-explain-output ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+.ai-explain-output li {
+    margin: 0.25em 0;
+}
+
+.ai-explain-output strong {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.ai-explain-output em {
+    font-style: italic;
+}
+
+.ai-explain-output code {
+    background: var(--bg-secondary, rgba(0,0,0,0.06));
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.ai-explain-output pre {
+    margin: 0.8em 0;
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
+}
+
+.ai-explain-output pre code {
+    display: block;
+    padding: 1em;
+    overflow-x: auto;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-size: 0.85em;
+    line-height: 1.6;
+    border-radius: var(--radius-md, 8px);
+}
+
+.ai-explain-output blockquote {
+    margin: 0.6em 0;
+    padding: 0.5em 1em;
+    border-left: 3px solid var(--primary, #6366f1);
+    background: var(--bg-secondary, rgba(0,0,0,0.03));
+    border-radius: 0 var(--radius-sm, 4px) var(--radius-sm, 4px) 0;
+    color: var(--text-secondary);
+}
+
+.ai-explain-output table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8em 0;
+    font-size: 0.9em;
+}
+.ai-explain-output th,
+.ai-explain-output td {
+    padding: 0.5em 0.8em;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+.ai-explain-output th {
+    background: var(--bg-secondary, rgba(0,0,0,0.04));
+    font-weight: 600;
+}
+
+.ai-explain-output hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1em 0;
+}
+
+/* KaTeX 块级公式居中 */
+.ai-explain-output .katex-display {
+    margin: 0.8em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* 数学公式降级样式 */
+.ai-explain-output .math-fallback {
+    color: var(--orange, #f59e0b);
+    font-style: italic;
 }
 
 .ai-explain-modal-footer {

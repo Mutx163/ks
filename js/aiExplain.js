@@ -7,6 +7,7 @@
 
 import API from './api.js';
 import Utils from './utils.js';
+import { marked } from 'marked';
 
 const LOCAL_KEY = 'quiz_ai_explain_local';
 
@@ -257,9 +258,88 @@ const AIExplain = {
         };
     },
 
-    _appendText(target, text) {
-        target.textContent += text;
+    /**
+     * 将原始 Markdown 文本渲染为 HTML（数学公式 + 代码高亮 + Markdown）
+     */
+    _renderMarkdown(target, rawText) {
+        // 1. 保护数学公式，避免被 marked 解析破坏
+        const mathBlocks = [];
+        let text = rawText;
+        // 块级公式 $$...$$
+        text = text.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
+            mathBlocks.push({ tex: tex.trim(), display: true });
+            return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
+        });
+        // 行内公式 $...$
+        text = text.replace(/\$([^\n$]*?)\$/g, (_, tex) => {
+            mathBlocks.push({ tex: tex.trim(), display: false });
+            return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
+        });
+
+        // 2. Markdown → HTML
+        let html;
+        try {
+            const parse = typeof marked === 'function' ? marked : marked?.parse;
+            if (typeof parse === 'function') {
+                html = parse(text, { breaks: true, gfm: true });
+            } else {
+                html = this._fallbackMarkdown(text);
+            }
+        } catch {
+            html = this._fallbackMarkdown(text);
+        }
+
+        // 3. 恢复并渲染数学公式
+        html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (_, idx) => {
+            const m = mathBlocks[Number(idx)];
+            if (!m) return '';
+            try {
+                if (typeof katex !== 'undefined') {
+                    return katex.renderToString(m.tex, {
+                        displayMode: m.display,
+                        throwOnError: false,
+                        output: 'htmlAndMathml'
+                    });
+                }
+            } catch { /* fallback below */ }
+            return `<code class="math-fallback">${Utils.escapeHtml(m.tex)}</code>`;
+        });
+
+        // 4. 写入 DOM
+        target.innerHTML = html;
+
+        // 5. 代码高亮（Prism.js）
+        try {
+            if (typeof Prism !== 'undefined') {
+                target.querySelectorAll('pre code').forEach(block => {
+                    Prism.highlightElement(block);
+                });
+            }
+        } catch { /* ignore */ }
+
+        // 6. 自动滚动到底部
         target.scrollTop = target.scrollHeight;
+    },
+
+    /**
+     * 简易 Markdown 兜底解析（marked 未加载时）
+     */
+    _fallbackMarkdown(text) {
+        return text
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+            .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+            .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+                `<pre><code class="language-${lang || 'text'}">${code}</code></pre>`)
+            .replace(/^- (.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+            .replace(/\n{2,}/g, '</p><p>')
+            .replace(/\n/g, '<br>')
+            .replace(/^/, '<p>').replace(/$/, '</p>');
     },
 
     _createModal(questionTitle = '') {
@@ -338,6 +418,17 @@ const AIExplain = {
             const reader = res.body.getReader();
             const decoder = new globalThis.TextDecoder();
             let gotAny = false;
+            let fullText = '';
+            let renderTimer = null;
+
+            // 节流渲染：避免每帧都重新解析
+            const throttledRender = () => {
+                if (renderTimer) return;
+                renderTimer = requestAnimationFrame(() => {
+                    renderTimer = null;
+                    this._renderMarkdown(output, fullText);
+                });
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -345,10 +436,14 @@ const AIExplain = {
                 const chunk = decoder.decode(value, { stream: true });
                 if (chunk) {
                     gotAny = true;
-                    this._appendText(output, chunk);
+                    fullText += chunk;
+                    throttledRender();
                 }
             }
 
+            // 最终完整渲染一次
+            if (renderTimer) cancelAnimationFrame(renderTimer);
+            this._renderMarkdown(output, fullText);
             status.textContent = gotAny ? '完成' : '没有收到内容';
             cancel.textContent = '关闭';
             cancel.onclick = () => overlay.remove();
@@ -360,7 +455,7 @@ const AIExplain = {
                 return true;
             }
             status.textContent = '失败';
-            this._appendText(output, `\n\n[错误] ${e.message}`);
+            this._renderMarkdown(output, `\n\n> ⚠️ **错误**：${e.message}`);
             Utils.showToast('AI 解读失败：' + e.message, 'error', 5000);
         }
         return true;
