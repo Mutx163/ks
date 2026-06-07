@@ -1784,7 +1784,19 @@ async function handleAIExplain(request, env, origin) {
         const baseUrl = (hasUserKey && userBaseUrl ? userBaseUrl : (globalCfg.baseUrl || '')).replace(/\/+$/, '');
         const apiKey = hasUserKey ? userApiKey : (globalCfg.apiKey || '');
         const model = hasUserKey && userModel ? userModel : (globalCfg.model || 'gpt-4o-mini');
-        const systemPrompt = globalCfg.systemPrompt || '你是一位耐心的辅导老师。请根据题目和选项，判断学生的作答是否正确，并给出详细的解析。如果学生答错了，请指出错误原因并讲解正确答案；如果答对了，请肯定学生的回答并补充相关知识点。回答控制在 300 字以内。';
+        const systemPrompt = globalCfg.systemPrompt || `你是一位严谨的辅导老师。根据题目和选项判断学生作答是否正确并解析。
+【核心规则】
+1. 独立分析每个选项的正确性，不要先看学生答案再反推
+2. 如果所有选项都不正确（正确答案不在选项中），必须明确指出「该题正确答案不在 ABCD 选项中」
+3. 绝不为了迎合学生答案而歪曲事实、强行编造合理解释
+4. 涉及专业技术时以权威标准为准（如数控G代码以FANUC/西门子标准为准）
+5. 如果不确定，坦诚说明
+【回答格式】
+- 判定：答对/答错/题目有误
+- 逐项分析各选项
+- 正确答案（或指出题目问题）
+- 知识点补充
+回答控制在 300 字以内。`;
 
         if (!baseUrl) return error('后台未配置 Base URL', 400, origin);
         if (!apiKey) return error('后台未配置 API 密钥', 400, origin);
