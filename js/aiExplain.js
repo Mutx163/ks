@@ -75,7 +75,15 @@ const AIExplain = {
     },
 
     getConfig() {
-        return this._config || DEFAULT_CONFIG;
+        const base = this._config || DEFAULT_CONFIG;
+        // 用户本地设置的 mode 可以覆盖服务端配置
+        try {
+            const raw = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
+            if (raw.mode === 'inpage' || raw.mode === 'search') {
+                return { ...base, mode: raw.mode };
+            }
+        } catch { /* ignore */ }
+        return base;
     },
 
     isEnabled() {
@@ -91,7 +99,9 @@ const AIExplain = {
         try {
             const raw = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
             const provider = PROVIDERS[raw.provider] ? raw.provider : 'openai';
+            const mode = (raw.mode === 'inpage' || raw.mode === 'search') ? raw.mode : '';
             return {
+                mode,
                 useOverride: raw.useOverride === true,
                 provider,
                 baseUrl: String(raw.baseUrl || ''),
@@ -100,6 +110,7 @@ const AIExplain = {
             };
         } catch {
             return {
+                mode: '',
                 useOverride: false,
                 provider: 'openai',
                 baseUrl: '',
@@ -111,6 +122,7 @@ const AIExplain = {
 
     saveLocalSettings(settings) {
         const provider = PROVIDERS[settings.provider] ? settings.provider : 'openai';
+        const mode = (settings.mode === 'inpage' || settings.mode === 'search') ? settings.mode : undefined;
         const data = {
             useOverride: settings.useOverride === true,
             provider,
@@ -118,6 +130,7 @@ const AIExplain = {
             model: String(settings.model || '').trim(),
             apiKey: String(settings.apiKey || '').trim()
         };
+        if (mode) data.mode = mode;
         localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
         return data;
     },
@@ -135,7 +148,7 @@ const AIExplain = {
         const config = this.getConfig();
         const local = this.getLocalSettings();
         const provider = PROVIDERS[local.provider] || PROVIDERS.openai;
-        const modeLabel = config.mode === 'inpage' ? '网页内流式解读' : '搜索跳转';
+        const effectiveMode = local.mode || config.mode;
         const adminProvider = PROVIDERS[config.provider]?.label || config.provider;
 
         if (!config.enabled) {
@@ -149,20 +162,20 @@ const AIExplain = {
 
         return `
             <div class="ai-explain-settings" id="ai-explain-settings">
-                <div class="ai-explain-settings-title">网页内 AI 解读</div>
-                <div class="ai-explain-status-grid">
-                    <div><span>当前模式</span><strong>${Utils.escapeHtml(modeLabel)}</strong></div>
-                    <div><span>后台引擎</span><strong>${Utils.escapeHtml(adminProvider)}</strong></div>
-                    <div><span>后台密钥</span><strong>${config.hasGlobalKey ? '已配置' : '未配置'}</strong></div>
-                </div>
-                ${
-                    config.mode !== 'inpage'
-                        ? '<p class="ai-explain-note">后台当前使用“搜索跳转”模式，题目 AI 按钮会打开你上方设置的搜索引擎。</p>'
-                        : '<p class="ai-explain-note">后台当前使用“网页内流式解读”模式，点击题目 AI 按钮会在当前页面生成解析。</p>'
-                }
-                ${
-                    config.allowUserOverride
-                        ? `
+                <div class="ai-explain-settings-title">AI 解读设置</div>
+                <label>AI 按钮行为</label>
+                <select id="ai-explain-mode">
+                    <option value="inpage" ${effectiveMode === 'inpage' ? 'selected' : ''}>应用内 AI 解读（流式生成）</option>
+                    <option value="search" ${effectiveMode === 'search' ? 'selected' : ''}>AI 搜索引擎（跳转外部）</option>
+                </select>
+                <div id="ai-explain-inpage-section" style="display:${effectiveMode === 'inpage' ? 'block' : 'none'}">
+                    <div class="ai-explain-status-grid">
+                        <div><span>后台引擎</span><strong>${Utils.escapeHtml(adminProvider)}</strong></div>
+                        <div><span>后台密钥</span><strong>${config.hasGlobalKey ? '已配置' : '未配置'}</strong></div>
+                    </div>
+                    ${
+                        config.allowUserOverride
+                            ? `
                     <label class="toggle-label ai-explain-override-toggle">
                         <input type="checkbox" id="ai-explain-use-override" ${local.useOverride ? 'checked' : ''}>
                         <span class="toggle-slider"></span>
@@ -182,19 +195,32 @@ const AIExplain = {
                         <p class="ai-explain-warning">注意：用户自己的 API 密钥会保存在本机浏览器 localStorage，不会同步到云端；但同一浏览器环境中的前端脚本可读取它。</p>
                     </div>
                 `
-                        : '<p class="ai-explain-note">管理员未开放用户自定义 API，网页内解读将使用后台统一配置。</p>'
-                }
+                            : '<p class="ai-explain-note">管理员未开放用户自定义 API，网页内解读将使用后台统一配置。</p>'
+                    }
+                </div>
+                <div id="ai-explain-search-section" style="display:${effectiveMode === 'search' ? 'block' : 'none'}">
+                    <p class="ai-explain-note">点击题目 AI 按钮会打开你上方设置的 AI 搜索引擎。</p>
+                </div>
             </div>
         `;
     },
 
     bindSettingsUI(modal) {
         if (!modal) return;
+        const modeSelect = modal.querySelector('#ai-explain-mode');
+        const inpageSection = modal.querySelector('#ai-explain-inpage-section');
+        const searchSection = modal.querySelector('#ai-explain-search-section');
         const toggle = modal.querySelector('#ai-explain-use-override');
         const fields = modal.querySelector('#ai-explain-override-fields');
         const providerSelect = modal.querySelector('#ai-explain-provider');
         const baseUrl = modal.querySelector('#ai-explain-base-url');
         const model = modal.querySelector('#ai-explain-model');
+
+        modeSelect?.addEventListener('change', () => {
+            const isInpage = modeSelect.value === 'inpage';
+            if (inpageSection) inpageSection.style.display = isInpage ? 'block' : 'none';
+            if (searchSection) searchSection.style.display = isInpage ? 'none' : 'block';
+        });
 
         toggle?.addEventListener('change', () => {
             if (fields) fields.style.display = toggle.checked ? 'block' : 'none';
@@ -210,15 +236,16 @@ const AIExplain = {
     saveSettingsFromModal(modal) {
         if (!modal || !modal.querySelector('#ai-explain-settings')) return null;
         const config = this.getConfig();
-        if (!config.enabled || !config.allowUserOverride) return null;
+        if (!config.enabled) return null;
 
+        const mode = modal.querySelector('#ai-explain-mode')?.value || 'search';
         const useOverride = modal.querySelector('#ai-explain-use-override')?.checked || false;
         const provider = modal.querySelector('#ai-explain-provider')?.value || 'openai';
         const baseUrl = modal.querySelector('#ai-explain-base-url')?.value || '';
         const model = modal.querySelector('#ai-explain-model')?.value || '';
         const apiKey = modal.querySelector('#ai-explain-api-key')?.value || '';
 
-        return this.saveLocalSettings({ useOverride, provider, baseUrl, model, apiKey });
+        return this.saveLocalSettings({ mode, useOverride, provider, baseUrl, model, apiKey });
     },
 
     getRequestOverride() {

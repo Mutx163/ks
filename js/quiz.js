@@ -120,16 +120,16 @@ const Quiz = {
         
         if (!this.state.bank || !Array.isArray(this.state.bank.questions)) {
             console.error('[Quiz] ❌ 题库加载失败');
-            Utils.showToast('题库加载失败', 'error');
-            setTimeout(() => (window.location.href = 'index.html'), 1000);
+            this.showOverlayError('题库加载失败', '即将返回首页…');
+            setTimeout(() => (window.location.href = 'index.html'), 1500);
             return;
         }
 
         // 检查题库是否已被禁用
         if (this.state.bank.enabled === false) {
             console.warn('[Quiz] 🚫 题库已被管理员禁用:', this.state.bankId);
-            Utils.showToast('该题库已被管理员禁用', 'error');
-            setTimeout(() => (window.location.href = 'index.html'), 1000);
+            this.showOverlayError('该题库已被管理员禁用', '即将返回首页…');
+            setTimeout(() => (window.location.href = 'index.html'), 1500);
             return;
         }
         
@@ -201,6 +201,7 @@ const Quiz = {
         Perf.mark('开始渲染');
         console.log('[Quiz] 🎨 开始渲染页面...');
         this.render();
+        this.showBankWelcome();
         this.bindEvents();
         Perf.mark('渲染完成');
 
@@ -350,13 +351,65 @@ const Quiz = {
     },
 
     async loadBankFromJson() {
+        // 更新遮罩文案
+        const subEl = document.getElementById('quiz-loading-sub');
+        if (subEl) subEl.textContent = '正在从云端获取题库数据…';
+
         const bank = await BankLoader.loadBankById(this.state.bankId);
         if (bank) {
             this.state.bank = bank;
-            Utils.showToast(`题库 "${bank.name}" 加载成功`, 'success', 1500);
-        } else {
-            Utils.showToast('题库加载失败', 'error', 5000);
+            this._bankFromCloud = true;
         }
+    },
+
+    /**
+     * 题库加载成功后显示欢迎过渡
+     * 缓存命中 → 快速闪过(300ms)；云端加载 → 正常展示(800ms)
+     */
+    showBankWelcome() {
+        const overlay = document.getElementById('quiz-loading-overlay');
+        if (!overlay) return;
+
+        const card = document.getElementById('quiz-loading-card');
+        const titleEl = document.getElementById('quiz-loading-title');
+        const subEl = document.getElementById('quiz-loading-sub');
+        const bank = this.state.bank;
+        const count = this.state.questions.length;
+
+        const modeLabels = {
+            all: '全部题目', wrong: '错题重练', review: '背题模式',
+            exam: '考试模式', random: '随机练习', bookmark: '收藏题目',
+            spaced: '间隔复习', shuffle_options: '选项乱序'
+        };
+
+        // 进入欢迎状态
+        card.classList.add('welcome');
+        titleEl.textContent = bank.name;
+        subEl.textContent = `${count} 道题目 · ${modeLabels[this.state.mode] || '练习模式'}`;
+        subEl.classList.add('bank-info');
+
+        // 缓存命中快速闪过，云端加载正常展示
+        const delay = this._bankFromCloud ? 800 : 300;
+        setTimeout(() => {
+            overlay.classList.add('fade-out');
+            setTimeout(() => overlay.remove(), 450);
+        }, delay);
+    },
+
+    /**
+     * 加载失败时在遮罩上显示错误状态
+     */
+    showOverlayError(title, sub) {
+        const overlay = document.getElementById('quiz-loading-overlay');
+        if (!overlay) return;
+
+        const card = document.getElementById('quiz-loading-card');
+        const titleEl = document.getElementById('quiz-loading-title');
+        const subEl = document.getElementById('quiz-loading-sub');
+
+        card.classList.add('error');
+        titleEl.textContent = title;
+        subEl.textContent = sub;
     },
 
     prepareQuestions() {
@@ -1627,12 +1680,19 @@ const Quiz = {
             if (q && this.checkAnswer(q)) correctCount++;
         });
 
+        const hasUnanswered = unanswered > 0;
+        const iconName = isTimeout ? 'clock' : hasUnanswered ? 'alert-circle' : 'check-circle-2';
+        const iconColor = isTimeout ? 'warning' : hasUnanswered ? 'warning' : 'success';
+        const wrongCount = answered - correctCount;
+
         const modalHtml = `
-            <div class="finish-modal-overlay show" id="finish-modal" onclick="if(event.target===this)Quiz.closeFinishModal()">
-                <div class="finish-modal">
-                    <div class="finish-modal-icon">${isTimeout ? '⏰' : unanswered > 0 ? '📝' : '🎯'}</div>
-                    <div class="finish-modal-title">${isTimeout ? '考试时间到！' : unanswered > 0 ? '还有题目未完成' : '全部答完！'}</div>
-                    <div class="finish-modal-desc">${isTimeout ? '时间已耗尽，请确认结束考试' : unanswered > 0 ? `还有 ${unanswered} 题未答，确定要结束吗？` : '点击确认查看结果'}</div>
+            <div class="finish-modal-overlay show" id="finish-modal">
+                <div class="finish-modal" role="dialog" aria-modal="true" aria-label="答题完成确认">
+                    <div class="finish-modal-icon-wrap ${iconColor}">
+                        <i data-lucide="${iconName}"></i>
+                    </div>
+                    <h3 class="finish-modal-title">${isTimeout ? '考试时间到' : hasUnanswered ? '还有题目未完成' : '全部答完！'}</h3>
+                    <p class="finish-modal-desc">${isTimeout ? '时间已耗尽，请确认结束考试' : hasUnanswered ? `还有 ${unanswered} 题未答，确定要结束吗？` : '确认后查看答题结果'}</p>
                     <div class="finish-modal-stats">
                         <div class="finish-modal-stat">
                             <div class="finish-modal-stat-value">${answered}</div>
@@ -1643,7 +1703,7 @@ const Quiz = {
                             <div class="finish-modal-stat-label">正确</div>
                         </div>
                         <div class="finish-modal-stat">
-                            <div class="finish-modal-stat-value ${answered - correctCount > 0 ? 'danger' : ''}">${answered - correctCount}</div>
+                            <div class="finish-modal-stat-value ${wrongCount > 0 ? 'danger' : ''}">${wrongCount}</div>
                             <div class="finish-modal-stat-label">错误</div>
                         </div>
                         <div class="finish-modal-stat">
@@ -1652,25 +1712,35 @@ const Quiz = {
                         </div>
                     </div>
                     <div class="finish-modal-actions">
-                        ${!isTimeout && unanswered > 0 ? `<button class="btn btn-primary" onclick="Quiz.closeFinishModal()">${Utils.icon('book-open')} 继续答题</button>` : ''}
-                        <button class="btn btn-primary" onclick="Quiz.confirmFinish()">${Utils.icon('check-circle')} 确认结束</button>
-                        ${!isTimeout ? `<button class="btn btn-ghost" onclick="Quiz.saveAndQuit()">${Utils.icon('save')} 保存进度退出</button>` : ''}
-                        ${!isTimeout ? `<button class="btn btn-ghost" onclick="Quiz.closeFinishModal()">${Utils.icon('x')} 取消</button>` : ''}
+                        ${!isTimeout && hasUnanswered ? `<button class="btn btn-primary" onclick="Quiz.closeFinishModal()"><i data-lucide="book-open"></i> 继续答题</button>` : ''}
+                        <button class="btn ${hasUnanswered ? 'btn-warning' : 'btn-primary'}" onclick="Quiz.confirmFinish()"><i data-lucide="check-circle-2"></i> 确认结束</button>
                     </div>
+                    ${!isTimeout ? `
+                    <div class="finish-modal-secondary">
+                        <button class="btn btn-outline btn-sm" onclick="Quiz.saveAndQuit()"><i data-lucide="save"></i> 保存退出</button>
+                    </div>` : ''}
                 </div>
             </div>
         `;
 
-        // 插入到 body
         const div = document.createElement('div');
         div.innerHTML = modalHtml;
         document.body.appendChild(div);
-        Utils.initIcons();
+        Utils.initIcons?.();
+
+        // 绑定关闭事件
+        const overlay = document.getElementById('finish-modal');
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) this.closeFinishModal(); });
+        this._finishEscHandler = (e) => { if (e.key === 'Escape') this.closeFinishModal(); };
+        document.addEventListener('keydown', this._finishEscHandler);
     },
 
     closeFinishModal() {
-        const modal = document.getElementById('finish-modal');
-        if (modal) modal.remove();
+        if (this._finishEscHandler) {
+            document.removeEventListener('keydown', this._finishEscHandler);
+            this._finishEscHandler = null;
+        }
+        document.getElementById('finish-modal')?.remove();
     },
 
     /**
@@ -1684,7 +1754,7 @@ const Quiz = {
     },
 
     /**
-     * 确认结束答题
+     * 确认结束答题 — 结果在弹窗内展示
      */
     confirmFinish() {
         this.closeFinishModal();
@@ -1700,8 +1770,140 @@ const Quiz = {
         this.recordQuestionTime();
         Storage.clearSession(this.state.bankId, this.state.mode);
         this.state.isFinished = true;
-        this.renderFooter();
-        this.renderResult();
+
+        // 保存历史 + 推送统计 + 追踪
+        this._saveAndTrackStats();
+
+        // 隐藏底部栏
+        const footer = document.querySelector('.quiz-footer');
+        if (footer) footer.style.display = 'none';
+
+        // 弹窗内显示结果
+        this.showResultModal();
+    },
+
+    /**
+     * 保存历史记录、推送统计数据、发送追踪事件
+     * 从原 renderResult 中抽离，供 confirmFinish 和 renderResult 共用
+     */
+    _saveAndTrackStats() {
+        const duration = Math.round((Date.now() - this.state.startTime) / 1000);
+        const submittedIds = Object.keys(this.state.submitted);
+        const correctCount = submittedIds.filter((qId) => {
+            const q = this.state.questions.find((q) => q.id == qId);
+            return q && this.checkAnswer(q);
+        }).length;
+        const isExam = this.state.mode === 'exam';
+
+        // 背题模式：结束前补齐剩余时长
+        this._saveReviewDuration();
+
+        Storage.addHistory({
+            bankId: this.state.bankId,
+            bankName: this.state.bank.name,
+            mode: this.state.mode,
+            total: this.state.questions.length,
+            correct: correctCount,
+            duration
+        });
+
+        if (isExam) {
+            Tracker.finishExam(this.state.bankId, this.state.questions.length, correctCount,
+                submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0,
+                duration, false);
+        } else {
+            Tracker.finishQuiz(this.state.bankId, this.state.bank.name, this.state.mode,
+                this.state.questions.length, correctCount, submittedIds.length - correctCount,
+                submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0,
+                duration);
+        }
+
+        // 热力图
+        const heatmapData = submittedIds.map(qId => {
+            const q = this.state.questions.find(q => q.id == qId);
+            return { id: qId, category: q?.category, type: q?.type, difficulty: q?.difficulty,
+                timeSpent: this.state.questionTimes[qId] || 0, isCorrect: q ? this.checkAnswer(q) : false };
+        });
+        Tracker.questionHeatmap(this.state.bankId, this.state.bank.name, heatmapData);
+
+        // 清除防抖定时器，推送增量
+        if (this.state._statsTimer) { clearTimeout(this.state._statsTimer); this.state._statsTimer = null; }
+        this.state._statsDirty = false;
+        const dA = submittedIds.length - (this.state._lastPushAnswered || 0);
+        const dC = correctCount - (this.state._lastPushCorrect || 0);
+        const dD = duration - (this.state._lastPushDuration || 0);
+        if (dA > 0 || dC > 0 || dD > 0) {
+            this.state._lastPushAnswered = submittedIds.length;
+            this.state._lastPushCorrect = correctCount;
+            this.state._lastPushDuration = duration;
+            API.pushStats({ bankId: this.state.bankId, bankName: this.state.bank.name,
+                answered: dA, correct: dC, duration: dD });
+        }
+
+        // 存到 state 供弹窗读取
+        this._resultStats = { duration, correctCount, wrongCount: submittedIds.length - correctCount,
+            total: this.state.questions.length, submittedCount: submittedIds.length };
+    },
+
+    /**
+     * 弹窗内显示结果（替代原 renderResult 的结果页）
+     */
+    showResultModal() {
+        const { duration, correctCount, wrongCount, total, submittedCount } = this._resultStats || {};
+        const minutes = Math.floor((duration || 0) / 60);
+        const seconds = (duration || 0) % 60;
+        const accuracy = submittedCount > 0 ? Math.round((correctCount / submittedCount) * 100) : 0;
+        const isExam = this.state.mode === 'exam';
+        const passed = isExam ? accuracy >= this.state.examPassRate : null;
+        const iconClass = isExam && !passed ? 'warning' : 'success';
+        const iconName = isExam && !passed ? 'frown' : 'party-popper';
+        const title = isExam ? (passed ? '考试通过！' : '未通过考试') : '答题完成！';
+        const desc = isExam ? `及格线 ${this.state.examPassRate}%，正确率 ${accuracy}%`
+            : `${this.state.bank.name}`;
+
+        const modalHtml = `
+            <div class="finish-modal-overlay show" id="finish-modal">
+                <div class="finish-modal" role="dialog" aria-modal="true" aria-label="答题结果">
+                    <div class="finish-modal-icon-wrap ${iconClass}">
+                        <i data-lucide="${iconName}"></i>
+                    </div>
+                    <h3 class="finish-modal-title">${title}</h3>
+                    <p class="finish-modal-desc">${Utils.escapeHtml(desc)}</p>
+                    <div class="finish-modal-stats">
+                        <div class="finish-modal-stat">
+                            <div class="finish-modal-stat-value success">${correctCount}</div>
+                            <div class="finish-modal-stat-label">答对</div>
+                        </div>
+                        <div class="finish-modal-stat">
+                            <div class="finish-modal-stat-value danger">${wrongCount}</div>
+                            <div class="finish-modal-stat-label">答错</div>
+                        </div>
+                        <div class="finish-modal-stat">
+                            <div class="finish-modal-stat-value">${accuracy}%</div>
+                            <div class="finish-modal-stat-label">正确率</div>
+                        </div>
+                        <div class="finish-modal-stat">
+                            <div class="finish-modal-stat-value">${minutes > 0 ? minutes + '分' : ''}${seconds}秒</div>
+                            <div class="finish-modal-stat-label">用时</div>
+                        </div>
+                    </div>
+                    <div class="finish-modal-actions">
+                        <button class="btn btn-primary" onclick="Quiz.goHome()"><i data-lucide="home"></i> 返回首页</button>
+                    </div>
+                    <div class="finish-modal-secondary">
+                        <button class="btn btn-outline btn-sm" onclick="Quiz.startReview()"><i data-lucide="file-text"></i> 查看解析</button>
+                        <button class="btn btn-outline btn-sm" onclick="Quiz.restart()"><i data-lucide="rotate-ccw"></i> 重新开始</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const div = document.createElement('div');
+        div.innerHTML = modalHtml;
+        document.body.appendChild(div);
+        Utils.initIcons?.();
+
+        // 禁止 ESC 关闭结果弹窗（必须点按钮）
     },
 
     finish() {
@@ -1724,7 +1926,8 @@ const Quiz = {
 
         const isExam = this.state.mode === 'exam';
         const passed = isExam ? thisAccuracy >= this.state.examPassRate : null;
-        const resultIcon = isExam ? (passed ? '🎉' : '😞') : '🎉';
+        const resultIconName = isExam && !passed ? 'frown' : 'party-popper';
+        const resultIconClass = isExam && !passed ? 'result-icon-danger' : 'result-icon-success';
         const resultTitle = isExam ? (passed ? '考试通过！' : '未通过考试') : '答题完成！';
 
         // 背题模式：结束前补齐剩余时长
@@ -1805,7 +2008,9 @@ const Quiz = {
         const container = document.getElementById('question-container');
         container.innerHTML = `
             <div class="result-page">
-                <div class="result-icon">${resultIcon}</div>
+                <div class="result-icon ${resultIconClass}">
+                    <i data-lucide="${resultIconName}"></i>
+                </div>
                 <div class="result-title">${resultTitle}</div>
                 <div class="result-subtitle">${Utils.escapeHtml(this.state.bank.name)}</div>
                 ${isExam ? `<div class="result-exam-info">及格线 ${this.state.examPassRate}%，正确率 ${thisAccuracy}%</div>` : ''}
@@ -1831,18 +2036,19 @@ const Quiz = {
 
                 <div class="result-actions">
                     <button class="btn btn-secondary btn-lg" onclick="Quiz.startReview()">
-                        📖 查看解析
+                        <i data-lucide="file-text"></i> 查看解析
                     </button>
                     <button class="btn btn-secondary btn-lg" onclick="Quiz.restart()">
-                        🔄 重新开始
+                        <i data-lucide="rotate-ccw"></i> 重新开始
                     </button>
                     <button class="btn btn-primary btn-lg" onclick="Quiz.goHome()">
-                        🏠 返回首页
+                        <i data-lucide="home"></i> 返回首页
                     </button>
                 </div>
             </div>
         `;
 
+        Utils.initIcons?.();
         document.querySelector('.quiz-footer').style.display = 'none';
     },
 
@@ -1859,7 +2065,7 @@ const Quiz = {
         this.state.startTime = Date.now();
         this.state.examTimeRemaining = 0;
 
-        if (this.state.mode === 'exam' || this.state.mode === 'random' || this.state.mode === 'shuffle_options') {
+        if (this.state.mode === 'exam' || this.state.mode === 'random' || this.state.mode === 'shuffle_options' || this.state.mode === 'wrong') {
             this.prepareQuestions();
         }
 

@@ -40,6 +40,16 @@
     </head>
     <body>
         <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+
+        <!-- 题库加载遮罩 -->
+        <div class="quiz-loading-overlay" id="quiz-loading-overlay">
+            <div class="quiz-loading-card" id="quiz-loading-card">
+                <div class="quiz-loading-spinner"></div>
+                <div class="quiz-loading-title" id="quiz-loading-title">正在加载题库…</div>
+                <div class="quiz-loading-sub" id="quiz-loading-sub">连接云端获取最新数据</div>
+            </div>
+        </div>
+
         <!-- 头部 -->
         <header class="quiz-header">
             <div class="container">

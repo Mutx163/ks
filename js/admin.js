@@ -66,6 +66,30 @@ const Admin = {
         }
     },
 
+    bindTabKeyboard() {
+        const tabsContainer = document.getElementById('tabs');
+        if (!tabsContainer || tabsContainer._kbBound) return;
+        tabsContainer._kbBound = true;
+        tabsContainer.addEventListener('keydown', (e) => {
+            const tabs = [...tabsContainer.querySelectorAll('.tab')];
+            const current = tabs.findIndex((t) => t.dataset.tab === this.tab);
+            let next = -1;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                next = (current + 1) % tabs.length;
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                next = (current - 1 + tabs.length) % tabs.length;
+            } else if (e.key === 'Home') {
+                next = 0;
+            } else if (e.key === 'End') {
+                next = tabs.length - 1;
+            }
+            if (next >= 0) {
+                e.preventDefault();
+                this.switchTab(tabs[next].dataset.tab);
+            }
+        });
+    },
+
     bindOperationLogger() {
         if (document.body.dataset.adminLogBound === '1') return;
         document.body.dataset.adminLogBound = '1';
@@ -114,6 +138,7 @@ const Admin = {
             if (e.key === 'Enter') this.login();
         });
         this.bindOperationLogger();
+        this.bindTabKeyboard();
         this.bindRouter();
 
         if (this.password) {
@@ -221,6 +246,16 @@ const Admin = {
         if (this._routeBound) return;
         this._routeBound = true;
         window.addEventListener('hashchange', () => this.handleRoute());
+        // ESC 关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const mask = document.querySelector('.modal-mask');
+                if (mask) {
+                    const cancelBtn = mask.querySelector('[id$="-cancel"]');
+                    if (cancelBtn) cancelBtn.click();
+                }
+            }
+        });
     },
 
     hashForTab(t) {
@@ -247,10 +282,18 @@ const Admin = {
         localStorage.setItem('admin_tab', t);
         document
             .querySelectorAll('.tab')
-            .forEach((el) => el.classList.toggle('active', el.dataset.tab === t));
+            .forEach((el) => {
+                const isActive = el.dataset.tab === t;
+                el.classList.toggle('active', isActive);
+                el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                el.setAttribute('tabindex', isActive ? '0' : '-1');
+            });
         document
             .querySelectorAll('.section')
             .forEach((el) => el.classList.toggle('active', el.id === 'sec-' + t));
+        // 将焦点移到激活的 Tab
+        const activeTab = document.querySelector(`.tab[data-tab="${t}"]`);
+        if (activeTab && document.activeElement?.closest('.tabs')) activeTab.focus();
     },
 
     switchTab(t, { pushHash = true } = {}) {
@@ -362,8 +405,8 @@ const Admin = {
             <div class="modal-mask" id="${id}-mask">
                 <div class="modal-box ${danger ? 'danger-modal' : ''}">
                     <h3>${Utils.escapeHtml(title)}</h3>
-                    ${targetLabel ? `<p style="font-size:13px;color:var(--admin-text-secondary);margin-bottom:8px">对象：<strong>${Utils.escapeHtml(targetLabel)}</strong></p>` : ''}
-                    ${message ? `<p style="font-size:13px;color:${danger ? 'var(--admin-danger)' : 'var(--admin-text-secondary)'};margin-bottom:10px">${Utils.escapeHtml(message)}</p>` : ''}
+                    ${targetLabel ? `<p class="confirm-meta">对象：<strong>${Utils.escapeHtml(targetLabel)}</strong></p>` : ''}
+                    ${message ? `<p class="confirm-msg ${danger ? 'danger' : 'default'}">${Utils.escapeHtml(message)}</p>` : ''}
                     ${
                         requiredText
                             ? `
@@ -399,56 +442,296 @@ const Admin = {
         });
     },
 
-    // ==================== 总览 ====================
+    // ==================== 总览 - 高端设计 ====================
+
+    // 骨架屏渲染
+    _renderOverviewSkeleton() {
+        return `
+            ${this.pageHeader({
+                title: '总览',
+                description: '查看平台运行、用户增长、答题规模与题库核心状态。',
+                crumbs: ['管理后台', '总览'],
+                actions: '<button class="abtn" disabled>刷新数据</button>'
+            })}
+            
+            <!-- Hero 骨架屏 -->
+            <div class="overview-hero">
+                <div class="hero-metric hero-metric-primary">
+                    <div class="skeleton skeleton-text" style="width:100px;height:14px;margin-bottom:8px"></div>
+                    <div class="skeleton skeleton-value" style="width:120px;height:48px"></div>
+                    <div class="skeleton skeleton-text-sm" style="width:140px;margin-top:8px"></div>
+                </div>
+                <div class="hero-metric">
+                    <div class="skeleton skeleton-text" style="width:80px;height:14px;margin-bottom:8px"></div>
+                    <div style="display:flex;align-items:center;gap:20px">
+                        <div class="skeleton skeleton-circle" style="width:80px;height:80px;border-radius:50%"></div>
+                        <div>
+                            <div class="skeleton skeleton-value" style="width:60px;height:32px;margin-bottom:8px"></div>
+                            <div class="skeleton skeleton-text-sm" style="width:100px"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 今日数据骨架屏 -->
+            <div class="overview-grid">
+                <div class="today-stats">
+                    ${Array(4).fill(`
+                        <div class="today-stat-item">
+                            <div class="skeleton skeleton-circle"></div>
+                            <div class="today-stat-info">
+                                <div class="skeleton skeleton-value" style="width:60px;height:24px;margin-bottom:6px"></div>
+                                <div class="skeleton skeleton-text-sm" style="width:80px"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="skeleton skeleton-text" style="width:120px;height:16px"></div>
+                        <div class="skeleton skeleton-text-sm" style="width:60px"></div>
+                    </div>
+                    <div class="trend-list">
+                        ${Array(7).fill(`
+                            <div class="trend-list-item">
+                                <div class="trend-list-date">
+                                    <div class="skeleton" style="width:32px;height:20px;margin:0 auto 4px"></div>
+                                    <div class="skeleton" style="width:24px;height:10px;margin:0 auto"></div>
+                                </div>
+                                <div class="trend-list-bar-track">
+                                    <div class="skeleton skeleton-bar"></div>
+                                </div>
+                                <div class="trend-list-count">
+                                    <div class="skeleton" style="width:40px;height:16px;margin-left:auto"></div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 指标卡片骨架屏 -->
+            <div class="stat-grid">
+                ${Array(4).fill(`
+                    <div class="stat-card">
+                        <div class="skeleton skeleton-circle"></div>
+                        <div class="stat-info">
+                            <div class="skeleton skeleton-value" style="margin-bottom:6px"></div>
+                            <div class="skeleton skeleton-text-sm" style="width:60px"></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    },
 
     async renderOverview() {
         const el = document.getElementById('sec-overview');
-        el.innerHTML = '<div class="loading">加载中...</div>';
+        
+        // 显示骨架屏
+        el.innerHTML = this._renderOverviewSkeleton();
+        
         try {
             const d = await this.get('/api/admin/overview');
             if (!d?.ok) {
-                el.innerHTML = '<div class="empty-state">加载失败</div>';
+                el.innerHTML = `
+                    ${this.pageHeader({
+                        title: '总览',
+                        description: '查看平台运行、用户增长、答题规模与题库核心状态。',
+                        crumbs: ['管理后台', '总览'],
+                        actions: '<button class="abtn" onclick="Admin.renderOverview()">重试</button>'
+                    })}
+                    <div class="empty-state">
+                        <strong>加载失败</strong>
+                        <div class="error-desc">${d?.error || '无法获取数据，请检查网络连接'}</div>
+                        <button class="abtn primary error-retry" onclick="Admin.renderOverview()">重新加载</button>
+                    </div>
+                `;
                 return;
             }
+            
             const o = d.overview;
             const total = this.users.reduce((s, u) => s + u.total_answered, 0);
             const dur = this.users.reduce((s, u) => s + u.total_duration, 0);
-            const acc =
-                total > 0
-                    ? Math.round(
-                          (this.users.reduce((s, u) => s + u.total_correct, 0) / total) * 100
-                      )
-                    : 0;
+            const acc = total > 0
+                ? Math.round((this.users.reduce((s, u) => s + u.total_correct, 0) / total) * 100)
+                : 0;
             const maxCnt = Math.max(...o.weekTrend.map((w) => w.cnt), 1);
+            
+            // 计算题库分布（取前5个最活跃的题库）
+            const bankStats = {};
+            this.users.forEach(u => {
+                // 这里需要从stats中获取题库分布，暂时使用简化版本
+            });
+            
             el.innerHTML = `
                 ${this.pageHeader({
                     title: '总览',
                     description: '查看平台运行、用户增长、答题规模与题库核心状态。',
                     crumbs: ['管理后台', '总览'],
-                    actions:
-                        '<button class="abtn" onclick="Admin.renderOverview()">刷新数据</button>'
+                    actions: '<button class="abtn" onclick="Admin.renderOverview()">刷新数据</button>'
                 })}
-                <div class="system-notice"><span class="notice-dot"></span><div>数据实时来自云端 Worker/D1 API。题库启用或禁用后，前台列表会通过无缓存请求立即获取最新状态。</div></div>
-                <div class="stat-grid">
-                    <div class="stat-card"><div class="stat-icon">${Utils.icon('users')}</div><div class="stat-info"><div class="stat-value">${this.users.length}</div><div class="stat-label">注册用户</div></div></div>
-                    <div class="stat-card"><div class="stat-icon">${Utils.icon('check-circle')}</div><div class="stat-info"><div class="stat-value">${this.fmtN(total)}</div><div class="stat-label">总答题数</div></div></div>
-                    <div class="stat-card"><div class="stat-icon green">${Utils.icon('target')}</div><div class="stat-info"><div class="stat-value">${acc}%</div><div class="stat-label">平均正确率</div></div></div>
-                    <div class="stat-card"><div class="stat-icon orange">${Utils.icon('clock')}</div><div class="stat-info"><div class="stat-value">${this.fmtDur(dur)}</div><div class="stat-label">总学习时长</div></div></div>
+                
+                <!-- 系统通知 -->
+                <div class="system-notice">
+                    <span class="notice-dot"></span>
+                    <div>数据实时来自云端 Worker/D1 API。题库启用或禁用后，前台列表会通过无缓存请求立即获取最新状态。</div>
                 </div>
-                <div class="stat-grid">
-                    <div class="stat-card"><div class="stat-icon">${Utils.icon('user-plus')}</div><div class="stat-info"><div class="stat-value">${o.todayReg}</div><div class="stat-label">今日注册</div></div></div>
-                    <div class="stat-card"><div class="stat-icon green">${Utils.icon('activity')}</div><div class="stat-info"><div class="stat-value">${o.todayActive}</div><div class="stat-label">今日活跃</div></div></div>
-                    <div class="stat-card"><div class="stat-icon">${Utils.icon('book-open')}</div><div class="stat-info"><div class="stat-value">${o.bankCount}</div><div class="stat-label">题库总数</div></div></div>
-                    <div class="stat-card"><div class="stat-icon red">${Utils.icon('shield-off')}</div><div class="stat-info"><div class="stat-value">${o.bannedCount}</div><div class="stat-label">封禁用户</div></div></div>
+                
+                <!-- Hero 指标区域 -->
+                <div class="overview-hero" role="region" aria-label="核心数据概览">
+                    <div class="hero-metric hero-metric-primary">
+                        <div class="hero-label">总答题数</div>
+                        <div class="hero-value" aria-label="${this.fmtN(total)} 题">${this.fmtN(total)}</div>
+                        <div class="hero-subtitle">${this.users.length} 位用户参与</div>
+                    </div>
+                    <div class="hero-metric">
+                        <div class="hero-label">平均正确率</div>
+                        <div class="flex-center-gap">
+                            <div class="ring-progress" style="--progress:${acc}" role="img" aria-label="正确率 ${acc}%">
+                                <span class="ring-progress-value">${acc}%</span>
+                            </div>
+                            <div>
+                                <div class="hero-stat-value">${acc}%</div>
+                                <div class="hero-stat-sub">正确率</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card">
-                    <div class="card-header"><h3>近 7 天注册趋势</h3><span class="count">按天统计</span></div>
-                    <div class="trend-chart">${o.weekTrend.map((w) => `<div class="trend-bar" style="height:${Math.max((w.cnt / maxCnt) * 60, 3)}px"><span class="trend-value">${w.cnt}</span><span class="trend-label">${(this.fmtDate(w.day) || '').slice(5)}</span></div>`).join('') || this.emptyState({ title: '暂无趋势数据' })}</div>
-                </div>`;
+                
+                <!-- 今日数据 + 趋势图 -->
+                <div class="overview-grid">
+                    <div class="today-stats" role="list" aria-label="今日运营数据">
+                        <div class="today-stat-item" role="listitem" aria-label="今日注册 ${o.todayReg} 人">
+                            <div class="today-stat-icon" aria-hidden="true">${Utils.icon('user-plus')}</div>
+                            <div class="today-stat-info">
+                                <div class="today-stat-value">${o.todayReg}</div>
+                                <div class="today-stat-label">今日注册</div>
+                            </div>
+                        </div>
+                        <div class="today-stat-item" role="listitem" aria-label="今日活跃 ${o.todayActive} 人">
+                            <div class="today-stat-icon green" aria-hidden="true">${Utils.icon('activity')}</div>
+                            <div class="today-stat-info">
+                                <div class="today-stat-value">${o.todayActive}</div>
+                                <div class="today-stat-label">今日活跃</div>
+                            </div>
+                        </div>
+                        <div class="today-stat-item" role="listitem" aria-label="题库总数 ${o.bankCount} 个">
+                            <div class="today-stat-icon orange" aria-hidden="true">${Utils.icon('book-open')}</div>
+                            <div class="today-stat-info">
+                                <div class="today-stat-value">${o.bankCount}</div>
+                                <div class="today-stat-label">题库总数</div>
+                            </div>
+                        </div>
+                        <div class="today-stat-item" role="listitem" aria-label="封禁用户 ${o.bannedCount} 人">
+                            <div class="today-stat-icon red" aria-hidden="true">${Utils.icon('shield-off')}</div>
+                            <div class="today-stat-info">
+                                <div class="today-stat-value">${o.bannedCount}</div>
+                                <div class="today-stat-label">封禁用户</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>近 7 天注册趋势</h3>
+                            <span class="count">按天统计</span>
+                        </div>
+                        <div class="trend-list" role="list" aria-label="近7天注册趋势数据">
+                            ${o.weekTrend.length > 0 ? o.weekTrend.map((w, i) => `
+                                <div class="trend-list-item" role="listitem" style="animation-delay:${i * 60}ms" aria-label="${this.fmtDate(w.day)} 注册 ${w.cnt} 人">
+                                    <div class="trend-list-date">
+                                        <span class="trend-list-day">${(this.fmtDate(w.day) || '').slice(8)}</span>
+                                        <span class="trend-list-month">${(this.fmtDate(w.day) || '').slice(5, 7)}月</span>
+                                    </div>
+                                    <div class="trend-list-bar-track" role="img" aria-label="${w.cnt} 人">
+                                        <div class="trend-list-bar" style="width:${Math.max((w.cnt / maxCnt) * 100, 2)}%"></div>
+                                    </div>
+                                    <div class="trend-list-count">
+                                        <span class="trend-list-value">${w.cnt}</span>
+                                        <span class="trend-list-unit">人</span>
+                                    </div>
+                                </div>
+                            `).join('') : `
+                                <div class="trend-list-empty">
+                                    <span>暂无趋势数据</span>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 底部指标卡片 -->
+                <div class="stat-grid" role="list" aria-label="平台核心指标">
+                    <div class="stat-card" role="listitem" aria-label="注册用户 ${this.users.length} 人">
+                        <div class="stat-icon" aria-hidden="true">${Utils.icon('users')}</div>
+                        <div class="stat-info">
+                            <div class="stat-value">${this.users.length}</div>
+                            <div class="stat-label">注册用户</div>
+                        </div>
+                    </div>
+                    <div class="stat-card" role="listitem" aria-label="总答题数 ${this.fmtN(total)} 题">
+                        <div class="stat-icon green" aria-hidden="true">${Utils.icon('check-circle')}</div>
+                        <div class="stat-info">
+                            <div class="stat-value">${this.fmtN(total)}</div>
+                            <div class="stat-label">总答题数</div>
+                        </div>
+                    </div>
+                    <div class="stat-card" role="listitem" aria-label="平均正确率 ${acc}%">
+                        <div class="stat-icon orange" aria-hidden="true">${Utils.icon('target')}</div>
+                        <div class="stat-info">
+                            <div class="stat-value">${acc}%</div>
+                            <div class="stat-label">平均正确率</div>
+                        </div>
+                    </div>
+                    <div class="stat-card" role="listitem" aria-label="总学习时长 ${this.fmtDur(dur)}">
+                        <div class="stat-icon" aria-hidden="true">${Utils.icon('clock')}</div>
+                        <div class="stat-info">
+                            <div class="stat-value">${this.fmtDur(dur)}</div>
+                            <div class="stat-label">总学习时长</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
             Utils.initIcons?.();
+            
+            // 添加入场动画
+            this._animateOverviewEntry();
+            
         } catch (e) {
-            el.innerHTML = `<div class="empty-state">加载失败: ${e.message}</div>`;
+            el.innerHTML = `
+                ${this.pageHeader({
+                    title: '总览',
+                    description: '查看平台运行、用户增长、答题规模与题库核心状态。',
+                    crumbs: ['管理后台', '总览'],
+                    actions: '<button class="abtn" onclick="Admin.renderOverview()">重试</button>'
+                })}
+                <div class="empty-state">
+                    <strong>加载失败</strong>
+                    <div class="error-desc">${e.message}</div>
+                    <button class="abtn primary error-retry" onclick="Admin.renderOverview()">重新加载</button>
+                </div>
+            `;
         }
+    },
+    
+    // 总览页入场动画
+    _animateOverviewEntry() {
+        const elements = document.querySelectorAll('#sec-overview .overview-hero, #sec-overview .overview-grid, #sec-overview .stat-grid');
+        elements.forEach((el, i) => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(16px)';
+            el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            el.style.transitionDelay = `${i * 100}ms`;
+            
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                });
+            });
+        });
     },
 
     // ==================== 活跃 ====================
