@@ -249,7 +249,8 @@
     margin: auto;
     width: 90%;
     max-width: 500px;
-    height: fit-content;
+    min-height: 200px;
+    height: auto;
     max-height: 70vh;
     background: var(--bg-card);
     border-radius: var(--radius-lg);
