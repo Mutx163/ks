@@ -389,7 +389,7 @@ export function initBanks(Admin) {
     // ==================== 弹窗操作 ====================
     Admin.uploadBank = function (existingId) {
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:520px">
                     <h3>${existingId ? '替换题库 ' + Utils.escapeHtml(existingId) : '上传题库'}</h3>
                     <p style="font-size:13px;color:${existingId ? 'var(--admin-danger)' : 'var(--admin-text-secondary)'};margin-bottom:12px">${existingId ? '替换会覆盖当前题库内容，请先确认 JSON 文件来源可靠。' : '上传 JSON 题库到云端 D1。文件需包含 id、name、questions 字段。'}</p>
@@ -424,7 +424,7 @@ export function initBanks(Admin) {
 
     Admin.createBank = function () {
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:420px">
                     <h3>新建题库</h3>
                     <label>题库 ID</label><input id="new-bank-id" placeholder="英文，如 math-101">
@@ -526,7 +526,7 @@ export function initBanks(Admin) {
         }
         const b = d.bank;
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:460px">
                     <h3>编辑题库信息</h3>
                     <p style="font-size:12px;color:var(--admin-text-tertiary);margin-bottom:14px">ID：${Utils.escapeHtml(b.id)}</p>
@@ -586,7 +586,7 @@ export function initBanks(Admin) {
             replace: '替换题库'
         };
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:620px;max-height:80vh;overflow-y:auto">
                     <h3>修改历史</h3>
                     <div style="margin-top:12px">${
@@ -615,7 +615,7 @@ export function initBanks(Admin) {
 
     Admin.importQuestions = function (bankId) {
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:560px">
                     <h3>批量导入题目</h3>
                     <p style="font-size:13px;color:var(--admin-text-secondary);margin-bottom:12px">JSON 数组格式，每题含 question、options、answer 等字段。导入前建议先备份。</p>

@@ -66,6 +66,20 @@ const Admin = {
         }
     },
 
+    /**
+     * 处理 modal-mask 点击关闭，防止滑动选择文字时误关闭
+     * 用法：onclick="Admin.onMaskClick(event)"
+     */
+    onMaskClick(event) {
+        const mask = event.currentTarget;
+        // 只有点击目标是遮罩层本身（不是子元素）才关闭
+        if (event.target !== mask) return;
+        // 如果有文本被选中，不关闭（防止滑动复制时误关闭）
+        const selection = window.getSelection();
+        if (selection && selection.toString().length > 0) return;
+        mask.remove();
+    },
+
     bindTabKeyboard() {
         const tabsContainer = document.getElementById('tabs');
         if (!tabsContainer || tabsContainer._kbBound) return;

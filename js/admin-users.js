@@ -342,7 +342,7 @@ export function initUsers(Admin) {
     Admin.editUser = function (uid, name, admin) {
         const hn = Utils.escapeHtml(name);
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:400px">
                     <h3>编辑用户</h3>
                     <label>姓名</label><input id="eu-initials" value="${hn}" maxlength="4">
@@ -368,7 +368,7 @@ export function initUsers(Admin) {
 
     Admin.changeSyncCode = function (uid, name) {
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:400px">
                     <h3>修改同步码</h3>
                     <p style="font-size:13px;color:var(--admin-text-secondary);margin-bottom:12px">用户：${Utils.escapeHtml(name)} (${uid})</p>
@@ -398,7 +398,7 @@ export function initUsers(Admin) {
 
     Admin.adjustStats = function (uid, name) {
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:400px">
                     <h3>调整数据</h3>
                     <p style="font-size:13px;color:var(--admin-text-secondary);margin-bottom:12px">用户：${Utils.escapeHtml(name)} (${uid})</p>
@@ -438,7 +438,7 @@ export function initUsers(Admin) {
         const preStyle =
             'background:#f8fafc;padding:10px;border-radius:10px;font-size:11px;overflow-x:auto;margin-top:6px;color:#102033;border:1px solid #d9e2ec';
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box" style="max-width:560px;max-height:80vh;overflow-y:auto">
                     <h3>云端数据 - ${Utils.escapeHtml(d.user?.initials || uid)}</h3>
                     <p style="font-size:12px;color:var(--admin-text-tertiary);margin-bottom:8px">最后同步：${Admin.fmtTime(d.user?.lastSyncAt) || '无'}</p>

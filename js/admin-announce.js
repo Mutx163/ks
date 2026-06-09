@@ -117,7 +117,7 @@ export function initAnnounce(Admin) {
 
     Admin.editAnnounce = function (id, content) {
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="modal-box">
                     <h3>编辑公告 #${id}</h3>
                     <label>公告内容</label>

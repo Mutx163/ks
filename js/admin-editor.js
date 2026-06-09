@@ -7,7 +7,7 @@ import ImageUploader from './imageUploader.js';
 export function initEditor(Admin) {
     Admin.addQuestion = function (bankId) {
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="qe-modal">
                     <div class="qe-header"><h3>添加题目</h3><button class="close-btn" onclick="this.closest('.modal-mask').remove()">✕</button></div>
                     ${this._editorHTML(bankId, null, true)}
@@ -25,7 +25,7 @@ export function initEditor(Admin) {
             return;
         }
         document.getElementById('modal-root').innerHTML = `
-            <div class="modal-mask" onclick="if(event.target===this)this.remove()">
+            <div class="modal-mask" onclick="Admin.onMaskClick(event)">
                 <div class="qe-modal">
                     <div class="qe-header"><h3>编辑题目 #${qid}</h3><button class="close-btn" onclick="this.closest('.modal-mask').remove()">✕</button></div>
                     ${this._editorHTML(bankId, q, false)}
