@@ -94,8 +94,17 @@ export function initEditor(Admin) {
         // 填空/简答题答案区
         let fillAnswerHTML = '';
         if (isEssay) {
+            const answerImg = q?.answerImg || '';
             fillAnswerHTML = `<div class="qe-fill-wrap">
                 <textarea id="eq-fill-answer" rows="3" placeholder="输入参考答案..." oninput="Admin._preview()">${Utils.escapeHtml(answerStr)}</textarea>
+                <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+                    <button type="button" class="abtn primary" style="padding:4px 10px;font-size:11px" onclick="Admin._uploadAnswerImage()">📷 添加答案图片</button>
+                    <input type="text" id="eq-answer-img" value="${Utils.escapeHtml(answerImg)}" placeholder="或直接输入图片URL" style="flex:1;padding:4px 8px;font-size:11px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text)">
+                </div>
+                <div id="eq-answer-img-preview" style="${answerImg ? '' : 'display:none'};margin-top:6px">
+                    <img id="eq-answer-img-thumb" src="${Utils.escapeHtml(answerImg)}" style="max-width:200px;max-height:100px;border-radius:var(--radius);border:1px solid var(--border)">
+                    <button type="button" class="abtn danger" style="padding:2px 6px;font-size:10px;margin-left:4px" onclick="Admin._removeAnswerImage()">删除</button>
+                </div>
             </div>`;
         }
 
@@ -423,6 +432,9 @@ export function initEditor(Admin) {
         // 收集题目图片
         const img = document.getElementById('eq-img')?.value?.trim() || '';
 
+        // 收集答案图片（简答题/填空题）
+        const answerImg = isEssay ? (document.getElementById('eq-answer-img')?.value?.trim() || '') : '';
+
         const question = {
             type,
             category: document.getElementById('eq-category').value.trim(),
@@ -431,6 +443,7 @@ export function initEditor(Admin) {
             img: img || '', // 使用空字符串而不是 undefined
             options,
             answer,
+            answerImg: answerImg || '',
             explanation: document.getElementById('eq-explanation').value.trim()
         };
 
@@ -476,6 +489,25 @@ export function initEditor(Admin) {
     Admin._removeQuestionImage = function () {
         document.getElementById('eq-img').value = '';
         document.getElementById('eq-img-preview').style.display = 'none';
+        this._preview();
+    };
+
+    // 上传答案图片
+    Admin._uploadAnswerImage = function () {
+        ImageUploader.showDialog((url) => {
+            document.getElementById('eq-answer-img').value = url;
+            const preview = document.getElementById('eq-answer-img-preview');
+            const thumb = document.getElementById('eq-answer-img-thumb');
+            thumb.src = url;
+            preview.style.display = 'block';
+            this._preview();
+        });
+    };
+
+    // 删除答案图片
+    Admin._removeAnswerImage = function () {
+        document.getElementById('eq-answer-img').value = '';
+        document.getElementById('eq-answer-img-preview').style.display = 'none';
         this._preview();
     };
 
@@ -708,6 +740,11 @@ export function initEditor(Admin) {
             html += '</div>';
         } else if (isEssay && fillAnswer) {
             html += `<div class="qe-preview-answer"><b>参考答案：</b>${Utils.escapeHtml(fillAnswer)}</div>`;
+            // 答案图片预览
+            const answerImg = document.getElementById('eq-answer-img')?.value?.trim() || '';
+            if (answerImg) {
+                html += `<div style="margin-top:8px"><img src="${Utils.escapeHtml(answerImg)}" style="max-width:300px;max-height:200px;border-radius:var(--radius);border:1px solid var(--border)"></div>`;
+            }
         }
 
         // 代码预览（所有题型）

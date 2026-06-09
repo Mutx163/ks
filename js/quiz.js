@@ -1053,6 +1053,16 @@ const Quiz = {
             <div style="margin-bottom:var(--space-4)">
                 <strong>参考答案：</strong>
                 <div style="margin-top:8px">${Utils.parseMarkdown(question.answer)}</div>
+                ${question.answerImg ? `<div style="margin-top:8px"><img src="${Utils.escapeHtml(question.answerImg)}" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border)" alt="答案图片"></div>` : ''}
+            </div>
+        `
+                : '';
+        const essayAnswerImgOnly =
+            isEssay && !question.answer && question.answerImg
+                ? `
+            <div style="margin-bottom:var(--space-4)">
+                <strong>参考答案：</strong>
+                <div style="margin-top:8px"><img src="${Utils.escapeHtml(question.answerImg)}" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border)" alt="答案图片"></div>
             </div>
         `
                 : '';
@@ -1075,6 +1085,7 @@ const Quiz = {
                 </div>
                 <div class="explanation-content">
                     ${essayAnswer}
+                    ${essayAnswerImgOnly}
                     ${Utils.parseMarkdown(question.explanation || '暂无解析')}
                 </div>
                 ${
