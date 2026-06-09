@@ -251,6 +251,10 @@ const Quiz = {
         }
 
         this.state.currentIndex = session.currentIndex || 0;
+        // 边界检查：防止 currentIndex 超出题目列表范围
+        if (this.state.currentIndex >= this.state.questions.length) {
+            this.state.currentIndex = 0;
+        }
         if (this.state.mode !== 'review') {
             this.state.answers = session.answers || {};
             this.state.submitted = session.submitted || {};
