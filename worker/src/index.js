@@ -2008,6 +2008,11 @@ async function handleLogs(request, env, origin) {
 async function handleAdminLogs(url, env, origin) {
     const filterDeviceId = url.searchParams.get('filterDeviceId') || '';
     const level = url.searchParams.get('level') || '';
+    const type = url.searchParams.get('type') || '';
+    const keyword = url.searchParams.get('keyword') || '';
+    const timeStart = url.searchParams.get('timeStart') || '';
+    const timeEnd = url.searchParams.get('timeEnd') || '';
+    const userName = url.searchParams.get('userName') || '';
     const limit = Math.min(parseInt(url.searchParams.get('limit')) || 50, 200);
     const offset = parseInt(url.searchParams.get('offset')) || 0;
 
@@ -2032,10 +2037,29 @@ async function handleAdminLogs(url, env, origin) {
             query += ' AND cl.device_id = ?';
             params.push(filterDeviceId);
         }
-
         if (level) {
             query += ' AND cl.level = ?';
             params.push(level);
+        }
+        if (type) {
+            query += ' AND cl.type = ?';
+            params.push(type);
+        }
+        if (keyword) {
+            query += ' AND cl.message LIKE ?';
+            params.push('%' + keyword + '%');
+        }
+        if (timeStart) {
+            query += ' AND cl.created_at >= ?';
+            params.push(timeStart);
+        }
+        if (timeEnd) {
+            query += ' AND cl.created_at <= ?';
+            params.push(timeEnd);
+        }
+        if (userName) {
+            query += ' AND u.initials LIKE ?';
+            params.push('%' + userName + '%');
         }
 
         query += ' ORDER BY cl.created_at DESC LIMIT ? OFFSET ?';
@@ -2043,17 +2067,21 @@ async function handleAdminLogs(url, env, origin) {
 
         const { results } = await env.DB.prepare(query).bind(...params).all();
 
-        // 获取总数
-        let countQuery = 'SELECT COUNT(*) as total FROM client_logs cl WHERE 1=1';
+        // 获取总数（复用相同筛选条件）
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM client_logs cl
+            LEFT JOIN devices d ON cl.device_id = d.device_id
+            LEFT JOIN users u ON d.user_id = u.id
+            WHERE 1=1`;
         const countParams = [];
-        if (filterDeviceId) {
-            countQuery += ' AND cl.device_id = ?';
-            countParams.push(filterDeviceId);
-        }
-        if (level) {
-            countQuery += ' AND cl.level = ?';
-            countParams.push(level);
-        }
+        if (filterDeviceId) { countQuery += ' AND cl.device_id = ?'; countParams.push(filterDeviceId); }
+        if (level) { countQuery += ' AND cl.level = ?'; countParams.push(level); }
+        if (type) { countQuery += ' AND cl.type = ?'; countParams.push(type); }
+        if (keyword) { countQuery += ' AND cl.message LIKE ?'; countParams.push('%' + keyword + '%'); }
+        if (timeStart) { countQuery += ' AND cl.created_at >= ?'; countParams.push(timeStart); }
+        if (timeEnd) { countQuery += ' AND cl.created_at <= ?'; countParams.push(timeEnd); }
+        if (userName) { countQuery += ' AND u.initials LIKE ?'; countParams.push('%' + userName + '%'); }
         const { total } = await env.DB.prepare(countQuery).bind(...countParams).first();
 
         // 获取错误日志聚合统计
