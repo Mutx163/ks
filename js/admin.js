@@ -10,6 +10,7 @@ import { initEditor } from './admin-editor.js';
 import { initAnnounce } from './admin-announce.js';
 import { initAI } from './admin-ai.js';
 import { initLogs } from './admin-logs.js';
+import { initClientLogs } from './admin-client-logs.js';
 import { initStatus } from './admin-status.js';
 
 const Admin = {
@@ -322,7 +323,7 @@ const Admin = {
 
     async handleRoute() {
         if (document.getElementById('admin-app')?.style.display === 'none') return;
-        const valid = ['overview', 'users', 'banks', 'activity', 'announce', 'ai', 'logs', 'status'];
+        const valid = ['overview', 'users', 'banks', 'activity', 'announce', 'ai', 'logs', 'client-logs', 'status'];
         const saved = localStorage.getItem('admin_tab');
         const fallback = valid.includes(saved) ? saved : 'overview';
         const parts = decodeURIComponent((location.hash || `#/${fallback}`).replace(/^#\/?/, ''))
@@ -356,6 +357,7 @@ const Admin = {
             announce: 'renderAnnounce',
             ai: 'renderAI',
             logs: 'renderLogs',
+            'client-logs': 'renderClientLogs',
             status: 'renderStatus'
         };
         if (map[this.tab]) await this[map[this.tab]]();
@@ -938,6 +940,7 @@ initEditor(Admin);
 initAnnounce(Admin);
 initAI(Admin);
 initLogs(Admin);
+initClientLogs(Admin);
 initStatus(Admin);
 
 // 挂载全局
