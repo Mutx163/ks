@@ -139,9 +139,9 @@ export function initClientLogs(Admin) {
                         <div>
                             <label style="font-size:12px;color:var(--admin-text-tertiary);display:block;margin-bottom:4px">自定义时间</label>
                             <div style="display:flex;gap:4px;align-items:center">
-                                <input type="datetime-local" class="admin-select" id="clf-time-start" value="${f.timeStart || ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
+                                <input type="datetime-local" class="admin-select" id="clf-time-start" value="${f.timeStart ? msToLocal(new Date(f.timeStart).getTime()) : ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
                                 <span style="color:var(--admin-text-tertiary)">~</span>
-                                <input type="datetime-local" class="admin-select" id="clf-time-end" value="${f.timeEnd || ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
+                                <input type="datetime-local" class="admin-select" id="clf-time-end" value="${f.timeEnd ? msToLocal(new Date(f.timeEnd).getTime()) : ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
                             </div>
                         </div>
                         <!-- 级别 -->
@@ -218,6 +218,22 @@ export function initClientLogs(Admin) {
         return parts.join(' · ');
     };
 
+    // ===== 时间工具：本地时间 ↔ ISO =====
+    /** 本地 datetime-local 值 → UTC ISO（用于发给 Worker） */
+    function localToISO(localStr) {
+        if (!localStr) return '';
+        // datetime-local 格式："2026-06-10T20:00"，视为本地时间
+        const d = new Date(localStr);
+        return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 19);
+    }
+    /** UTC 时间戳(ms) → 本地 datetime-local 值（用于填充输入框） */
+    function msToLocal(ms) {
+        const d = new Date(ms);
+        // 转为 YYYY-MM-DDTHH:mm 本地格式
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
     // ===== 时间快捷 =====
     Admin.clfSetTimePreset = function (preset) {
         const f = this._clf || (this._clf = {});
@@ -238,8 +254,8 @@ export function initClientLogs(Admin) {
         const f = this._clf || (this._clf = {});
         const s = document.getElementById('clf-time-start')?.value || '';
         const e = document.getElementById('clf-time-end')?.value || '';
-        f.timeStart = s ? new Date(s).toISOString().slice(0, 19) : '';
-        f.timeEnd   = e ? new Date(e).toISOString().slice(0, 19) : '';
+        f.timeStart = localToISO(s);
+        f.timeEnd   = localToISO(e);
         f.timePreset = '';
         f.page = 1;
         this.renderClientLogs();
