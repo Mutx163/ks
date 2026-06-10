@@ -282,6 +282,7 @@ const Admin = {
             announce: '#/announce',
             ai: '#/ai',
             logs: '#/logs',
+            'client-logs': '#/client-logs',
             status: '#/status'
         };
         return map[t] || '#/overview';
