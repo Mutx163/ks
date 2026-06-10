@@ -70,7 +70,10 @@ export function initClientLogs(Admin) {
                             <td style="font-size:12px;color:var(--admin-text-tertiary)">${Admin.fmtTime(log.created_at)}</td>
                             <td><span class="status-pill ${color}">${levelLabels[level] || level}</span></td>
                             <td style="font-size:12px">${typeIcon} ${Utils.escapeHtml(log.type || 'console')}</td>
-                            <td><code style="font-size:11px">${Utils.escapeHtml(deviceShort)}</code></td>
+                            <td style="font-size:12px">
+                                ${log.user_name ? `<strong>${Utils.escapeHtml(log.user_name)}</strong>` : '<span style="color:var(--admin-text-tertiary)">未绑定</span>'}
+                                ${log.sync_code ? `<br><code style="font-size:10px;color:var(--admin-text-tertiary)">${Utils.escapeHtml(log.sync_code)}</code>` : ''}
+                            </td>
                             <td style="max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px" title="${Utils.escapeHtml(log.message || '')}">${Utils.escapeHtml(truncatedMsg)}</td>
                             <td>${stackPreview}</td>
                             <td style="font-size:11px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${Utils.escapeHtml(log.page_url || '')}">${Utils.escapeHtml((log.page_url || '').replace(/^https?:\/\/[^/]+/, ''))}</td>
@@ -108,11 +111,12 @@ export function initClientLogs(Admin) {
                         <div class="card-header"><h3>📱 最近活跃设备</h3></div>
                         <div class="table-wrap">
                             <table>
-                                <thead><tr><th>设备 ID</th><th>日志数</th><th>最后活跃</th></tr></thead>
+                                <thead><tr><th>用户</th><th>同步码</th><th>日志数</th><th>最后活跃</th></tr></thead>
                                 <tbody>
                                     ${activeDevices.map(dev => `
                                         <tr style="cursor:pointer" onclick="Admin.filterClientLogsByDevice('${Utils.escapeHtml(dev.device_id)}')">
-                                            <td><code style="font-size:11px">${Utils.escapeHtml((dev.device_id || '').slice(0, 12))}…</code></td>
+                                            <td>${dev.user_name ? `<strong>${Utils.escapeHtml(dev.user_name)}</strong>` : '<span style="color:var(--admin-text-tertiary)">未绑定</span>'}</td>
+                                            <td><code style="font-size:11px">${dev.sync_code ? Utils.escapeHtml(dev.sync_code) : '-'}</code></td>
                                             <td>${dev.log_count}</td>
                                             <td style="font-size:12px">${Admin.fmtTime(dev.last_active)}</td>
                                         </tr>
@@ -153,7 +157,7 @@ export function initClientLogs(Admin) {
                     <div class="card-header"><h3>日志列表</h3><span class="count">按时间倒序</span></div>
                     <div class="table-wrap">
                         <table>
-                            <thead><tr><th>时间</th><th>级别</th><th>类型</th><th>设备</th><th>消息</th><th>堆栈</th><th>页面</th></tr></thead>
+                            <thead><tr><th>时间</th><th>级别</th><th>类型</th><th>用户</th><th>消息</th><th>堆栈</th><th>页面</th></tr></thead>
                             <tbody>${rows}</tbody>
                         </table>
                     </div>

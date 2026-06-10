@@ -2020,33 +2020,38 @@ async function handleAdminLogs(url, env, origin) {
         const admin = await requireAdmin(did, pwd, env);
         if (!admin) return error('无权限', 403, origin);
 
-        let query = 'SELECT * FROM client_logs WHERE 1=1';
+        let query = `
+            SELECT cl.*, u.initials AS user_name, u.id AS sync_code
+            FROM client_logs cl
+            LEFT JOIN devices d ON cl.device_id = d.device_id
+            LEFT JOIN users u ON d.user_id = u.id
+            WHERE 1=1`;
         const params = [];
 
         if (filterDeviceId) {
-            query += ' AND device_id = ?';
+            query += ' AND cl.device_id = ?';
             params.push(filterDeviceId);
         }
 
         if (level) {
-            query += ' AND level = ?';
+            query += ' AND cl.level = ?';
             params.push(level);
         }
 
-        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        query += ' ORDER BY cl.created_at DESC LIMIT ? OFFSET ?';
         params.push(limit, offset);
 
         const { results } = await env.DB.prepare(query).bind(...params).all();
 
         // 获取总数
-        let countQuery = 'SELECT COUNT(*) as total FROM client_logs WHERE 1=1';
+        let countQuery = 'SELECT COUNT(*) as total FROM client_logs cl WHERE 1=1';
         const countParams = [];
         if (filterDeviceId) {
-            countQuery += ' AND device_id = ?';
+            countQuery += ' AND cl.device_id = ?';
             countParams.push(filterDeviceId);
         }
         if (level) {
-            countQuery += ' AND level = ?';
+            countQuery += ' AND cl.level = ?';
             countParams.push(level);
         }
         const { total } = await env.DB.prepare(countQuery).bind(...countParams).first();
@@ -2062,12 +2067,15 @@ async function handleAdminLogs(url, env, origin) {
              LIMIT 20`
         ).all();
 
-        // 获取最近活跃设备
+        // 获取最近活跃设备（关联用户名和同步码）
         const { results: activeDevices } = await env.DB.prepare(
-            `SELECT device_id, COUNT(*) as log_count, MAX(created_at) as last_active
-             FROM client_logs
-             WHERE created_at > datetime('now', '-24 hours')
-             GROUP BY device_id
+            `SELECT cl.device_id, COUNT(*) as log_count, MAX(cl.created_at) as last_active,
+                    u.initials AS user_name, u.id AS sync_code
+             FROM client_logs cl
+             LEFT JOIN devices d ON cl.device_id = d.device_id
+             LEFT JOIN users u ON d.user_id = u.id
+             WHERE cl.created_at > datetime('now', '-24 hours')
+             GROUP BY cl.device_id
              ORDER BY last_active DESC
              LIMIT 20`
         ).all();
