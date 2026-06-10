@@ -139,9 +139,9 @@ export function initClientLogs(Admin) {
                         <div>
                             <label style="font-size:12px;color:var(--admin-text-tertiary);display:block;margin-bottom:4px">自定义时间</label>
                             <div style="display:flex;gap:4px;align-items:center">
-                                <input type="datetime-local" class="admin-select" id="clf-time-start" value="${f.timeStart ? msToLocal(new Date(f.timeStart).getTime()) : ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
+                                <input type="datetime-local" class="admin-select" id="clf-time-start" value="${f.timeStart ? msToLocal(new Date(f.timeStart + 'Z').getTime()) : ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
                                 <span style="color:var(--admin-text-tertiary)">~</span>
-                                <input type="datetime-local" class="admin-select" id="clf-time-end" value="${f.timeEnd ? msToLocal(new Date(f.timeEnd).getTime()) : ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
+                                <input type="datetime-local" class="admin-select" id="clf-time-end" value="${f.timeEnd ? msToLocal(new Date(f.timeEnd + 'Z').getTime()) : ''}" style="font-size:12px" onchange="Admin.clfApplyCustomTime()">
                             </div>
                         </div>
                         <!-- 级别 -->
