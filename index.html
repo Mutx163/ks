@@ -5,6 +5,17 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>城科卷王</title>
         <script>window._pageStartTime = Date.now();</script>
+        <!-- 早期错误捕获（在模块加载前就开始记录） -->
+        <script>
+        window._earlyLogs = [];
+        window.onerror = function(m,s,l,c,e) {
+            window._earlyLogs.push({level:'error',type:'uncaught',message:String(m),source:s||'',line:l||0,col:c||0,stack:e&&e.stack?e.stack.slice(0,1000):'',pageUrl:location.href,ts:new Date().toISOString()});
+        };
+        window.addEventListener('unhandledrejection', function(ev) {
+            var r = ev.reason;
+            window._earlyLogs.push({level:'error',type:'unhandledrejection',message:r&&r.message||String(r),stack:r&&r.stack?r.stack.slice(0,1000):'',pageUrl:location.href,ts:new Date().toISOString()});
+        });
+        </script>
 
         <!-- DNS 预解析 + 预连接（减少首次请求延迟） -->
         <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc">

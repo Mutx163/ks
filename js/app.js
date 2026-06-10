@@ -2,6 +2,7 @@
  * 主应用模块
  */
 
+import LogCollector from './logCollector.js';
 import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';
@@ -957,6 +958,13 @@ const App = {
 
             ${AIEngines.renderSettingsFields(aiSettings)}
             ${AIExplain.renderSettingsFields()}
+
+            <label>日志收集</label>
+            <label class="toggle-label">
+                <input type="checkbox" id="setting-log-collection" ${settings.logCollection !== false ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+                <span>自动收集错误日志帮助改进体验</span>
+            </label>
             
             ${isAdmin ? `
             <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
@@ -995,10 +1003,13 @@ const App = {
                         }
 
                         const newSwipe = modal.querySelector('#setting-swipe').checked;
+                        const newLogCollection = modal.querySelector('#setting-log-collection').checked;
+                        LogCollector.setEnabled(newLogCollection);
 
                         console.log('[Settings] 💾 保存设置:', {
                             answerMode: newAnswerMode,
                             swipeNavigation: newSwipe,
+                            logCollection: newLogCollection,
                             aiEngine: aiForm.aiEngine,
                             customAiEngines: aiForm.customAiEngines
                         });
@@ -1006,6 +1017,7 @@ const App = {
                         Storage.updateSettings({
                             answerMode: newAnswerMode,
                             swipeNavigation: newSwipe,
+                            logCollection: newLogCollection,
                             ...aiForm
                         });
                         AIExplain.saveSettingsFromModal(modal);

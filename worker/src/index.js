@@ -326,6 +326,16 @@ export default {
                 return await handleAdminSystemStatus(url, env, origin);
             }
 
+            // POST /api/logs - 前端控制台日志上报
+            if (method === 'POST' && path === '/api/logs') {
+                return await handleLogs(request, env, origin);
+            }
+
+            // GET /api/admin/logs - 管理员查看日志
+            if (method === 'GET' && path === '/api/admin/logs') {
+                return await handleAdminLogs(url, env, origin);
+            }
+
             return error('Not Found', 404, origin);
         } catch (e) {
             console.error('Worker error:', e);
@@ -1911,5 +1921,166 @@ async function handleAIExplain(request, env, origin) {
         return streamText(stream, origin);
     } catch (e) {
         return error('AI 解读失败: ' + e.message, 500, origin);
+    }
+}
+
+
+// ========== 前端日志收集 ==========
+
+/**
+ * POST /api/logs - 接收前端控制台日志上报
+ * 日志字段：deviceId, level, type, message, stack, pageUrl, source, line, col, ua, ts
+ * 速率限制：每设备每小时最多 100 条
+ */
+async function handleLogs(request, env, origin) {
+    try {
+        const body = await request.json();
+        if (!body || !body.logs || !Array.isArray(body.logs)) {
+            return json({ ok: false, error: '无效的日志格式' }, 400, origin);
+        }
+
+        const deviceId = body.deviceId || 'unknown';
+        const logs = body.logs;
+
+        // 速率限制检查
+        const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+        const recentLogs = await env.DB.prepare(
+            'SELECT COUNT(*) as cnt FROM client_logs WHERE device_id = ? AND created_at > ?'
+        ).bind(deviceId, oneHourAgo).first();
+
+        const recentCount = recentLogs?.cnt || 0;
+        const maxAllowed = 100;
+
+        if (recentCount >= maxAllowed) {
+            // 超出限制，静默丢弃
+            return json({ ok: true, dropped: logs.length }, 200, origin);
+        }
+
+        // 计算本次可接受的数量
+        const remaining = maxAllowed - recentCount;
+        const batch = logs.slice(0, Math.min(logs.length, remaining));
+
+        // 批量插入
+        const stmt = env.DB.prepare(
+            `INSERT INTO client_logs (device_id, level, type, message, stack, page_url, source, line, col, ua, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        );
+
+        const insertBatch = [];
+        for (const log of batch) {
+            insertBatch.push(
+                stmt.bind(
+                    deviceId,
+                    (log.level || 'log').slice(0, 10),
+                    (log.type || 'console').slice(0, 20),
+                    (log.message || '').slice(0, 1000),
+                    (log.stack || '').slice(0, 2000),
+                    (log.pageUrl || '').slice(0, 500),
+                    (log.source || '').slice(0, 500),
+                    log.line || 0,
+                    log.col || 0,
+                    (log.ua || '').slice(0, 500),
+                    log.ts || new Date().toISOString()
+                )
+            );
+        }
+
+        if (insertBatch.length > 0) {
+            await env.DB.batch(insertBatch);
+        }
+
+        return json({ ok: true, received: batch.length, dropped: logs.length - batch.length }, 200, origin);
+    } catch (e) {
+        console.error('[Logs] 处理错误:', e.message);
+        return json({ ok: false, error: '处理失败' }, 500, origin);
+    }
+}
+
+
+/**
+ * GET /api/admin/logs - 管理员查看前端日志
+ * 查询参数：
+ *   - deviceId: 按设备筛选（可选）
+ *   - level: 按级别筛选 error/warn（可选）
+ *   - limit: 每页条数（默认 50，最大 200）
+ *   - offset: 偏移量（默认 0）
+ */
+async function handleAdminLogs(url, env, origin) {
+    const filterDeviceId = url.searchParams.get('filterDeviceId') || '';
+    const level = url.searchParams.get('level') || '';
+    const limit = Math.min(parseInt(url.searchParams.get('limit')) || 50, 200);
+    const offset = parseInt(url.searchParams.get('offset')) || 0;
+
+    // 验证管理员权限
+    const pwd = url.searchParams.get('password') || '';
+    const did = url.searchParams.get('deviceId') || '';
+
+    try {
+        // 验证管理员
+        const admin = await requireAdmin(did, pwd, env);
+        if (!admin) return error('无权限', 403, origin);
+
+        let query = 'SELECT * FROM client_logs WHERE 1=1';
+        const params = [];
+
+        if (filterDeviceId) {
+            query += ' AND device_id = ?';
+            params.push(filterDeviceId);
+        }
+
+        if (level) {
+            query += ' AND level = ?';
+            params.push(level);
+        }
+
+        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+
+        const { results } = await env.DB.prepare(query).bind(...params).all();
+
+        // 获取总数
+        let countQuery = 'SELECT COUNT(*) as total FROM client_logs WHERE 1=1';
+        const countParams = [];
+        if (filterDeviceId) {
+            countQuery += ' AND device_id = ?';
+            countParams.push(filterDeviceId);
+        }
+        if (level) {
+            countQuery += ' AND level = ?';
+            countParams.push(level);
+        }
+        const { total } = await env.DB.prepare(countQuery).bind(...countParams).first();
+
+        // 获取错误日志聚合统计
+        const { results: errorSummary } = await env.DB.prepare(
+            `SELECT message, COUNT(*) as cnt
+             FROM client_logs
+             WHERE level = 'error'
+               AND created_at > datetime('now', '-7 days')
+             GROUP BY message
+             ORDER BY cnt DESC
+             LIMIT 20`
+        ).all();
+
+        // 获取最近活跃设备
+        const { results: activeDevices } = await env.DB.prepare(
+            `SELECT device_id, COUNT(*) as log_count, MAX(created_at) as last_active
+             FROM client_logs
+             WHERE created_at > datetime('now', '-24 hours')
+             GROUP BY device_id
+             ORDER BY last_active DESC
+             LIMIT 20`
+        ).all();
+
+        return json({
+            ok: true,
+            logs: results || [],
+            total: total || 0,
+            errorSummary: errorSummary || [],
+            activeDevices: activeDevices || []
+        }, 200, origin);
+    } catch (e) {
+        console.error('[Admin Logs] 查询错误:', e.message);
+        return error('查询失败', 500, origin);
     }
 }
