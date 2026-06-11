@@ -274,7 +274,12 @@ const Storage = {
             const wrongIds = this.getWrongQuestions(bank.id);
             if (wrongIds.length > 0) {
                 totalWrong += wrongIds.length;
-                details.push({ bankId: bank.id, bankName: bank.name, wrongIds, count: wrongIds.length });
+                details.push({
+                    bankId: bank.id,
+                    bankName: bank.name,
+                    wrongIds,
+                    count: wrongIds.length
+                });
             }
         }
 
@@ -373,16 +378,18 @@ const Storage = {
     // ==================== 设置管理 ====================
 
     getSettings() {
-        return this.get(this.KEYS.SETTINGS) || {
-            showAnswer: true,
-            autoNext: false,
-            randomOrder: false,
-            swipeNavigation: true,
-            fontSize: 16,
-            theme: 'auto',
-            aiEngine: 'metaso',
-            customAiEngines: []
-        };
+        return (
+            this.get(this.KEYS.SETTINGS) || {
+                showAnswer: true,
+                autoNext: false,
+                randomOrder: false,
+                swipeNavigation: true,
+                fontSize: 16,
+                theme: 'auto',
+                aiEngine: 'metaso',
+                customAiEngines: []
+            }
+        );
     },
 
     updateSettings(settings) {
@@ -434,8 +441,14 @@ const Storage = {
             correct: progress.correct || 0,
             wrong: progress.wrong || 0,
             unanswered: totalQuestions - (progress.answered || 0),
-            accuracy: progress.answered > 0 ? Math.round((progress.correct / progress.answered) * 100) : 0,
-            progress: totalQuestions > 0 ? Math.round(((progress.answered || 0) / totalQuestions) * 100) : 0
+            accuracy:
+                progress.answered > 0
+                    ? Math.round((progress.correct / progress.answered) * 100)
+                    : 0,
+            progress:
+                totalQuestions > 0
+                    ? Math.round(((progress.answered || 0) / totalQuestions) * 100)
+                    : 0
         };
     },
 
@@ -448,7 +461,8 @@ const Storage = {
 
         bank.questions.forEach((q) => {
             const cat = q.category || '未分类';
-            if (!categoryMap[cat]) categoryMap[cat] = { total: 0, answered: 0, correct: 0, wrong: 0 };
+            if (!categoryMap[cat])
+                categoryMap[cat] = { total: 0, answered: 0, correct: 0, wrong: 0 };
             categoryMap[cat].total++;
 
             const qProgress = progress.questions[q.id];

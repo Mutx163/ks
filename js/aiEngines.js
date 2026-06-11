@@ -192,7 +192,9 @@ const AIEngines = {
             if (!name && !url) return;
             if (requireUrl && !url) return;
 
-            let id = this._safeId(row.querySelector('.custom-ai-id')?.value || row.dataset.engineId);
+            let id = this._safeId(
+                row.querySelector('.custom-ai-id')?.value || row.dataset.engineId
+            );
             while (seen.has(id)) {
                 id = `${id}-${index + 1}`;
             }
@@ -213,7 +215,10 @@ const AIEngines = {
         if (empty) empty.remove();
 
         const wrapper = document.createElement('div');
-        wrapper.innerHTML = this._renderCustomRow(engine, list.querySelectorAll('[data-custom-ai-row]').length).trim();
+        wrapper.innerHTML = this._renderCustomRow(
+            engine,
+            list.querySelectorAll('[data-custom-ai-row]').length
+        ).trim();
         list.appendChild(wrapper.firstElementChild);
     },
 
@@ -255,7 +260,8 @@ const AIEngines = {
                 const deletedValue = `${CUSTOM_PREFIX}${row?.dataset.engineId || ''}`;
                 row?.remove();
                 if (list.querySelectorAll('[data-custom-ai-row]').length === 0) {
-                    list.innerHTML = '<div class="custom-ai-empty">暂无自定义引擎，点击下方按钮添加。</div>';
+                    list.innerHTML =
+                        '<div class="custom-ai-empty">暂无自定义引擎，点击下方按钮添加。</div>';
                 }
                 refreshSelect(select.value === deletedValue ? 'metaso' : select.value);
             }
@@ -283,8 +289,12 @@ const AIEngines = {
 
         const customAiEngines = allRows.filter((engine) => engine.url);
         let aiEngine = this._resolveSelected(selectedBefore, customAiEngines);
-        if (this.isCustomValue(aiEngine) && !customAiEngines.some((engine) => engine.id === this.getCustomId(aiEngine))) {
-            aiEngine = customAiEngines.length > 0 ? `${CUSTOM_PREFIX}${customAiEngines[0].id}` : 'metaso';
+        if (
+            this.isCustomValue(aiEngine) &&
+            !customAiEngines.some((engine) => engine.id === this.getCustomId(aiEngine))
+        ) {
+            aiEngine =
+                customAiEngines.length > 0 ? `${CUSTOM_PREFIX}${customAiEngines[0].id}` : 'metaso';
         }
 
         const selectedCustom = this.isCustomValue(aiEngine)

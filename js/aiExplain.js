@@ -36,7 +36,7 @@ const PROVIDERS = {
 const AIExplain = {
     _config: { ...DEFAULT_CONFIG },
     _loaded: false,
-    _cache: new Map(),  // questionId → { answer, think, hadThink }
+    _cache: new Map(), // questionId → { answer, think, hadThink }
 
     async init({ force = false } = {}) {
         if (this._loaded && !force) return this._config;
@@ -82,7 +82,9 @@ const AIExplain = {
             if (raw.mode === 'inpage' || raw.mode === 'search') {
                 return { ...base, mode: raw.mode };
             }
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
         return base;
     },
 
@@ -99,7 +101,7 @@ const AIExplain = {
         try {
             const raw = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
             const provider = PROVIDERS[raw.provider] ? raw.provider : 'openai';
-            const mode = (raw.mode === 'inpage' || raw.mode === 'search') ? raw.mode : '';
+            const mode = raw.mode === 'inpage' || raw.mode === 'search' ? raw.mode : '';
             return {
                 mode,
                 useOverride: raw.useOverride === true,
@@ -122,7 +124,8 @@ const AIExplain = {
 
     saveLocalSettings(settings) {
         const provider = PROVIDERS[settings.provider] ? settings.provider : 'openai';
-        const mode = (settings.mode === 'inpage' || settings.mode === 'search') ? settings.mode : undefined;
+        const mode =
+            settings.mode === 'inpage' || settings.mode === 'search' ? settings.mode : undefined;
         const data = {
             useOverride: settings.useOverride === true,
             provider,
@@ -271,33 +274,47 @@ const AIExplain = {
      * 去掉选项文本开头已有的字母前缀，如 "A. G24" → "G24"，"B.G25" → "G25"
      */
     _stripLetterPrefix(text) {
-        return String(text).replace(/^[A-Z][.、．\s]+/, '').trim();
+        return String(text)
+            .replace(/^[A-Z][.、．\s]+/, '')
+            .trim();
     },
 
-    buildQuestionPayload({ question, bank, userAnswer, isCorrect, displayOptions }) {
+    buildQuestionPayload({ question, bank, userAnswer, isCorrect: _isCorrect, displayOptions }) {
         const qText = this._cleanQuestionText(question.question || '');
-        const optList = displayOptions && displayOptions.length > 0
-            ? displayOptions
-            : (question.options || []).map((o, i) => ({ displayLetter: String.fromCharCode(65 + i), text: typeof o === 'object' ? o.text : o }));
-        const opts = optList.map(o => `${o.displayLetter}. ${this._stripLetterPrefix(o.text)}`).join('\n');
+        const optList =
+            displayOptions && displayOptions.length > 0
+                ? displayOptions
+                : (question.options || []).map((o, i) => ({
+                      displayLetter: String.fromCharCode(65 + i),
+                      text: typeof o === 'object' ? o.text : o
+                  }));
+        const opts = optList
+            .map((o) => `${o.displayLetter}. ${this._stripLetterPrefix(o.text)}`)
+            .join('\n');
         let fullQuestion = qText;
         if (opts) fullQuestion += '\n' + opts;
-        if (question.code) fullQuestion += '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
-        
+        if (question.code)
+            fullQuestion +=
+                '\n```' + (question.codeLanguage || '') + '\n' + question.code + '\n```';
+
         const type = question.type || 'single';
-        
+
         // 格式化学生作答，附带选项内容
         if (userAnswer !== undefined && userAnswer !== null) {
             let answerDisplay;
-            
+
             if (type === 'single' && typeof userAnswer === 'string' && /^[A-Z]$/.test(userAnswer)) {
-                const opt = optList.find(o => o.displayLetter === userAnswer);
-                answerDisplay = opt ? `${userAnswer}. ${this._stripLetterPrefix(opt.text)}` : userAnswer;
+                const opt = optList.find((o) => o.displayLetter === userAnswer);
+                answerDisplay = opt
+                    ? `${userAnswer}. ${this._stripLetterPrefix(opt.text)}`
+                    : userAnswer;
             } else if (type === 'multiple' && Array.isArray(userAnswer)) {
-                answerDisplay = userAnswer.map(letter => {
-                    const opt = optList.find(o => o.displayLetter === letter);
-                    return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
-                }).join('、');
+                answerDisplay = userAnswer
+                    .map((letter) => {
+                        const opt = optList.find((o) => o.displayLetter === letter);
+                        return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
+                    })
+                    .join('、');
             } else if (type === 'judge') {
                 answerDisplay = userAnswer === true ? '正确' : '错误';
             } else {
@@ -305,20 +322,28 @@ const AIExplain = {
             }
             fullQuestion += `\n学生作答：${answerDisplay}`;
         }
-        
+
         // 格式化正确答案，附带选项内容
         const correctAnswer = question.answer;
         if (correctAnswer !== undefined && correctAnswer !== null) {
             let correctDisplay;
-            
-            if (type === 'single' && typeof correctAnswer === 'string' && /^[A-Z]$/.test(correctAnswer)) {
-                const opt = optList.find(o => o.displayLetter === correctAnswer);
-                correctDisplay = opt ? `${correctAnswer}. ${this._stripLetterPrefix(opt.text)}` : correctAnswer;
+
+            if (
+                type === 'single' &&
+                typeof correctAnswer === 'string' &&
+                /^[A-Z]$/.test(correctAnswer)
+            ) {
+                const opt = optList.find((o) => o.displayLetter === correctAnswer);
+                correctDisplay = opt
+                    ? `${correctAnswer}. ${this._stripLetterPrefix(opt.text)}`
+                    : correctAnswer;
             } else if (type === 'multiple' && Array.isArray(correctAnswer)) {
-                correctDisplay = correctAnswer.map(letter => {
-                    const opt = optList.find(o => o.displayLetter === letter);
-                    return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
-                }).join('、');
+                correctDisplay = correctAnswer
+                    .map((letter) => {
+                        const opt = optList.find((o) => o.displayLetter === letter);
+                        return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
+                    })
+                    .join('、');
             } else if (type === 'judge') {
                 correctDisplay = correctAnswer === true ? '正确' : '错误';
             } else {
@@ -326,7 +351,7 @@ const AIExplain = {
             }
             fullQuestion += `\n正确答案：${correctDisplay}`;
         }
-        
+
         // 附带解析
         if (question.explanation) {
             fullQuestion += `\n参考解析：${question.explanation}`;
@@ -382,7 +407,9 @@ const AIExplain = {
                         output: 'htmlAndMathml'
                     });
                 }
-            } catch { /* fallback below */ }
+            } catch {
+                /* fallback below */
+            }
             return `<code class="math-fallback">${Utils.escapeHtml(m.tex)}</code>`;
         });
 
@@ -392,11 +419,13 @@ const AIExplain = {
         // 5. 代码高亮（Prism.js）
         try {
             if (typeof Prism !== 'undefined') {
-                target.querySelectorAll('pre code').forEach(block => {
+                target.querySelectorAll('pre code').forEach((block) => {
                     Prism.highlightElement(block);
                 });
             }
-        } catch { /* ignore */ }
+        } catch {
+            /* ignore */
+        }
 
         // 6. 自动滚动到底部
         target.scrollTop = target.scrollHeight;
@@ -407,20 +436,26 @@ const AIExplain = {
      */
     _fallbackMarkdown(text) {
         return text
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
             .replace(/^### (.+)$/gm, '<h3>$1</h3>')
             .replace(/^## (.+)$/gm, '<h2>$1</h2>')
             .replace(/^# (.+)$/gm, '<h1>$1</h1>')
             .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.+?)\*/g, '<em>$1</em>')
             .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
-                `<pre><code class="language-${lang || 'text'}">${code}</code></pre>`)
+            .replace(
+                /```(\w*)\n([\s\S]*?)```/g,
+                (_, lang, code) =>
+                    `<pre><code class="language-${lang || 'text'}">${code}</code></pre>`
+            )
             .replace(/^- (.+)$/gm, '<li>$1</li>')
             .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
             .replace(/\n{2,}/g, '</p><p>')
             .replace(/\n/g, '<br>')
-            .replace(/^/, '<p>').replace(/$/, '</p>');
+            .replace(/^/, '<p>')
+            .replace(/$/, '</p>');
     },
 
     _createModal(questionTitle = '') {
@@ -505,11 +540,9 @@ const AIExplain = {
 
         const qId = question.id;
         const overlay = this._createModal(`第 ${qId || ''} 题`.trim());
-        const output = overlay.querySelector('#ai-explain-output');
-        const status = overlay.querySelector('#ai-explain-stream-status');
         const cancel = overlay.querySelector('#ai-explain-cancel');
         const regenerateBtn = overlay.querySelector('#ai-explain-regenerate');
-        
+
         // 存储当前controller，用于取消之前的请求
         let currentController = new AbortController();
         cancel?.addEventListener('click', () => currentController.abort());
@@ -524,15 +557,25 @@ const AIExplain = {
             currentController = new AbortController();
             // 更新取消按钮的事件
             cancel.onclick = () => currentController.abort();
-            
+
             // 禁用重新生成按钮防止重复点击
             if (regenerateBtn) {
                 regenerateBtn.disabled = true;
                 regenerateBtn.textContent = '生成中...';
             }
-            
+
             this._cache.delete(qId);
-            this._doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller: currentController, qId, regenerateBtn });
+            this._doFetchExplanation({
+                overlay,
+                question,
+                bank,
+                userAnswer,
+                isCorrect,
+                displayOptions,
+                controller: currentController,
+                qId,
+                regenerateBtn
+            });
         };
         regenerateBtn?.addEventListener('click', doFetch);
 
@@ -547,7 +590,17 @@ const AIExplain = {
         return true;
     },
 
-    async _doFetchExplanation({ overlay, question, bank, userAnswer, isCorrect, displayOptions, controller, qId, regenerateBtn }) {
+    async _doFetchExplanation({
+        overlay,
+        question,
+        bank,
+        userAnswer,
+        isCorrect,
+        displayOptions,
+        controller,
+        qId,
+        regenerateBtn
+    }) {
         const output = overlay.querySelector('#ai-explain-output');
         const status = overlay.querySelector('#ai-explain-stream-status');
         const cancel = overlay.querySelector('#ai-explain-cancel');
@@ -568,7 +621,13 @@ const AIExplain = {
         try {
             status.textContent = '连接中...';
             const payload = {
-                ...this.buildQuestionPayload({ question, bank, userAnswer, isCorrect, displayOptions }),
+                ...this.buildQuestionPayload({
+                    question,
+                    bank,
+                    userAnswer,
+                    isCorrect,
+                    displayOptions
+                }),
                 override: this.getRequestOverride()
             };
 
@@ -648,12 +707,10 @@ const AIExplain = {
                     if (endIdx === -1) {
                         // 还在思考中
                         thinkText += remaining.slice(startIdx + THINK_START.length);
-                        hasThinkMarker = true;
                         showThink();
                         break;
                     }
                     thinkText += remaining.slice(startIdx + THINK_START.length, endIdx);
-                    hasThinkMarker = true;
                     cursor = endIdx + THINK_END.length;
                 }
                 remaining = parsed;

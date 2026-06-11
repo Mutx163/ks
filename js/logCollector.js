@@ -17,11 +17,11 @@
 const LogCollector = {
     /** 配置 */
     config: {
-        enabled: true,              // 总开关（从 localStorage 读取）
-        maxBufferSize: 50,          // 本地最多缓存条数
-        flushInterval: 15000,       // 自动上报间隔（毫秒）
-        rateLimit: 100,             // 每小时最多上报条数
-        warnOnly: true              // 只上报 warn 及以上级别（warn, error）
+        enabled: true, // 总开关（从 localStorage 读取）
+        maxBufferSize: 50, // 本地最多缓存条数
+        flushInterval: 15000, // 自动上报间隔（毫秒）
+        rateLimit: 100, // 每小时最多上报条数
+        warnOnly: true // 只上报 warn 及以上级别（warn, error）
     },
 
     /** 内部状态 */
@@ -50,7 +50,7 @@ const LogCollector = {
                     this.config.enabled = false;
                 }
             }
-        } catch (e) {
+        } catch {
             // 忽略
         }
 
@@ -113,9 +113,9 @@ const LogCollector = {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             id = crypto.randomUUID();
         } else {
-            id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-                const r = Math.random() * 16 | 0;
-                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+                const r = (Math.random() * 16) | 0;
+                return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
             });
         }
         localStorage.setItem('ks_device_id', id);
@@ -206,23 +206,30 @@ const LogCollector = {
         });
 
         // 资源加载失败
-        window.addEventListener('error', function (event) {
-            // 只处理元素事件（图片、脚本等资源加载失败）
-            if (event.target && (event.target instanceof HTMLImageElement ||
-                event.target instanceof HTMLScriptElement ||
-                event.target instanceof HTMLLinkElement ||
-                event.target instanceof HTMLIFrameElement)) {
-                const el = event.target;
-                self._addToBuffer({
-                    level: 'error',
-                    type: 'resource',
-                    message: '资源加载失败: ' + (el.tagName || 'unknown'),
-                    source: el.src || el.href || '',
-                    pageUrl: self._pageUrl,
-                    ts: new Date().toISOString()
-                });
-            }
-        }, true);
+        window.addEventListener(
+            'error',
+            function (event) {
+                // 只处理元素事件（图片、脚本等资源加载失败）
+                if (
+                    event.target &&
+                    (event.target instanceof HTMLImageElement ||
+                        event.target instanceof HTMLScriptElement ||
+                        event.target instanceof HTMLLinkElement ||
+                        event.target instanceof HTMLIFrameElement)
+                ) {
+                    const el = event.target;
+                    self._addToBuffer({
+                        level: 'error',
+                        type: 'resource',
+                        message: '资源加载失败: ' + (el.tagName || 'unknown'),
+                        source: el.src || el.href || '',
+                        pageUrl: self._pageUrl,
+                        ts: new Date().toISOString()
+                    });
+                }
+            },
+            true
+        );
     },
 
     /**
@@ -296,24 +303,25 @@ const LogCollector = {
      */
     _formatArgs(args) {
         try {
-            return args.map(a => {
-                if (a === null) return 'null';
-                if (a === undefined) return 'undefined';
-                if (a instanceof Error) return a.message;
-                if (typeof a === 'object') {
-                    try {
-                        return JSON.stringify(a);
-                    } catch (e) {
-                        return String(a);
+            return args
+                .map((a) => {
+                    if (a === null) return 'null';
+                    if (a === undefined) return 'undefined';
+                    if (a instanceof Error) return a.message;
+                    if (typeof a === 'object') {
+                        try {
+                            return JSON.stringify(a);
+                        } catch (e) {
+                            return String(a);
+                        }
                     }
-                }
-                return String(a);
-            }).join(' ');
+                    return String(a);
+                })
+                .join(' ');
         } catch (e) {
             return '无法序列化日志参数';
         }
     },
-
 
     /**
      * 添加日志到缓冲区，达到阈值时自动上报

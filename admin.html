@@ -24,7 +24,20 @@
                 <p>题库、用户与运营数据管理中心</p>
                 <div class="input-group">
                     <label for="admin-password" class="sr-only">管理密码</label>
-                    <span class="ic" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                    <span class="ic" aria-hidden="true"
+                        ><svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg
+                    ></span>
                     <input
                         type="password"
                         id="admin-password"
@@ -41,9 +54,7 @@
                 </div>
                 <button class="btn-login" id="btn-login">登 录</button>
                 <div class="login-error" id="login-error"></div>
-                <div class="login-hint">
-                    勾选"记住我"保存7天，不勾选保存24小时
-                </div>
+                <div class="login-hint">勾选"记住我"保存7天，不勾选保存24小时</div>
             </div>
         </div>
 
@@ -58,40 +69,177 @@
                     </div>
                 </div>
                 <div class="topbar-right">
-                    <button class="tb-btn" aria-label="返回前台首页" onclick="location.href = 'index.html'">访问首页</button>
-                    <button class="tb-btn" aria-label="导出用户数据为CSV文件" onclick="Admin.exportCSV()">导出用户 CSV</button>
-                    <button class="tb-btn danger" aria-label="退出管理后台登录" onclick="Admin.logout()">退出登录</button>
+                    <button
+                        class="tb-btn"
+                        aria-label="返回前台首页"
+                        onclick="location.href = 'index.html'"
+                    >
+                        访问首页
+                    </button>
+                    <button
+                        class="tb-btn"
+                        aria-label="导出用户数据为CSV文件"
+                        onclick="Admin.exportCSV()"
+                    >
+                        导出用户 CSV
+                    </button>
+                    <button
+                        class="tb-btn danger"
+                        aria-label="退出管理后台登录"
+                        onclick="Admin.logout()"
+                    >
+                        退出登录
+                    </button>
                 </div>
             </div>
 
             <div class="tabs" id="tabs" role="tablist" aria-label="管理功能导航">
-                <div class="tab active" id="tab-overview" role="tab" aria-selected="true" tabindex="0" data-tab="overview" onclick="Admin.switchTab('overview')">
+                <div
+                    class="tab active"
+                    id="tab-overview"
+                    role="tab"
+                    aria-selected="true"
+                    tabindex="0"
+                    data-tab="overview"
+                    onclick="Admin.switchTab('overview')"
+                >
                     总览
                 </div>
-                <div class="tab" id="tab-users" role="tab" aria-selected="false" tabindex="-1" data-tab="users" onclick="Admin.switchTab('users')">用户管理</div>
-                <div class="tab" id="tab-banks" role="tab" aria-selected="false" tabindex="-1" data-tab="banks" onclick="Admin.switchTab('banks')">题库管理</div>
-                <div class="tab" id="tab-activity" role="tab" aria-selected="false" tabindex="-1" data-tab="activity" onclick="Admin.switchTab('activity')">
+                <div
+                    class="tab"
+                    id="tab-users"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="users"
+                    onclick="Admin.switchTab('users')"
+                >
+                    用户管理
+                </div>
+                <div
+                    class="tab"
+                    id="tab-banks"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="banks"
+                    onclick="Admin.switchTab('banks')"
+                >
+                    题库管理
+                </div>
+                <div
+                    class="tab"
+                    id="tab-activity"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="activity"
+                    onclick="Admin.switchTab('activity')"
+                >
                     活跃记录
                 </div>
-                <div class="tab" id="tab-announce" role="tab" aria-selected="false" tabindex="-1" data-tab="announce" onclick="Admin.switchTab('announce')">
+                <div
+                    class="tab"
+                    id="tab-announce"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="announce"
+                    onclick="Admin.switchTab('announce')"
+                >
                     公告管理
                 </div>
-                <div class="tab" id="tab-ai" role="tab" aria-selected="false" tabindex="-1" data-tab="ai" onclick="Admin.switchTab('ai')">AI 解读</div>
-                <div class="tab" id="tab-logs" role="tab" aria-selected="false" tabindex="-1" data-tab="logs" onclick="Admin.switchTab('logs')">操作日志</div>
-                <div class="tab" id="tab-client-logs" role="tab" aria-selected="false" tabindex="-1" data-tab="client-logs" onclick="Admin.switchTab('client-logs')">客户端日志</div>
-                <div class="tab" id="tab-status" role="tab" aria-selected="false" tabindex="-1" data-tab="status" onclick="Admin.switchTab('status')">系统状态</div>
+                <div
+                    class="tab"
+                    id="tab-ai"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="ai"
+                    onclick="Admin.switchTab('ai')"
+                >
+                    AI 解读
+                </div>
+                <div
+                    class="tab"
+                    id="tab-logs"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="logs"
+                    onclick="Admin.switchTab('logs')"
+                >
+                    操作日志
+                </div>
+                <div
+                    class="tab"
+                    id="tab-client-logs"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="client-logs"
+                    onclick="Admin.switchTab('client-logs')"
+                >
+                    客户端日志
+                </div>
+                <div
+                    class="tab"
+                    id="tab-status"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="status"
+                    onclick="Admin.switchTab('status')"
+                >
+                    系统状态
+                </div>
             </div>
 
             <div class="main">
-                <div class="section active" id="sec-overview" role="tabpanel" aria-labelledby="tab-overview"></div>
-                <div class="section" id="sec-users" role="tabpanel" aria-labelledby="tab-users"></div>
-                <div class="section" id="sec-banks" role="tabpanel" aria-labelledby="tab-banks"></div>
-                <div class="section" id="sec-activity" role="tabpanel" aria-labelledby="tab-activity"></div>
-                <div class="section" id="sec-announce" role="tabpanel" aria-labelledby="tab-announce"></div>
+                <div
+                    class="section active"
+                    id="sec-overview"
+                    role="tabpanel"
+                    aria-labelledby="tab-overview"
+                ></div>
+                <div
+                    class="section"
+                    id="sec-users"
+                    role="tabpanel"
+                    aria-labelledby="tab-users"
+                ></div>
+                <div
+                    class="section"
+                    id="sec-banks"
+                    role="tabpanel"
+                    aria-labelledby="tab-banks"
+                ></div>
+                <div
+                    class="section"
+                    id="sec-activity"
+                    role="tabpanel"
+                    aria-labelledby="tab-activity"
+                ></div>
+                <div
+                    class="section"
+                    id="sec-announce"
+                    role="tabpanel"
+                    aria-labelledby="tab-announce"
+                ></div>
                 <div class="section" id="sec-ai" role="tabpanel" aria-labelledby="tab-ai"></div>
                 <div class="section" id="sec-logs" role="tabpanel" aria-labelledby="tab-logs"></div>
-                <div class="section" id="sec-client-logs" role="tabpanel" aria-labelledby="tab-client-logs"></div>
-                <div class="section" id="sec-status" role="tabpanel" aria-labelledby="tab-status"></div>
+                <div
+                    class="section"
+                    id="sec-client-logs"
+                    role="tabpanel"
+                    aria-labelledby="tab-client-logs"
+                ></div>
+                <div
+                    class="section"
+                    id="sec-status"
+                    role="tabpanel"
+                    aria-labelledby="tab-status"
+                ></div>
             </div>
         </div>
 

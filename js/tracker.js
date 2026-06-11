@@ -211,7 +211,14 @@ const Tracker = {
             停留秒: timeSpent,
             停留分: timeSpent >= 60 ? Math.round(timeSpent / 60) + '分钟' : '',
             是否正确: isCorrect ? '正确' : '错误',
-            耗时等级: timeSpent >= 120 ? '超长' : timeSpent >= 60 ? '较长' : timeSpent >= 30 ? '正常' : '快速'
+            耗时等级:
+                timeSpent >= 120
+                    ? '超长'
+                    : timeSpent >= 60
+                      ? '较长'
+                      : timeSpent >= 30
+                        ? '正常'
+                        : '快速'
         });
     },
 
@@ -230,7 +237,7 @@ const Tracker = {
 
         // 按分类统计平均耗时
         const categoryMap = {};
-        questionTimes.forEach(q => {
+        questionTimes.forEach((q) => {
             const cat = q.category || '未分类';
             if (!categoryMap[cat]) categoryMap[cat] = { total: 0, count: 0 };
             categoryMap[cat].total += q.timeSpent;
@@ -242,7 +249,7 @@ const Tracker = {
 
         // 按难度统计平均耗时
         const diffMap = {};
-        questionTimes.forEach(q => {
+        questionTimes.forEach((q) => {
             const d = q.difficulty || 1;
             if (!diffMap[d]) diffMap[d] = { total: 0, count: 0 };
             diffMap[d].total += q.timeSpent;
@@ -257,18 +264,20 @@ const Tracker = {
             题库ID: bankId,
             题库名称: bankName,
             总题数: questionTimes.length,
-            平均耗时: Math.round(questionTimes.reduce((s, q) => s + q.timeSpent, 0) / questionTimes.length) + '秒',
+            平均耗时:
+                Math.round(
+                    questionTimes.reduce((s, q) => s + q.timeSpent, 0) / questionTimes.length
+                ) + '秒',
             最长耗时: sorted[0].timeSpent + '秒',
             最长题目ID: sorted[0].id,
             最长分类: sorted[0].category || '未分类',
-            TOP5题目: top5.map(q => `Q${q.id}(${q.timeSpent}s)`).join(', '),
+            TOP5题目: top5.map((q) => `Q${q.id}(${q.timeSpent}s)`).join(', '),
             分类耗时: categoryStats,
             难度耗时: diffStats
         });
-    },
+    }
 
     // ========== 页面访问 ==========
-
 };
 
 export default Tracker;

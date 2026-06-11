@@ -97,7 +97,11 @@ const BankLoader = {
 
             Storage.setBank(bank);
 
-            console.log(`[BankLoader] ✅ 题库加载成功:`, bankId, `(${bank.questions?.length || 0} 题)`);
+            console.log(
+                `[BankLoader] ✅ 题库加载成功:`,
+                bankId,
+                `(${bank.questions?.length || 0} 题)`
+            );
             console.log(`[BankLoader] ========== 题库加载完成: ${bankId} ==========`);
             return bank;
         } catch (e) {

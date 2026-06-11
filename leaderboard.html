@@ -1,14 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>排行榜 - 城科卷王</title>
-        
+
         <!-- DNS 预解析 -->
-        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc">
-        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin>
-        
+        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc" />
+        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin />
+
         <link rel="stylesheet" href="css/base.css" />
         <link rel="stylesheet" href="css/home.css?v=2" />
         <style>
@@ -19,8 +19,14 @@
                 animation: lbFadeIn 0.3s ease;
             }
             @keyframes lbFadeIn {
-                from { opacity: 0; transform: translateY(8px); }
-                to { opacity: 1; transform: translateY(0); }
+                from {
+                    opacity: 0;
+                    transform: translateY(8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
             }
 
             /* ---- 头部 ---- */
@@ -74,7 +80,11 @@
                 position: sticky;
                 top: 0;
                 z-index: 10;
-                background: linear-gradient(135deg, var(--primary-light) 0%, color-mix(in srgb, var(--primary-light) 70%, white) 100%);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary-light) 0%,
+                    color-mix(in srgb, var(--primary-light) 70%, white) 100%
+                );
                 border: 1px solid var(--primary);
                 border-radius: var(--radius-lg);
                 padding: var(--space-4) var(--space-5);
@@ -143,7 +153,10 @@
                 background: var(--bg-card);
                 border: 1px solid var(--border);
                 border-radius: var(--radius);
-                transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+                transition:
+                    transform 0.15s ease,
+                    box-shadow 0.15s ease,
+                    border-color 0.15s ease;
                 position: relative;
                 overflow: hidden;
             }
@@ -214,17 +227,44 @@
                 flex-shrink: 0;
                 font-variant-numeric: tabular-nums;
             }
-            .lb-rank.top-1 { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
-            .lb-rank.top-2 { background: linear-gradient(135deg, #94a3b8, #cbd5e1); }
-            .lb-rank.top-3 { background: linear-gradient(135deg, #cd7f32, #d4a574); }
+            .lb-rank.top-1 {
+                background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            }
+            .lb-rank.top-2 {
+                background: linear-gradient(135deg, #94a3b8, #cbd5e1);
+            }
+            .lb-rank.top-3 {
+                background: linear-gradient(135deg, #cd7f32, #d4a574);
+            }
 
-            .lb-rank.rank-4 { background: #e0e0e0; color: var(--text-secondary); }
-            .lb-rank.rank-5 { background: #e0e0e0; color: var(--text-secondary); }
-            .lb-rank.rank-6 { background: #e8e8e8; color: var(--text-tertiary); }
-            .lb-rank.rank-7 { background: #e8e8e8; color: var(--text-tertiary); }
-            .lb-rank.rank-8 { background: #eee; color: var(--text-tertiary); }
-            .lb-rank.rank-9 { background: #eee; color: var(--text-tertiary); }
-            .lb-rank.rank-10 { background: #f0f0f0; color: var(--text-tertiary); }
+            .lb-rank.rank-4 {
+                background: #e0e0e0;
+                color: var(--text-secondary);
+            }
+            .lb-rank.rank-5 {
+                background: #e0e0e0;
+                color: var(--text-secondary);
+            }
+            .lb-rank.rank-6 {
+                background: #e8e8e8;
+                color: var(--text-tertiary);
+            }
+            .lb-rank.rank-7 {
+                background: #e8e8e8;
+                color: var(--text-tertiary);
+            }
+            .lb-rank.rank-8 {
+                background: #eee;
+                color: var(--text-tertiary);
+            }
+            .lb-rank.rank-9 {
+                background: #eee;
+                color: var(--text-tertiary);
+            }
+            .lb-rank.rank-10 {
+                background: #f0f0f0;
+                color: var(--text-tertiary);
+            }
 
             .lb-rank-num {
                 font-size: 11px;
@@ -243,7 +283,7 @@
                 flex-shrink: 0;
                 color: #fff;
                 background: var(--primary);
-                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
             }
             .lb-name {
                 flex: 1;
@@ -321,7 +361,9 @@
                 margin-bottom: var(--space-3);
             }
             @keyframes lbSpin {
-                to { transform: rotate(360deg); }
+                to {
+                    transform: rotate(360deg);
+                }
             }
 
             /* ---- 底部 ---- */
@@ -334,44 +376,118 @@
 
             /* ---- 暗色模式适配 ---- */
             @media (prefers-color-scheme: dark) {
-                .lb-rank.rank-4 { background: #444; color: var(--text-secondary); }
-                .lb-rank.rank-5 { background: #444; color: var(--text-secondary); }
-                .lb-rank.rank-6 { background: #3a3a3a; color: var(--text-tertiary); }
-                .lb-rank.rank-7 { background: #3a3a3a; color: var(--text-tertiary); }
-                .lb-rank.rank-8 { background: #333; color: var(--text-tertiary); }
-                .lb-rank.rank-9 { background: #333; color: var(--text-tertiary); }
-                .lb-rank.rank-10 { background: #2e2e2e; color: var(--text-tertiary); }
+                .lb-rank.rank-4 {
+                    background: #444;
+                    color: var(--text-secondary);
+                }
+                .lb-rank.rank-5 {
+                    background: #444;
+                    color: var(--text-secondary);
+                }
+                .lb-rank.rank-6 {
+                    background: #3a3a3a;
+                    color: var(--text-tertiary);
+                }
+                .lb-rank.rank-7 {
+                    background: #3a3a3a;
+                    color: var(--text-tertiary);
+                }
+                .lb-rank.rank-8 {
+                    background: #333;
+                    color: var(--text-tertiary);
+                }
+                .lb-rank.rank-9 {
+                    background: #333;
+                    color: var(--text-tertiary);
+                }
+                .lb-rank.rank-10 {
+                    background: #2e2e2e;
+                    color: var(--text-tertiary);
+                }
                 .lb-me {
-                    background: linear-gradient(135deg, var(--primary-light) 0%, rgba(25, 118, 210, 0.08) 100%);
+                    background: linear-gradient(
+                        135deg,
+                        var(--primary-light) 0%,
+                        rgba(25, 118, 210, 0.08) 100%
+                    );
                 }
                 .lb-row.top-1 {
-                    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, var(--bg-card) 100%);
+                    background: linear-gradient(
+                        135deg,
+                        rgba(245, 158, 11, 0.08) 0%,
+                        var(--bg-card) 100%
+                    );
                 }
                 .lb-row.top-2 {
-                    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08) 0%, var(--bg-card) 100%);
+                    background: linear-gradient(
+                        135deg,
+                        rgba(148, 163, 184, 0.08) 0%,
+                        var(--bg-card) 100%
+                    );
                 }
                 .lb-row.top-3 {
-                    background: linear-gradient(135deg, rgba(205, 127, 50, 0.08) 0%, var(--bg-card) 100%);
+                    background: linear-gradient(
+                        135deg,
+                        rgba(205, 127, 50, 0.08) 0%,
+                        var(--bg-card) 100%
+                    );
                 }
             }
-            [data-theme='dark'] .lb-rank.rank-4 { background: #444; color: var(--text-secondary); }
-            [data-theme='dark'] .lb-rank.rank-5 { background: #444; color: var(--text-secondary); }
-            [data-theme='dark'] .lb-rank.rank-6 { background: #3a3a3a; color: var(--text-tertiary); }
-            [data-theme='dark'] .lb-rank.rank-7 { background: #3a3a3a; color: var(--text-tertiary); }
-            [data-theme='dark'] .lb-rank.rank-8 { background: #333; color: var(--text-tertiary); }
-            [data-theme='dark'] .lb-rank.rank-9 { background: #333; color: var(--text-tertiary); }
-            [data-theme='dark'] .lb-rank.rank-10 { background: #2e2e2e; color: var(--text-tertiary); }
+            [data-theme='dark'] .lb-rank.rank-4 {
+                background: #444;
+                color: var(--text-secondary);
+            }
+            [data-theme='dark'] .lb-rank.rank-5 {
+                background: #444;
+                color: var(--text-secondary);
+            }
+            [data-theme='dark'] .lb-rank.rank-6 {
+                background: #3a3a3a;
+                color: var(--text-tertiary);
+            }
+            [data-theme='dark'] .lb-rank.rank-7 {
+                background: #3a3a3a;
+                color: var(--text-tertiary);
+            }
+            [data-theme='dark'] .lb-rank.rank-8 {
+                background: #333;
+                color: var(--text-tertiary);
+            }
+            [data-theme='dark'] .lb-rank.rank-9 {
+                background: #333;
+                color: var(--text-tertiary);
+            }
+            [data-theme='dark'] .lb-rank.rank-10 {
+                background: #2e2e2e;
+                color: var(--text-tertiary);
+            }
             [data-theme='dark'] .lb-me {
-                background: linear-gradient(135deg, var(--primary-light) 0%, rgba(25, 118, 210, 0.08) 100%);
+                background: linear-gradient(
+                    135deg,
+                    var(--primary-light) 0%,
+                    rgba(25, 118, 210, 0.08) 100%
+                );
             }
             [data-theme='dark'] .lb-row.top-1 {
-                background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, var(--bg-card) 100%);
+                background: linear-gradient(
+                    135deg,
+                    rgba(245, 158, 11, 0.08) 0%,
+                    var(--bg-card) 100%
+                );
             }
             [data-theme='dark'] .lb-row.top-2 {
-                background: linear-gradient(135deg, rgba(148, 163, 184, 0.08) 0%, var(--bg-card) 100%);
+                background: linear-gradient(
+                    135deg,
+                    rgba(148, 163, 184, 0.08) 0%,
+                    var(--bg-card) 100%
+                );
             }
             [data-theme='dark'] .lb-row.top-3 {
-                background: linear-gradient(135deg, rgba(205, 127, 50, 0.08) 0%, var(--bg-card) 100%);
+                background: linear-gradient(
+                    135deg,
+                    rgba(205, 127, 50, 0.08) 0%,
+                    var(--bg-card) 100%
+                );
             }
 
             /* ---- 响应式 ---- */
@@ -398,7 +514,10 @@
         </style>
     </head>
     <body>
-        <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+        <script>
+            history.scrollRestoration = 'manual';
+            window.scrollTo(0, 0);
+        </script>
         <header class="home-header">
             <div class="container">
                 <div class="home-logo">
@@ -408,7 +527,11 @@
                     </div>
                 </div>
                 <div class="home-actions">
-                    <button class="btn-header btn-sm" onclick="location.href='index.html'" aria-label="返回首页">
+                    <button
+                        class="btn-header btn-sm"
+                        onclick="location.href = 'index.html'"
+                        aria-label="返回首页"
+                    >
                         <span>首页</span>
                     </button>
                 </div>
@@ -422,13 +545,23 @@
             </div>
 
             <!-- 当前用户 -->
-            <div id="lb-me" style="display:none;"></div>
+            <div id="lb-me" style="display: none"></div>
 
             <!-- Tab 切换 -->
             <div class="lb-tabs">
-                <button class="lb-tab active" data-sort="answered" onclick="LB.switchTab('answered')">📊 答题数</button>
-                <button class="lb-tab" data-sort="accuracy" onclick="LB.switchTab('accuracy')">🎯 正确率</button>
-                <button class="lb-tab" data-sort="duration" onclick="LB.switchTab('duration')">⏱ 学习时长</button>
+                <button
+                    class="lb-tab active"
+                    data-sort="answered"
+                    onclick="LB.switchTab('answered')"
+                >
+                    📊 答题数
+                </button>
+                <button class="lb-tab" data-sort="accuracy" onclick="LB.switchTab('accuracy')">
+                    🎯 正确率
+                </button>
+                <button class="lb-tab" data-sort="duration" onclick="LB.switchTab('duration')">
+                    ⏱ 学习时长
+                </button>
             </div>
 
             <!-- 排行榜列表 -->

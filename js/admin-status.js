@@ -22,14 +22,25 @@ export function initStatus(Admin) {
             const s = d.status;
             const checks = [
                 { label: 'Worker API', ok: true, detail: '正常响应' },
-                { label: 'D1 数据库', ok: s.d1?.ok !== false, detail: s.d1?.ok !== false ? '连接正常' : '连接异常' },
-                { label: '操作日志表', ok: s.logs?.ok !== false, detail: s.logs?.ok !== false ? `共 ${s.logs?.count || 0} 条` : '表不存在或查询失败' },
+                {
+                    label: 'D1 数据库',
+                    ok: s.d1?.ok !== false,
+                    detail: s.d1?.ok !== false ? '连接正常' : '连接异常'
+                },
+                {
+                    label: '操作日志表',
+                    ok: s.logs?.ok !== false,
+                    detail:
+                        s.logs?.ok !== false ? `共 ${s.logs?.count || 0} 条` : '表不存在或查询失败'
+                },
                 { label: '用户数', ok: true, detail: `${s.userCount || 0} 人` },
                 { label: '题库数', ok: true, detail: `${s.bankCount || 0} 个` },
                 { label: '公告数', ok: true, detail: `${s.announcementCount || 0} 条` }
             ];
 
-            const checkRows = checks.map((c) => `
+            const checkRows = checks
+                .map(
+                    (c) => `
                 <div class="stat-card">
                     <div class="stat-icon ${c.ok ? 'green' : 'red'}">${Utils.icon(c.ok ? 'check-circle' : 'alert-triangle')}</div>
                     <div class="stat-info">
@@ -37,14 +48,20 @@ export function initStatus(Admin) {
                         <div class="stat-label">${Utils.escapeHtml(c.detail)}</div>
                     </div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
 
-            const tableStats = (s.tables || []).map((t) => `
+            const tableStats = (s.tables || [])
+                .map(
+                    (t) => `
                 <tr>
                     <td><code>${Utils.escapeHtml(t.name)}</code></td>
                     <td>${t.count ?? '-'}</td>
                 </tr>
-            `).join('');
+            `
+                )
+                .join('');
 
             el.innerHTML = `
                 ${this.pageHeader({
@@ -54,7 +71,9 @@ export function initStatus(Admin) {
                     actions: '<button class="abtn" onclick="Admin.renderStatus()">刷新</button>'
                 })}
                 <div class="stat-grid">${checkRows}</div>
-                ${tableStats ? `
+                ${
+                    tableStats
+                        ? `
                 <div class="card">
                     <div class="card-header"><h3>数据表统计</h3><span class="count">${(s.tables || []).length} 张表</span></div>
                     <div class="table-wrap">
@@ -63,7 +82,9 @@ export function initStatus(Admin) {
                             <tbody>${tableStats}</tbody>
                         </table>
                     </div>
-                </div>` : ''}
+                </div>`
+                        : ''
+                }
                 <div class="card">
                     <div class="card-header"><h3>环境信息</h3></div>
                     <div class="card-body" style="padding:16px">

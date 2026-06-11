@@ -494,7 +494,9 @@ const Utils = {
             })
             .join('');
 
-        const closeBtnHtml = closable ? '<button class="modal-close" data-modal-close aria-label="关闭">×</button>' : '';
+        const closeBtnHtml = closable
+            ? '<button class="modal-close" data-modal-close aria-label="关闭">×</button>'
+            : '';
 
         const modalHtml = `
             <div class="modal-overlay show" id="${id}">

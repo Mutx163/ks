@@ -4,11 +4,11 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>学习分析 - 城科卷王</title>
-        
+
         <!-- DNS 预解析 -->
-        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc">
-        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin>
-        <link rel="dns-prefetch" href="https://unpkg.com">
+        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc" />
+        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin />
+        <link rel="dns-prefetch" href="https://unpkg.com" />
 
         <!-- Lucide 图标（异步加载，不阻塞页面） -->
         <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js" async defer></script>
@@ -17,11 +17,16 @@
         <link rel="stylesheet" href="css/insights.css?v=2" />
     </head>
     <body data-page="analysis">
-        <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+        <script>
+            history.scrollRestoration = 'manual';
+            window.scrollTo(0, 0);
+        </script>
         <header class="insight-header">
             <div class="container">
                 <div class="insight-heading">
-                    <a class="btn-header-icon btn-sm" href="index.html" aria-label="返回首页"><i data-lucide="arrow-left" class="icon"></i></a>
+                    <a class="btn-header-icon btn-sm" href="index.html" aria-label="返回首页"
+                        ><i data-lucide="arrow-left" class="icon"></i
+                    ></a>
                     <div>
                         <h1>学习分析</h1>
                         <p>薄弱知识点、题型掌握与复习压力</p>
@@ -74,7 +79,9 @@
                 if (typeof lucide !== 'undefined') {
                     lucide.createIcons();
                 } else if ((retries || 0) < 50) {
-                    setTimeout(function() { initLucide((retries || 0) + 1); }, 100);
+                    setTimeout(function () {
+                        initLucide((retries || 0) + 1);
+                    }, 100);
                 }
             }
             initLucide(0);

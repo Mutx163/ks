@@ -78,7 +78,9 @@ export function initUsers(Admin) {
                     </table>
                 </div>
             </div>
-            ${this.selectedUsers.size > 0 ? `
+            ${
+                this.selectedUsers.size > 0
+                    ? `
             <div class="toolbar" style="margin-top:8px;background:var(--admin-primary-weak);border:1px solid var(--admin-primary-border);border-radius:8px;padding:10px 14px">
                 <div class="toolbar-group" style="flex:1">
                     <span class="status-pill info">已选 ${this.selectedUsers.size} 人</span>
@@ -88,7 +90,9 @@ export function initUsers(Admin) {
                     <button class="abtn success" onclick="Admin.bulkBanUsers(false)">批量解封</button>
                     <button class="abtn" onclick="Admin.clearUserSelection()">清空选择</button>
                 </div>
-            </div>` : ''}
+            </div>`
+                    : ''
+            }
             ${this.pager({ page: this.userPage, pageSize: this.userPageSize, total: totalFiltered, onPage: 'Admin.setUserPage', onPageSize: 'Admin.setUserPageSize' })}
         `;
         document
@@ -154,8 +158,11 @@ export function initUsers(Admin) {
 
     Admin.toggleUsersOnPage = function (checked) {
         const q = (document.getElementById('search-input')?.value || '').toUpperCase();
-        const status = document.getElementById('user-status-filter')?.value || this.userStatusFilter || 'all';
-        let list = this.users.filter((u) => !q || u.id.includes(q) || u.initials.toUpperCase().includes(q));
+        const status =
+            document.getElementById('user-status-filter')?.value || this.userStatusFilter || 'all';
+        let list = this.users.filter(
+            (u) => !q || u.id.includes(q) || u.initials.toUpperCase().includes(q)
+        );
         if (status === 'normal') list = list.filter((u) => !u.banned && !u.is_admin);
         else if (status === 'banned') list = list.filter((u) => u.banned);
         else if (status === 'admin') list = list.filter((u) => u.is_admin);

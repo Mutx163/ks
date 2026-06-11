@@ -17,7 +17,7 @@ const Insights = {
         Perf.init('数据洞察');
         this.state.page = document.body.dataset.page || 'trend';
         this.applySettings();
-        
+
         Perf.mark('加载题库');
         await this.loadBuiltinBanks();
         Perf.mark('题库加载完成');
@@ -38,7 +38,7 @@ const Insights = {
             this.renderTrendPage();
         }
         Perf.mark('渲染完成');
-        
+
         Perf.done({ page: this.state.page, bankCount: this.state.banks.length });
     },
 

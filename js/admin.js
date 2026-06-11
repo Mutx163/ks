@@ -296,14 +296,12 @@ const Admin = {
     activateTab(t) {
         this.tab = t;
         localStorage.setItem('admin_tab', t);
-        document
-            .querySelectorAll('.tab')
-            .forEach((el) => {
-                const isActive = el.dataset.tab === t;
-                el.classList.toggle('active', isActive);
-                el.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                el.setAttribute('tabindex', isActive ? '0' : '-1');
-            });
+        document.querySelectorAll('.tab').forEach((el) => {
+            const isActive = el.dataset.tab === t;
+            el.classList.toggle('active', isActive);
+            el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            el.setAttribute('tabindex', isActive ? '0' : '-1');
+        });
         document
             .querySelectorAll('.section')
             .forEach((el) => el.classList.toggle('active', el.id === 'sec-' + t));
@@ -324,7 +322,17 @@ const Admin = {
 
     async handleRoute() {
         if (document.getElementById('admin-app')?.style.display === 'none') return;
-        const valid = ['overview', 'users', 'banks', 'activity', 'announce', 'ai', 'logs', 'client-logs', 'status'];
+        const valid = [
+            'overview',
+            'users',
+            'banks',
+            'activity',
+            'announce',
+            'ai',
+            'logs',
+            'client-logs',
+            'status'
+        ];
         const saved = localStorage.getItem('admin_tab');
         const fallback = valid.includes(saved) ? saved : 'overview';
         const parts = decodeURIComponent((location.hash || `#/${fallback}`).replace(/^#\/?/, ''))
@@ -364,7 +372,6 @@ const Admin = {
         if (map[this.tab]) await this[map[this.tab]]();
     },
 
-
     pageHeader({ title, description = '', crumbs = ['管理后台'], actions = '' }) {
         const safeCrumbs = crumbs.map((c) => `<span>${Utils.escapeHtml(c)}</span>`).join('');
         return `
@@ -387,7 +394,14 @@ const Admin = {
         return `<span class="status-pill ${enabled ? 'enabled' : 'disabled'}">${Utils.escapeHtml(label)}</span>`;
     },
 
-    pager({ page = 1, pageSize = 20, total = 0, onPage, onPageSize, pageSizes = [10, 20, 50, 100] }) {
+    pager({
+        page = 1,
+        pageSize = 20,
+        total = 0,
+        onPage,
+        onPageSize,
+        pageSizes = [10, 20, 50, 100]
+    }) {
         const totalPages = Math.max(1, Math.ceil(total / pageSize));
         const safePage = Math.min(Math.max(1, page), totalPages);
         const start = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
@@ -493,7 +507,9 @@ const Admin = {
             <!-- 今日数据骨架屏 -->
             <div class="overview-grid">
                 <div class="today-stats">
-                    ${Array(4).fill(`
+                    ${Array(4)
+                        .fill(
+                            `
                         <div class="today-stat-item">
                             <div class="skeleton skeleton-circle"></div>
                             <div class="today-stat-info">
@@ -501,7 +517,9 @@ const Admin = {
                                 <div class="skeleton skeleton-text-sm" style="width:80px"></div>
                             </div>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
                 <div class="card">
                     <div class="card-header">
@@ -509,7 +527,9 @@ const Admin = {
                         <div class="skeleton skeleton-text-sm" style="width:60px"></div>
                     </div>
                     <div class="trend-list">
-                        ${Array(7).fill(`
+                        ${Array(7)
+                            .fill(
+                                `
                             <div class="trend-list-item">
                                 <div class="trend-list-date">
                                     <div class="skeleton" style="width:32px;height:20px;margin:0 auto 4px"></div>
@@ -522,14 +542,18 @@ const Admin = {
                                     <div class="skeleton" style="width:40px;height:16px;margin-left:auto"></div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `
+                            )
+                            .join('')}
                     </div>
                 </div>
             </div>
             
             <!-- 指标卡片骨架屏 -->
             <div class="stat-grid">
-                ${Array(4).fill(`
+                ${Array(4)
+                    .fill(
+                        `
                     <div class="stat-card">
                         <div class="skeleton skeleton-circle"></div>
                         <div class="stat-info">
@@ -537,17 +561,19 @@ const Admin = {
                             <div class="skeleton skeleton-text-sm" style="width:60px"></div>
                         </div>
                     </div>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </div>
         `;
     },
 
     async renderOverview() {
         const el = document.getElementById('sec-overview');
-        
+
         // 显示骨架屏
         el.innerHTML = this._renderOverviewSkeleton();
-        
+
         try {
             const d = await this.get('/api/admin/overview');
             if (!d?.ok) {
@@ -556,7 +582,8 @@ const Admin = {
                         title: '总览',
                         description: '查看平台运行、用户增长、答题规模与题库核心状态。',
                         crumbs: ['管理后台', '总览'],
-                        actions: '<button class="abtn" onclick="Admin.renderOverview()">重试</button>'
+                        actions:
+                            '<button class="abtn" onclick="Admin.renderOverview()">重试</button>'
                     })}
                     <div class="empty-state">
                         <strong>加载失败</strong>
@@ -566,27 +593,28 @@ const Admin = {
                 `;
                 return;
             }
-            
+
             const o = d.overview;
             const total = this.users.reduce((s, u) => s + u.total_answered, 0);
             const dur = this.users.reduce((s, u) => s + u.total_duration, 0);
-            const acc = total > 0
-                ? Math.round((this.users.reduce((s, u) => s + u.total_correct, 0) / total) * 100)
-                : 0;
+            const acc =
+                total > 0
+                    ? Math.round(
+                          (this.users.reduce((s, u) => s + u.total_correct, 0) / total) * 100
+                      )
+                    : 0;
             const maxCnt = Math.max(...o.weekTrend.map((w) => w.cnt), 1);
-            
+
             // 计算题库分布（取前5个最活跃的题库）
-            const bankStats = {};
-            this.users.forEach(u => {
-                // 这里需要从stats中获取题库分布，暂时使用简化版本
-            });
-            
+            // 暂时使用简化版本
+
             el.innerHTML = `
                 ${this.pageHeader({
                     title: '总览',
                     description: '查看平台运行、用户增长、答题规模与题库核心状态。',
                     crumbs: ['管理后台', '总览'],
-                    actions: '<button class="abtn" onclick="Admin.renderOverview()">刷新数据</button>'
+                    actions:
+                        '<button class="abtn" onclick="Admin.renderOverview()">刷新数据</button>'
                 })}
                 
                 <!-- 系统通知 -->
@@ -655,7 +683,11 @@ const Admin = {
                             <span class="count">按天统计</span>
                         </div>
                         <div class="trend-list" role="list" aria-label="近7天注册趋势数据">
-                            ${o.weekTrend.length > 0 ? o.weekTrend.map((w, i) => `
+                            ${
+                                o.weekTrend.length > 0
+                                    ? o.weekTrend
+                                          .map(
+                                              (w, i) => `
                                 <div class="trend-list-item" role="listitem" style="animation-delay:${i * 60}ms" aria-label="${this.fmtDate(w.day)} 注册 ${w.cnt} 人">
                                     <div class="trend-list-date">
                                         <span class="trend-list-day">${(this.fmtDate(w.day) || '').slice(8)}</span>
@@ -669,11 +701,15 @@ const Admin = {
                                         <span class="trend-list-unit">人</span>
                                     </div>
                                 </div>
-                            `).join('') : `
+                            `
+                                          )
+                                          .join('')
+                                    : `
                                 <div class="trend-list-empty">
                                     <span>暂无趋势数据</span>
                                 </div>
-                            `}
+                            `
+                            }
                         </div>
                     </div>
                 </div>
@@ -710,12 +746,11 @@ const Admin = {
                     </div>
                 </div>
             `;
-            
+
             Utils.initIcons?.();
-            
+
             // 添加入场动画
             this._animateOverviewEntry();
-            
         } catch (e) {
             el.innerHTML = `
                 ${this.pageHeader({
@@ -732,16 +767,18 @@ const Admin = {
             `;
         }
     },
-    
+
     // 总览页入场动画
     _animateOverviewEntry() {
-        const elements = document.querySelectorAll('#sec-overview .overview-hero, #sec-overview .overview-grid, #sec-overview .stat-grid');
+        const elements = document.querySelectorAll(
+            '#sec-overview .overview-hero, #sec-overview .overview-grid, #sec-overview .stat-grid'
+        );
         elements.forEach((el, i) => {
             el.style.opacity = '0';
             el.style.transform = 'translateY(16px)';
             el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
             el.style.transitionDelay = `${i * 100}ms`;
-            
+
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     el.style.opacity = '1';

@@ -35,9 +35,9 @@ const API = {
             return crypto.randomUUID();
         }
         // HTTP 环境降级
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-            const r = Math.random() * 16 | 0;
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
         });
     },
 
@@ -88,25 +88,26 @@ const API = {
             }
             const url = urlObj.toString();
             console.log(`[API] 📡 ${method} ${url}`);
-            
+
             const res = await fetch(url, {
                 cache: 'no-store',
                 headers: { 'Content-Type': 'application/json' },
                 ...fetchOptions
             });
-            
+
             const elapsed = Date.now() - startTime;
             console.log(`[API] ✅ ${method} ${path} (${elapsed}ms) 状态: ${res.status}`);
-            
+
             const text = await res.text();
             let data = null;
             if (text) {
                 try {
                     data = JSON.parse(text);
-                } catch (_e) {
+                } catch {
                     console.warn(`[API] ❌ 非 JSON 响应: ${text.slice(0, 200)}`);
                     if (!res.ok) {
-                        if (res.status === 403) return { ok: false, disabled: true, error: '资源不可用' };
+                        if (res.status === 403)
+                            return { ok: false, disabled: true, error: '资源不可用' };
                         return null;
                     }
                     return null;
@@ -116,7 +117,8 @@ const API = {
             if (!res.ok) {
                 console.warn(`[API] ❌ 请求失败: ${data?.error || '未知错误'}`);
                 // 403 表示资源被禁用，返回特殊标记以区分网络错误
-                if (res.status === 403) return { ok: false, disabled: true, error: data?.error || '资源不可用' };
+                if (res.status === 403)
+                    return { ok: false, disabled: true, error: data?.error || '资源不可用' };
                 return null;
             }
             return data;
@@ -194,7 +196,7 @@ const API = {
     async autoSync() {
         console.log('[API] ========== 自动同步开始 ==========');
         const startTime = Date.now();
-        
+
         if (!this.isRegistered()) {
             console.log('[API] 👤 未注册，尝试恢复同步码...');
             const recovered = await this.checkRegistered();
@@ -214,10 +216,10 @@ const API = {
 
         console.log('[API] ☁️ 拉取云端数据...');
         await this.pullCloudData();
-        
+
         console.log('[API] 📤 推送本地数据到云端...');
         await this.pushAll();
-        
+
         const elapsed = Date.now() - startTime;
         console.log(`[API] ========== 自动同步完成 (${elapsed}ms) ==========`);
         return true;
@@ -242,7 +244,7 @@ const API = {
     async pullCloudData() {
         console.log('[API] 📥 开始拉取云端数据...');
         const startTime = Date.now();
-        
+
         const data = await this.request(`/api/cloud-data/${this.getDeviceId()}`);
         if (!data || !data.ok) {
             console.log('[API] ⚠️ 云端数据拉取失败或无数据');
@@ -320,7 +322,7 @@ const API = {
                 deviceId: this.getDeviceId(),
                 settings
             })
-        }).then(data => {
+        }).then((data) => {
             if (data && data.disabled) {
                 this._showBanNotice();
             }
@@ -340,7 +342,7 @@ const API = {
                     deviceId: this.getDeviceId(),
                     progress
                 })
-            }).then(data => {
+            }).then((data) => {
                 if (data && data.disabled) {
                     this._showBanNotice();
                 }
@@ -361,16 +363,18 @@ const API = {
                 deviceId: this.getDeviceId(),
                 ...stats
             })
-        }).then(data => {
-            // 检查是否被封禁
-            if (data && data.disabled) {
-                this._showBanNotice();
-            }
-            return data;
-        }).catch(e => {
-            console.warn('[API] pushStats 失败:', e.message);
-            return null;
-        });
+        })
+            .then((data) => {
+                // 检查是否被封禁
+                if (data && data.disabled) {
+                    this._showBanNotice();
+                }
+                return data;
+            })
+            .catch((e) => {
+                console.warn('[API] pushStats 失败:', e.message);
+                return null;
+            });
     },
 
     // 显示封禁通知
@@ -378,7 +382,7 @@ const API = {
     _showBanNotice() {
         if (this._banNoticeShown) return;
         this._banNoticeShown = true;
-        
+
         // 创建封禁提示（无关闭按钮，必须联系管理员）
         const notice = document.createElement('div');
         notice.style.cssText = `
@@ -403,7 +407,7 @@ const API = {
             </div>
         `;
         document.body.appendChild(notice);
-        
+
         // 阻止页面滚动
         document.body.style.overflow = 'hidden';
     },
@@ -496,13 +500,23 @@ const API = {
                                 localQ[qid] = cq;
                                 changed = true;
                             } else {
-                                const cloudTime = cq.answeredAt ? new Date(cq.answeredAt).getTime() : 0;
-                                const localTime = lq.answeredAt ? new Date(lq.answeredAt).getTime() : 0;
+                                const cloudTime = cq.answeredAt
+                                    ? new Date(cq.answeredAt).getTime()
+                                    : 0;
+                                const localTime = lq.answeredAt
+                                    ? new Date(lq.answeredAt).getTime()
+                                    : 0;
                                 if (cloudTime > localTime) {
                                     // 云端更新，但保留本地更高的 attempts
-                                    localQ[qid] = { ...cq, attempts: Math.max(cq.attempts || 0, lq.attempts || 0) };
+                                    localQ[qid] = {
+                                        ...cq,
+                                        attempts: Math.max(cq.attempts || 0, lq.attempts || 0)
+                                    };
                                     changed = true;
-                                } else if (cloudTime === localTime && (cq.attempts || 0) > (lq.attempts || 0)) {
+                                } else if (
+                                    cloudTime === localTime &&
+                                    (cq.attempts || 0) > (lq.attempts || 0)
+                                ) {
                                     // 同一时间，取更高的 attempts
                                     localQ[qid].attempts = cq.attempts;
                                     changed = true;
@@ -513,7 +527,9 @@ const API = {
                     }
 
                     // 从逐题数据重新计算汇总数字
-                    let answered = 0, correct = 0, wrong = 0;
+                    let answered = 0,
+                        correct = 0,
+                        wrong = 0;
                     for (const q of Object.values(l.questions)) {
                         answered++;
                         if (q.correct) correct++;
@@ -545,9 +561,10 @@ const API = {
     showRegisterModal() {
         return new Promise((resolve) => {
             const Utils = window.Utils;
-            if (!Utils) { resolve(false); return; }
-
-            let currentTab = 'register';
+            if (!Utils) {
+                resolve(false);
+                return;
+            }
 
             const renderContent = () => {
                 return `
@@ -598,7 +615,7 @@ const API = {
                             // 判断当前是注册还是绑定
                             const registerForm = modal.querySelector('#register-form');
                             const isRegister = registerForm.style.display !== 'none';
-                            
+
                             if (isRegister) {
                                 const input = modal.querySelector('#reg-initials');
                                 const initials = (input?.value || '').trim().toUpperCase();
@@ -607,18 +624,20 @@ const API = {
                                     return;
                                 }
                                 Utils.showToast('注册中...', 'info');
-                                API.register(initials).then(result => {
-                                    if (result && result.ok) {
-                                        Utils.showToast(`注册成功！`, 'success');
-                                        modal.remove();
-                                        resolve(true);
-                                    } else {
-                                        Utils.showToast('注册失败，请重试', 'error');
-                                    }
-                                }).catch(e => {
-                                    console.error('[Register]', e);
-                                    Utils.showToast('网络错误，请重试', 'error');
-                                });
+                                API.register(initials)
+                                    .then((result) => {
+                                        if (result && result.ok) {
+                                            Utils.showToast(`注册成功！`, 'success');
+                                            modal.remove();
+                                            resolve(true);
+                                        } else {
+                                            Utils.showToast('注册失败，请重试', 'error');
+                                        }
+                                    })
+                                    .catch((e) => {
+                                        console.error('[Register]', e);
+                                        Utils.showToast('网络错误，请重试', 'error');
+                                    });
                             } else {
                                 const input = modal.querySelector('#reg-sync-code');
                                 const code = (input?.value || '').trim().toUpperCase();
@@ -627,21 +646,26 @@ const API = {
                                     return;
                                 }
                                 Utils.showToast('绑定中...', 'info');
-                                API.bindDevice(code).then(result => {
-                                    if (result && result.ok) {
-                                        Utils.showToast(`绑定成功！欢迎 ${result.initials}`, 'success');
-                                        modal.remove();
-                                        resolve(true);
-                                    } else {
-                                        Utils.showToast(result?.error || '绑定失败', 'error');
-                                    }
-                                }).catch(e => {
-                                    console.error('[Bind]', e);
-                                    Utils.showToast('网络错误，请重试', 'error');
-                                });
+                                API.bindDevice(code)
+                                    .then((result) => {
+                                        if (result && result.ok) {
+                                            Utils.showToast(
+                                                `绑定成功！欢迎 ${result.initials}`,
+                                                'success'
+                                            );
+                                            modal.remove();
+                                            resolve(true);
+                                        } else {
+                                            Utils.showToast(result?.error || '绑定失败', 'error');
+                                        }
+                                    })
+                                    .catch((e) => {
+                                        console.error('[Bind]', e);
+                                        Utils.showToast('网络错误，请重试', 'error');
+                                    });
                             }
                         }
-                    },
+                    }
                     // 无跳过按钮，必须注册或绑定
                 ],
                 size: 'sm'
@@ -673,7 +697,8 @@ const API = {
             }
         }
 
-        const content = code ? `
+        const content = code
+            ? `
             <div style="text-align: center; margin-bottom: 16px;">
                 <p style="color: var(--text-secondary); margin-bottom: 8px;">${Utils.escapeHtml(initials)}，你的同步码：</p>
                 <div id="sync-code-display" style="font-size: 28px; font-weight: 700; letter-spacing: 6px; color: var(--primary); font-family: monospace; padding: 12px; background: var(--bg-hover); border-radius: var(--radius);">
@@ -695,7 +720,8 @@ const API = {
                 </div>
                 <p style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">⚠️ 绑定后本设备数据将关联到新同步码</p>
             </div>
-        ` : `
+        `
+            : `
             <div style="text-align: center; padding: 16px 0;">
                 <p style="color: var(--text-secondary); margin-bottom: 12px;">你还没有注册</p>
                 <button class="btn btn-primary" onclick="API.showRegisterModal(); this.closest('.modal-overlay').remove();">注册 / 绑定</button>
@@ -706,14 +732,18 @@ const API = {
             title: '⚙️ 账号管理',
             content,
             buttons: [
-                ...(code ? [{
-                    label: '复制同步码',
-                    class: 'btn-primary',
-                    onClick: () => {
-                        navigator.clipboard?.writeText(code);
-                        Utils.showToast('已复制', 'success');
-                    }
-                }] : []),
+                ...(code
+                    ? [
+                          {
+                              label: '复制同步码',
+                              class: 'btn-primary',
+                              onClick: () => {
+                                  navigator.clipboard?.writeText(code);
+                                  Utils.showToast('已复制', 'success');
+                              }
+                          }
+                      ]
+                    : []),
                 {
                     label: '关闭',
                     class: 'btn-ghost',

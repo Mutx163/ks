@@ -8,7 +8,7 @@
     /* 字体系统 */
     --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-mono: 'Geist Mono', 'JetBrains Mono', 'Fira Code', monospace;
-    
+
     /* 颜色系统 - 低饱和度中性色 */
     --admin-bg: #fafafa;
     --admin-surface: #ffffff;
@@ -16,41 +16,41 @@
     --admin-surface-soft: #e5e5e5;
     --admin-border: #e5e5e5;
     --admin-border-strong: #d4d4d4;
-    
+
     /* 文字颜色 - 单一色相 */
     --admin-text: #09090b;
     --admin-text-secondary: #52525b;
     --admin-text-tertiary: #a1a1aa;
-    
+
     /* 主色调 - 深靛蓝 (低饱和度) */
     --admin-primary: #1d4ed8;
     --admin-primary-weak: #eff6ff;
     --admin-primary-border: #bfdbfe;
-    
+
     /* 状态色 - 低饱和度 */
     --admin-success: #15803d;
     --admin-success-weak: #f0fdf4;
     --admin-success-border: #bbf7d0;
-    
+
     --admin-warning: #a16207;
     --admin-warning-weak: #fefce8;
     --admin-warning-border: #fef08a;
-    
+
     --admin-danger: #b91c1c;
     --admin-danger-weak: #fef2f2;
     --admin-danger-border: #fecaca;
-    
+
     /* 阴影系统 */
     --admin-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
     --admin-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
     --admin-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
-    
+
     /* 圆角系统 */
     --admin-radius-sm: 6px;
     --admin-radius: 10px;
     --admin-radius-lg: 14px;
     --admin-radius-xl: 20px;
-    
+
     --admin-header-height: 58px;
     --admin-focus: 0 0 0 3px rgba(29, 78, 216, 0.12);
 }
@@ -269,7 +269,7 @@ textarea:focus-visible {
     color: var(--admin-text-secondary);
     cursor: pointer;
 }
-.login-remember-label input[type="checkbox"] {
+.login-remember-label input[type='checkbox'] {
     margin: 0;
 }
 
@@ -1606,8 +1606,6 @@ td b {
     }
 }
 
-
-
 /* ===== 分页器 ===== */
 .pager {
     display: flex;
@@ -1943,15 +1941,15 @@ td b {
     .overview-hero {
         grid-template-columns: 1fr;
     }
-    
+
     .overview-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .today-stats {
         grid-template-columns: 1fr;
     }
-    
+
     .stat-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -2091,86 +2089,140 @@ td b {
         --admin-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
 
-    html { background: var(--admin-bg); }
-    body { background: var(--admin-bg); }
+    html {
+        background: var(--admin-bg);
+    }
+    body {
+        background: var(--admin-bg);
+    }
 
     /* 噪点在暗色下更明显，降低不透明度 */
-    body::after { opacity: 0.03; }
+    body::after {
+        opacity: 0.03;
+    }
 
     /* 顶栏 */
     .topbar {
         background: rgba(20, 20, 22, 0.88);
         border-bottom-color: rgba(63, 63, 70, 0.6);
     }
-    .topbar-logo { background: #fafafa; color: #0a0a0b; }
+    .topbar-logo {
+        background: #fafafa;
+        color: #0a0a0b;
+    }
 
     /* Tab 栏 */
     .tabs {
         background: rgba(20, 20, 22, 0.7);
         border-bottom-color: var(--admin-border);
     }
-    .tab.active { background: var(--admin-surface); }
-    .tab:hover { background: var(--admin-surface-muted); }
+    .tab.active {
+        background: var(--admin-surface);
+    }
+    .tab:hover {
+        background: var(--admin-surface-muted);
+    }
 
     /* 登录页暗色微调 */
     .login-card {
         background: rgba(28, 28, 31, 0.96);
         border-color: rgba(63, 63, 70, 0.5);
     }
-    .logo-icon { background: #fafafa; color: #0a0a0b; }
+    .logo-icon {
+        background: #fafafa;
+        color: #0a0a0b;
+    }
 
     /* 输入框 */
     .login-card .input-group input,
-    .modal-box input, .modal-box select, .modal-box textarea,
+    .modal-box input,
+    .modal-box select,
+    .modal-box textarea,
     .announce-input textarea,
-    .search-box input, .toolbar input, .toolbar select,
-    .admin-input, .admin-select,
-    .qe-field input, .qe-field select, .qe-field textarea,
+    .search-box input,
+    .toolbar input,
+    .toolbar select,
+    .admin-input,
+    .admin-select,
+    .qe-field input,
+    .qe-field select,
+    .qe-field textarea,
     .qe-fill-wrap textarea {
         background: var(--admin-surface-muted);
         border-color: var(--admin-border);
         color: var(--admin-text);
     }
     .login-card .input-group input:focus,
-    .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus,
+    .modal-box input:focus,
+    .modal-box select:focus,
+    .modal-box textarea:focus,
     .announce-input textarea:focus,
-    .search-box input:focus, .toolbar input:focus, .toolbar select:focus,
-    .admin-input:focus, .admin-select:focus,
-    .qe-field input:focus, .qe-field select:focus, .qe-field textarea:focus,
+    .search-box input:focus,
+    .toolbar input:focus,
+    .toolbar select:focus,
+    .admin-input:focus,
+    .admin-select:focus,
+    .qe-field input:focus,
+    .qe-field select:focus,
+    .qe-field textarea:focus,
     .qe-fill-wrap textarea:focus {
         background: var(--admin-surface-muted);
     }
 
     /* 按钮 */
-    .tb-btn, .abtn, .fbtn, .modal-actions button {
+    .tb-btn,
+    .abtn,
+    .fbtn,
+    .modal-actions button {
         background: var(--admin-surface-muted);
         border-color: var(--admin-border);
         color: var(--admin-text-secondary);
     }
-    .tb-btn:hover, .abtn:hover, .fbtn:hover:not(.active), .modal-actions button:hover {
+    .tb-btn:hover,
+    .abtn:hover,
+    .fbtn:hover:not(.active),
+    .modal-actions button:hover {
         background: var(--admin-surface-soft);
         border-color: var(--admin-border-strong);
         color: var(--admin-text);
     }
-    .tb-btn.danger, .abtn.danger, .modal-actions .danger, .modal-actions .md {
+    .tb-btn.danger,
+    .abtn.danger,
+    .modal-actions .danger,
+    .modal-actions .md {
         background: var(--admin-danger-weak);
         border-color: var(--admin-danger-border);
     }
-    .tb-btn.danger:hover, .abtn.danger:hover, .modal-actions .danger:hover {
+    .tb-btn.danger:hover,
+    .abtn.danger:hover,
+    .modal-actions .danger:hover {
         background: rgba(239, 68, 68, 0.2);
     }
-    .abtn.primary, .fbtn.active, .modal-actions .mp {
+    .abtn.primary,
+    .fbtn.active,
+    .modal-actions .mp {
         background: var(--admin-primary);
         border-color: var(--admin-primary);
     }
 
     /* 表头 */
-    thead th { background: var(--admin-surface-muted); border-bottom-color: var(--admin-border); }
-    tbody td { border-bottom-color: var(--admin-border); color: var(--admin-text-secondary); }
-    tbody tr:hover td { background: var(--admin-surface-muted); }
+    thead th {
+        background: var(--admin-surface-muted);
+        border-bottom-color: var(--admin-border);
+    }
+    tbody td {
+        border-bottom-color: var(--admin-border);
+        color: var(--admin-text-secondary);
+    }
+    tbody tr:hover td {
+        background: var(--admin-surface-muted);
+    }
 
     /* 卡片 */
-    .card, .data-card, .bank-card, .management-row {
+    .card,
+    .data-card,
+    .bank-card,
+    .management-row {
         background: var(--admin-surface);
         border-color: var(--admin-border);
     }
@@ -2178,41 +2230,75 @@ td b {
         background: linear-gradient(180deg, var(--admin-surface), var(--admin-surface-muted));
         border-bottom-color: var(--admin-border);
     }
-    .management-row:hover, .bank-card:hover {
+    .management-row:hover,
+    .bank-card:hover {
         border-color: var(--admin-primary-border);
     }
 
     /* 指标卡片 */
-    .stat-card { background: var(--admin-surface); }
-    .stat-card:hover { background: var(--admin-surface-muted); }
+    .stat-card {
+        background: var(--admin-surface);
+    }
+    .stat-card:hover {
+        background: var(--admin-surface-muted);
+    }
 
     /* 今日数据 */
-    .today-stat-item { background: var(--admin-surface); }
-    .today-stat-item:hover { background: var(--admin-surface-muted); }
-    .overview-hero { background: var(--admin-border); }
-    .hero-metric { background: var(--admin-surface); }
-    .hero-metric-primary { background: #fafafa; color: #0a0a0b; }
-    .hero-metric-primary .hero-label { color: rgba(10, 10, 11, 0.5); }
-    .hero-metric-primary .hero-value { color: #0a0a0b; }
+    .today-stat-item {
+        background: var(--admin-surface);
+    }
+    .today-stat-item:hover {
+        background: var(--admin-surface-muted);
+    }
+    .overview-hero {
+        background: var(--admin-border);
+    }
+    .hero-metric {
+        background: var(--admin-surface);
+    }
+    .hero-metric-primary {
+        background: #fafafa;
+        color: #0a0a0b;
+    }
+    .hero-metric-primary .hero-label {
+        color: rgba(10, 10, 11, 0.5);
+    }
+    .hero-metric-primary .hero-value {
+        color: #0a0a0b;
+    }
 
     /* 环形进度条 */
-    .ring-progress::before { background: var(--admin-surface); }
+    .ring-progress::before {
+        background: var(--admin-surface);
+    }
 
     /* 分布图 */
-    .distribution-card { background: var(--admin-surface); }
-    .distribution-bar-track { background: var(--admin-surface-soft); }
+    .distribution-card {
+        background: var(--admin-surface);
+    }
+    .distribution-bar-track {
+        background: var(--admin-surface-soft);
+    }
 
     /* 骨架屏 */
     .skeleton {
-        background: linear-gradient(90deg, var(--admin-surface-muted) 25%, var(--admin-surface-soft) 50%, var(--admin-surface-muted) 75%);
+        background: linear-gradient(
+            90deg,
+            var(--admin-surface-muted) 25%,
+            var(--admin-surface-soft) 50%,
+            var(--admin-surface-muted) 75%
+        );
     }
 
     /* 状态标签 */
-    .status-pill.enabled, .b-admin, .b-me {
+    .status-pill.enabled,
+    .b-admin,
+    .b-me {
         background: var(--admin-success-weak);
         border-color: var(--admin-success-border);
     }
-    .status-pill.disabled, .b-ban {
+    .status-pill.disabled,
+    .b-ban {
         background: var(--admin-danger-weak);
         border-color: var(--admin-danger-border);
     }
@@ -2238,60 +2324,131 @@ td b {
     }
 
     /* 时间线 */
-    .tl-item { border-bottom-color: var(--admin-border); }
-    .announcement-item { border-bottom-color: var(--admin-border); }
+    .tl-item {
+        border-bottom-color: var(--admin-border);
+    }
+    .announcement-item {
+        border-bottom-color: var(--admin-border);
+    }
 
     /* 弹窗 */
-    .modal-mask { background: rgba(0, 0, 0, 0.6); }
+    .modal-mask {
+        background: rgba(0, 0, 0, 0.6);
+    }
     .modal-box {
         background: var(--admin-surface);
         border-color: var(--admin-border);
     }
-    .modal-box.danger-modal { border-color: var(--admin-danger-border); }
+    .modal-box.danger-modal {
+        border-color: var(--admin-danger-border);
+    }
 
     /* 题目编辑器 */
-    .qe-modal { background: var(--admin-surface); }
-    .qe-header { background: var(--admin-surface); border-bottom-color: var(--admin-border); }
-    .qe-tabs { background: var(--admin-surface-muted); border-bottom-color: var(--admin-border); }
-    .qe-tab.active { background: var(--admin-surface); }
-    .qe-opt-item { background: var(--admin-surface-muted); border-color: var(--admin-border); }
-    .qe-opt-item:hover, .qe-opt-item.selected { background: var(--admin-primary-weak); border-color: var(--admin-primary-border); }
-    .qe-opt-input { color: var(--admin-text); }
-    .qe-judge-btn { background: var(--admin-surface-muted); border-color: var(--admin-border); color: var(--admin-text); }
-    .qe-judge-btn.active { background: var(--admin-primary); }
-    .qe-footer { background: var(--admin-surface); border-top-color: var(--admin-border); }
-    .qe-add-opt { background: var(--admin-surface-muted); border-color: var(--admin-border-strong); }
-    .qe-preview-card { background: var(--admin-surface-muted); }
-    .qe-preview-opt { background: var(--admin-surface-muted); border-color: var(--admin-border); }
-    .qe-preview-opt.selected { background: var(--admin-primary-weak); }
-    .qe-preview-answer { background: var(--admin-surface-muted); border-color: var(--admin-border); }
-    .qe-preview-explain { background: var(--admin-surface-muted); }
-    .close-btn { background: var(--admin-surface-muted); border-color: var(--admin-border); }
-    .close-btn:hover { background: var(--admin-surface-soft); }
+    .qe-modal {
+        background: var(--admin-surface);
+    }
+    .qe-header {
+        background: var(--admin-surface);
+        border-bottom-color: var(--admin-border);
+    }
+    .qe-tabs {
+        background: var(--admin-surface-muted);
+        border-bottom-color: var(--admin-border);
+    }
+    .qe-tab.active {
+        background: var(--admin-surface);
+    }
+    .qe-opt-item {
+        background: var(--admin-surface-muted);
+        border-color: var(--admin-border);
+    }
+    .qe-opt-item:hover,
+    .qe-opt-item.selected {
+        background: var(--admin-primary-weak);
+        border-color: var(--admin-primary-border);
+    }
+    .qe-opt-input {
+        color: var(--admin-text);
+    }
+    .qe-judge-btn {
+        background: var(--admin-surface-muted);
+        border-color: var(--admin-border);
+        color: var(--admin-text);
+    }
+    .qe-judge-btn.active {
+        background: var(--admin-primary);
+    }
+    .qe-footer {
+        background: var(--admin-surface);
+        border-top-color: var(--admin-border);
+    }
+    .qe-add-opt {
+        background: var(--admin-surface-muted);
+        border-color: var(--admin-border-strong);
+    }
+    .qe-preview-card {
+        background: var(--admin-surface-muted);
+    }
+    .qe-preview-opt {
+        background: var(--admin-surface-muted);
+        border-color: var(--admin-border);
+    }
+    .qe-preview-opt.selected {
+        background: var(--admin-primary-weak);
+    }
+    .qe-preview-answer {
+        background: var(--admin-surface-muted);
+        border-color: var(--admin-border);
+    }
+    .qe-preview-explain {
+        background: var(--admin-surface-muted);
+    }
+    .close-btn {
+        background: var(--admin-surface-muted);
+        border-color: var(--admin-border);
+    }
+    .close-btn:hover {
+        background: var(--admin-surface-soft);
+    }
 
     /* 系统通知 */
-    .system-notice, .inline-notice {
+    .system-notice,
+    .inline-notice {
         background: var(--admin-primary-weak);
         border-color: var(--admin-primary-border);
         color: #93c5fd;
     }
 
     /* 分页器 */
-    .pager { background: var(--admin-surface); border-top-color: var(--admin-border); }
+    .pager {
+        background: var(--admin-surface);
+        border-top-color: var(--admin-border);
+    }
 
     /* 趋势条 */
-    .trend-bar { background: linear-gradient(180deg, var(--admin-primary), #60a5fa); }
-    .trend-list-bar { background: linear-gradient(90deg, var(--admin-primary), #60a5fa); }
+    .trend-bar {
+        background: linear-gradient(180deg, var(--admin-primary), #60a5fa);
+    }
+    .trend-list-bar {
+        background: linear-gradient(90deg, var(--admin-primary), #60a5fa);
+    }
 
     /* 搜索框 */
-    .search-box input, .toolbar input, .toolbar select,
-    .admin-input, .admin-select {
+    .search-box input,
+    .toolbar input,
+    .toolbar select,
+    .admin-input,
+    .admin-select {
         background: var(--admin-surface-muted);
     }
 
     /* 滚动条 */
-    ::-webkit-scrollbar-thumb { background: var(--admin-border-strong); }
-    ::-webkit-scrollbar-thumb:hover { background: var(--admin-text-tertiary); }
+    ::-webkit-scrollbar-thumb {
+        background: var(--admin-border-strong);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--admin-text-tertiary);
+    }
 
     /* 代码标签 */
     .code {
@@ -2301,16 +2458,24 @@ td b {
     }
 
     /* 题目列表 hover */
-    .question-item:hover { background: var(--admin-surface-muted); }
+    .question-item:hover {
+        background: var(--admin-surface-muted);
+    }
 
     /* 响应式 stat-grid 在暗色模式的分割线 */
-    .stat-grid { background: var(--admin-border); }
-    .today-stats { background: var(--admin-border); }
+    .stat-grid {
+        background: var(--admin-border);
+    }
+    .today-stats {
+        background: var(--admin-border);
+    }
 }
 
 /* ===== prefers-reduced-motion ===== */
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;

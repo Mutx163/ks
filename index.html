@@ -4,24 +4,43 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>城科卷王</title>
-        <script>window._pageStartTime = Date.now();</script>
+        <script>
+            window._pageStartTime = Date.now();
+        </script>
         <!-- 早期错误捕获（在模块加载前就开始记录） -->
         <script>
-        window._earlyLogs = [];
-        window.onerror = function(m,s,l,c,e) {
-            window._earlyLogs.push({level:'error',type:'uncaught',message:String(m),source:s||'',line:l||0,col:c||0,stack:e&&e.stack?e.stack.slice(0,1000):'',pageUrl:location.href,ts:new Date().toISOString()});
-        };
-        window.addEventListener('unhandledrejection', function(ev) {
-            var r = ev.reason;
-            window._earlyLogs.push({level:'error',type:'unhandledrejection',message:r&&r.message||String(r),stack:r&&r.stack?r.stack.slice(0,1000):'',pageUrl:location.href,ts:new Date().toISOString()});
-        });
+            window._earlyLogs = [];
+            window.onerror = function (m, s, l, c, e) {
+                window._earlyLogs.push({
+                    level: 'error',
+                    type: 'uncaught',
+                    message: String(m),
+                    source: s || '',
+                    line: l || 0,
+                    col: c || 0,
+                    stack: e && e.stack ? e.stack.slice(0, 1000) : '',
+                    pageUrl: location.href,
+                    ts: new Date().toISOString()
+                });
+            };
+            window.addEventListener('unhandledrejection', function (ev) {
+                var r = ev.reason;
+                window._earlyLogs.push({
+                    level: 'error',
+                    type: 'unhandledrejection',
+                    message: (r && r.message) || String(r),
+                    stack: r && r.stack ? r.stack.slice(0, 1000) : '',
+                    pageUrl: location.href,
+                    ts: new Date().toISOString()
+                });
+            });
         </script>
 
         <!-- DNS 预解析 + 预连接（减少首次请求延迟） -->
-        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc">
-        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin>
-        <link rel="dns-prefetch" href="https://unpkg.com">
-        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc" />
+        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin />
+        <link rel="dns-prefetch" href="https://unpkg.com" />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
 
         <!-- 预加载已移除：因为实际请求带 _ts 参数，预加载的请求未被使用 -->
 
@@ -41,18 +60,36 @@
             href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"
         />
         <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js" defer></script>
-        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js" defer></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"
+            defer
+        ></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"
+            defer
+        ></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"
+            defer
+        ></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"
+            defer
+        ></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"
+            defer
+        ></script>
 
         <!-- 样式 -->
         <link rel="stylesheet" href="css/base.css" />
         <link rel="stylesheet" href="css/home.css?v=2" />
     </head>
     <body>
-        <script>history.scrollRestoration='manual';window.scrollTo(0,0);</script>
+        <script>
+            history.scrollRestoration = 'manual';
+            window.scrollTo(0, 0);
+        </script>
         <!-- 全屏加载骨架屏 -->
         <div id="loading-skeleton">
             <div class="skel-hero">
@@ -74,23 +111,53 @@
                     </div>
                 </div>
                 <div class="home-actions">
-                    <button class="btn btn-header btn-sm" id="btn-history" aria-label="答题历史" title="答题历史">
+                    <button
+                        class="btn btn-header btn-sm"
+                        id="btn-history"
+                        aria-label="答题历史"
+                        title="答题历史"
+                    >
                         <i data-lucide="clipboard-list" class="icon"></i> <span>历史</span>
                     </button>
-                    <button class="btn btn-header btn-sm" onclick="location.href='leaderboard.html'" aria-label="排行榜" title="排行榜">
+                    <button
+                        class="btn btn-header btn-sm"
+                        onclick="location.href = 'leaderboard.html'"
+                        aria-label="排行榜"
+                        title="排行榜"
+                    >
                         <i data-lucide="trophy" class="icon"></i> <span>排行</span>
                     </button>
                     <div class="header-divider"></div>
-                    <button class="btn btn-header-icon btn-sm" id="btn-sync" aria-label="多设备同步" title="多设备同步">
+                    <button
+                        class="btn btn-header-icon btn-sm"
+                        id="btn-sync"
+                        aria-label="多设备同步"
+                        title="多设备同步"
+                    >
                         <i data-lucide="smartphone" class="icon"></i>
                     </button>
-                    <button class="btn btn-header-icon btn-sm" id="btn-shortcuts" aria-label="快捷键" title="快捷键参考">
+                    <button
+                        class="btn btn-header-icon btn-sm"
+                        id="btn-shortcuts"
+                        aria-label="快捷键"
+                        title="快捷键参考"
+                    >
                         <i data-lucide="keyboard" class="icon"></i>
                     </button>
-                    <button class="btn btn-header-icon btn-sm" id="btn-theme" aria-label="切换主题" title="切换主题">
+                    <button
+                        class="btn btn-header-icon btn-sm"
+                        id="btn-theme"
+                        aria-label="切换主题"
+                        title="切换主题"
+                    >
                         <i data-lucide="sun-moon" class="icon"></i>
                     </button>
-                    <button class="btn btn-header-icon btn-sm" id="btn-settings" aria-label="设置" title="设置">
+                    <button
+                        class="btn btn-header-icon btn-sm"
+                        id="btn-settings"
+                        aria-label="设置"
+                        title="设置"
+                    >
                         <i data-lucide="settings" class="icon"></i>
                     </button>
                 </div>
@@ -129,11 +196,27 @@
                         </div>
 
                         <!-- 题库 -->
-                        <section class="section" id="section-banks" style="display:none" aria-label="题库列表">
+                        <section
+                            class="section"
+                            id="section-banks"
+                            style="display: none"
+                            aria-label="题库列表"
+                        >
                             <div class="section-header">
                                 <h2 class="section-title">题库列表</h2>
-                                <div style="display:flex;align-items:center;gap:8px">
-                                    <select id="bank-sort" style="padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;background:var(--bg-card);color:var(--text)" onchange="App.sortBanks(this.value)">
+                                <div style="display: flex; align-items: center; gap: 8px">
+                                    <select
+                                        id="bank-sort"
+                                        style="
+                                            padding: 4px 8px;
+                                            border: 1px solid var(--border);
+                                            border-radius: var(--radius);
+                                            font-size: 12px;
+                                            background: var(--bg-card);
+                                            color: var(--text);
+                                        "
+                                        onchange="App.sortBanks(this.value)"
+                                    >
                                         <option value="recent">最近使用</option>
                                         <option value="name">名称</option>
                                         <option value="count">题目数</option>
@@ -219,13 +302,19 @@
             // 等 51.la 加载完再初始化
             function initLA() {
                 if (typeof LA !== 'undefined') {
-                    LA.init({id:"LCw11fJOoJPF3gGU",ck:"LCw11fJOoJPF3gGU",autoTrack:true});
+                    LA.init({ id: 'LCw11fJOoJPF3gGU', ck: 'LCw11fJOoJPF3gGU', autoTrack: true });
                 }
             }
             document.getElementById('LA_COLLECT').addEventListener('load', initLA);
         </script>
         <!-- 51.la 数据挂件 -->
-        <script id="LA-DATA-WIDGET" crossorigin="anonymous" charset="UTF-8" src="https://v6-widget.51.la/v6/LCw11fJOoJPF3gGU/quote.js?theme=0&col=true&f=12" async></script>
+        <script
+            id="LA-DATA-WIDGET"
+            crossorigin="anonymous"
+            charset="UTF-8"
+            src="https://v6-widget.51.la/v6/LCw11fJOoJPF3gGU/quote.js?theme=0&col=true&f=12"
+            async
+        ></script>
         <script>
             // 将 51.la 挂件移动到指定容器
             function moveLAWidget() {
@@ -239,13 +328,15 @@
             }
             // 尝试立即移动，如果失败则使用 MutationObserver 监听（10秒超时）
             if (!moveLAWidget()) {
-                const observer = new MutationObserver(function(mutations) {
+                const observer = new MutationObserver(function (mutations) {
                     if (moveLAWidget()) {
                         observer.disconnect();
                     }
                 });
                 observer.observe(document.body, { childList: true, subtree: true });
-                setTimeout(function() { observer.disconnect(); }, 10000);
+                setTimeout(function () {
+                    observer.disconnect();
+                }, 10000);
             }
         </script>
         <script type="module" src="js/debug.js"></script>

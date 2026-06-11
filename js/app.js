@@ -51,7 +51,7 @@ const App = {
                 // 同步完成后刷新统计数据
                 this.state.stats = Storage.getGlobalStats();
             })
-            .catch(e => {
+            .catch((e) => {
                 console.warn('[App] ⚠️ 云同步失败（后台）:', e.message);
             });
         Perf.mark('云同步已启动');
@@ -87,10 +87,10 @@ const App = {
         Perf.mark('加载公告');
         console.log('[App] 📢 加载公告...');
         this.loadAnnouncement();
-        
+
         const totalElapsed = Date.now() - window._pageStartTime;
         console.log(`[App] ========== 首页初始化完成 (${totalElapsed}ms) ==========`);
-        
+
         // 输出性能汇总
         Perf.done({
             bankCount: this.state.banks.length,
@@ -100,27 +100,32 @@ const App = {
 
     loadData() {
         console.log('[App] 📦 开始加载本地数据...');
-        
+
         // 过滤掉禁用的题库（兼容本地缓存）
         const allBanks = Storage.getBanks();
-        const enabledBanks = allBanks.filter(b => b.enabled !== false);
+        const enabledBanks = allBanks.filter((b) => b.enabled !== false);
         const disabledCount = allBanks.length - enabledBanks.length;
-        
-        console.log(`[App] 📊 题库统计: 总计 ${allBanks.length} 个, 启用 ${enabledBanks.length} 个, 禁用 ${disabledCount} 个`);
+
+        console.log(
+            `[App] 📊 题库统计: 总计 ${allBanks.length} 个, 启用 ${enabledBanks.length} 个, 禁用 ${disabledCount} 个`
+        );
         if (disabledCount > 0) {
-            console.log('[App] 🚫 已禁用的题库:', allBanks.filter(b => b.enabled === false).map(b => b.name || b.id));
+            console.log(
+                '[App] 🚫 已禁用的题库:',
+                allBanks.filter((b) => b.enabled === false).map((b) => b.name || b.id)
+            );
         }
-        
+
         this.state.banks = enabledBanks;
         this.state.stats = Storage.getGlobalStats();
-        
+
         console.log('[App] 📊 统计数据:', this.state.stats);
-        
+
         // 恢复排序选项
         this.state.bankSort = localStorage.getItem('quiz_bank_sort') || 'recent';
         const sortSelect = document.getElementById('bank-sort');
         if (sortSelect) sortSelect.value = this.state.bankSort;
-        
+
         console.log('[App] ✅ 本地数据加载完成');
     },
 
@@ -226,7 +231,7 @@ const App = {
         const cached = (() => {
             try {
                 return localStorage.getItem(CACHE_KEY);
-            } catch (_e) {
+            } catch {
                 return null;
             }
         })();
@@ -402,33 +407,51 @@ const App = {
         const btns = [];
 
         if (this._isModeAllowed(allowedModes, 'all')) {
-            btns.push(`<button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bankId}', 'all')">${Utils.icon('list')} 顺序刷题</button>`);
+            btns.push(
+                `<button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bankId}', 'all')">${Utils.icon('list')} 顺序刷题</button>`
+            );
         }
         if (this._isModeAllowed(allowedModes, 'random')) {
-            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'random')">${Utils.icon('shuffle')} 随机</button>`);
+            btns.push(
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'random')">${Utils.icon('shuffle')} 随机</button>`
+            );
         }
         if (this._isModeAllowed(allowedModes, 'shuffle_options')) {
-            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'shuffle_options')">${Utils.icon('refresh-cw')} 选项乱序</button>`);
+            btns.push(
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'shuffle_options')">${Utils.icon('refresh-cw')} 选项乱序</button>`
+            );
         }
         if (this._isModeAllowed(allowedModes, 'wrong')) {
-            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>${Utils.icon('alert-circle')} 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}</button>`);
+            btns.push(
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>${Utils.icon('alert-circle')} 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}</button>`
+            );
         }
         if (this._isModeAllowed(allowedModes, 'review')) {
-            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'review')">${Utils.icon('book-open')} 背题</button>`);
+            btns.push(
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'review')">${Utils.icon('book-open')} 背题</button>`
+            );
         }
         if (this._isModeAllowed(allowedModes, 'spaced') && dueCount > 0) {
-            btns.push(`<button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bankId}', 'spaced')">${Utils.icon('brain')} 复习(${dueCount})</button>`);
+            btns.push(
+                `<button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bankId}', 'spaced')">${Utils.icon('brain')} 复习(${dueCount})</button>`
+            );
         }
         if (this._isModeAllowed(allowedModes, 'bookmark') && bookmarkCount > 0) {
-            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'bookmark')">${Utils.icon('star')} 收藏(${bookmarkCount})</button>`);
+            btns.push(
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'bookmark')">${Utils.icon('star')} 收藏(${bookmarkCount})</button>`
+            );
         }
         if (this._isModeAllowed(allowedModes, 'exam')) {
-            btns.push(`<button class="btn btn-secondary btn-sm" onclick="App.startExam('${bankId}')">${Utils.icon('file-text')} 考试</button>`);
+            btns.push(
+                `<button class="btn btn-secondary btn-sm" onclick="App.startExam('${bankId}')">${Utils.icon('file-text')} 考试</button>`
+            );
         }
 
         // 如果没有任何按钮，显示提示
         if (btns.length === 0) {
-            btns.push(`<span style="font-size:12px;color:var(--text-tertiary)">暂无可用模式</span>`);
+            btns.push(
+                `<span style="font-size:12px;color:var(--text-tertiary)">暂无可用模式</span>`
+            );
         }
 
         return btns.join('\n');
@@ -464,11 +487,13 @@ const App = {
             case 'name':
                 return banks.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             case 'count':
-                return banks.sort((a, b) => (b.questions?.length || 0) - (a.questions?.length || 0));
+                return banks.sort(
+                    (a, b) => (b.questions?.length || 0) - (a.questions?.length || 0)
+                );
             case 'progress': {
                 // 预计算 progress，避免在比较函数中 O(n log n) 次重复调用
                 const progressMap = new Map(
-                    banks.map(b => [b.id, Storage.getBankStats(b.id).progress || 0])
+                    banks.map((b) => [b.id, Storage.getBankStats(b.id).progress || 0])
                 );
                 return banks.sort((a, b) => progressMap.get(b.id) - progressMap.get(a.id));
             }
@@ -635,11 +660,7 @@ const App = {
         const firstBank = results[0].bank;
         const totalCount = results.reduce((s, r) => s + r.count, 0);
         Tracker.searchQuestions(keyword, totalCount);
-        Utils.showToast(
-            '找到 ' + totalCount + ' 道匹配题目',
-            'success',
-            2000
-        );
+        Utils.showToast('找到 ' + totalCount + ' 道匹配题目', 'success', 2000);
         setTimeout(() => {
             window.location.href =
                 'quiz.html?bank=' + firstBank.id + '&mode=review&q=' + encodeURIComponent(keyword);
@@ -860,7 +881,11 @@ const App = {
 
         const themeLabels = { auto: '跟随系统', light: '浅色模式', dark: '深色模式' };
         const themeIconNames = { auto: 'monitor', light: 'sun', dark: 'moon' };
-        Utils.showToast(`${Utils.icon(themeIconNames[theme] || 'monitor')} 主题：${themeLabels[theme]}`, 'success', 1500);
+        Utils.showToast(
+            `${Utils.icon(themeIconNames[theme] || 'monitor')} 主题：${themeLabels[theme]}`,
+            'success',
+            1500
+        );
     },
 
     /**
@@ -932,7 +957,7 @@ const App = {
         // 检查是否是管理员（本地管理员密码或云端管理员标记）
         const hasAdminPwd = !!localStorage.getItem('admin_pwd');
         const isAdmin = hasAdminPwd || localStorage.getItem('ks_is_admin') === '1';
-        
+
         const content = `
             <label>字体大小</label>
             <select id="setting-font-size">
@@ -966,7 +991,9 @@ const App = {
                 <span>自动收集错误日志帮助改进体验</span>
             </label>
             
-            ${isAdmin ? `
+            ${
+                isAdmin
+                    ? `
             <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
                 <button onclick="window.open('admin.html', '_blank'); this.closest('.modal').remove();" style="
                     width: 100%; padding: 12px; 
@@ -978,7 +1005,9 @@ const App = {
                     👑 进入管理后台
                 </button>
             </div>
-            ` : ''}
+            `
+                    : ''
+            }
         `;
 
         Utils.showModal({
@@ -1003,7 +1032,8 @@ const App = {
                         }
 
                         const newSwipe = modal.querySelector('#setting-swipe').checked;
-                        const newLogCollection = modal.querySelector('#setting-log-collection').checked;
+                        const newLogCollection =
+                            modal.querySelector('#setting-log-collection').checked;
                         LogCollector.setEnabled(newLogCollection);
 
                         console.log('[Settings] 💾 保存设置:', {
@@ -1038,7 +1068,9 @@ const App = {
             size: 'lg'
         });
 
-        const settingsModal = document.getElementById('setting-ai-engine')?.closest('.modal-overlay');
+        const settingsModal = document
+            .getElementById('setting-ai-engine')
+            ?.closest('.modal-overlay');
         AIEngines.bindSettingsUI(settingsModal);
         AIExplain.bindSettingsUI(settingsModal);
     },
@@ -1047,7 +1079,6 @@ const App = {
      * 显示键盘快捷键参考
      */
     showShortcuts() {
-        const shown = localStorage.getItem('quiz_shortcuts_shown');
         Utils.showToast('快捷键：Enter 提交 · A-D 选答案 · Alt+←→ 切换 · 1/0 判断', 'info', 5000);
         localStorage.setItem('quiz_shortcuts_shown', '1');
     },
@@ -1129,7 +1160,11 @@ const App = {
         // 首次访问显示快捷键提示
         if (!localStorage.getItem('quiz_shortcuts_shown')) {
             setTimeout(() => {
-                Utils.showToast(`${Utils.icon('lightbulb')} 按 Enter 提交 · Alt+←→ 切换 · A-D 选答案`, 'info', 4000);
+                Utils.showToast(
+                    `${Utils.icon('lightbulb')} 按 Enter 提交 · Alt+←→ 切换 · A-D 选答案`,
+                    'info',
+                    4000
+                );
                 localStorage.setItem('quiz_shortcuts_shown', '1');
             }, 2000);
         }

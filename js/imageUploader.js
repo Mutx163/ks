@@ -9,7 +9,7 @@ const ImageUploader = {
         wwpic: {
             name: 'WwoPic',
             upload: (file, onProgress) => {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     const xhr = new XMLHttpRequest();
                     const formData = new FormData();
                     formData.append('file', file);
@@ -29,14 +29,19 @@ const ImageUploader = {
                             } else {
                                 resolve({ success: false, error: result.message || '上传失败' });
                             }
-                        } catch (e) {
+                        } catch {
                             resolve({ success: false, error: '解析响应失败' });
                         }
                     });
 
-                    xhr.addEventListener('error', () => resolve({ success: false, error: '网络错误' }));
+                    xhr.addEventListener('error', () =>
+                        resolve({ success: false, error: '网络错误' })
+                    );
                     xhr.open('POST', 'https://img.wwoyun.cn/api/v2/upload');
-                    xhr.setRequestHeader('Authorization', 'Bearer 171|ZDEnLUKTwjfvXblPTp7mPsJnB71HZZOcB8fHeiyj401e1955');
+                    xhr.setRequestHeader(
+                        'Authorization',
+                        'Bearer 171|ZDEnLUKTwjfvXblPTp7mPsJnB71HZZOcB8fHeiyj401e1955'
+                    );
                     xhr.send(formData);
                 });
             }
@@ -94,7 +99,6 @@ const ImageUploader = {
      * @param {Function} callback - 上传成功回调，参数为图片 URL
      */
     showDialog(callback) {
-        const currentProvider = this.getProvider();
         const modal = document.createElement('div');
         modal.className = 'modal-mask';
         modal.innerHTML = `

@@ -38,7 +38,9 @@ export function initLogs(Admin) {
             const actionOptions = d.actions || [];
 
             const rows = logs.length
-                ? logs.map((log) => `
+                ? logs
+                      .map(
+                          (log) => `
                     <tr>
                         <td style="font-size:12px;color:var(--admin-text-tertiary)">${Admin.fmtTime(log.created_at)}</td>
                         <td><strong>${Utils.escapeHtml(log.action)}</strong></td>
@@ -48,7 +50,9 @@ export function initLogs(Admin) {
                         <td style="font-size:12px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${Utils.escapeHtml(log.detail || '')}">${Utils.escapeHtml((log.detail || '').slice(0, 80))}</td>
                         <td style="font-size:12px">${Utils.escapeHtml(log.operator || '-')}</td>
                     </tr>
-                `).join('')
+                `
+                      )
+                      .join('')
                 : `<tr><td colspan="7">${this.emptyState({ title: '暂无操作日志' })}</td></tr>`;
 
             el.innerHTML = `

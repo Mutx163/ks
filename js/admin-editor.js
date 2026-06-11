@@ -433,7 +433,9 @@ export function initEditor(Admin) {
         const img = document.getElementById('eq-img')?.value?.trim() || '';
 
         // 收集答案图片（简答题/填空题）
-        const answerImg = isEssay ? (document.getElementById('eq-answer-img')?.value?.trim() || '') : '';
+        const answerImg = isEssay
+            ? document.getElementById('eq-answer-img')?.value?.trim() || ''
+            : '';
 
         const question = {
             type,

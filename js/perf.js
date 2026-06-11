@@ -33,13 +33,15 @@ const Perf = {
         if (!nav) return;
 
         console.log(`[Perf] 📊 Navigation Timing:`, {
-            'DNS查询': this._fmtMs(nav.domainLookupEnd - nav.domainLookupStart),
-            'TCP连接': this._fmtMs(nav.connectEnd - nav.connectStart),
-            'TLS握手': this._fmtMs(nav.secureConnectionStart > 0 ? nav.connectEnd - nav.secureConnectionStart : 0),
-            '请求响应': this._fmtMs(nav.responseEnd - nav.requestStart),
-            'DOM解析': this._fmtMs(nav.domInteractive - nav.responseEnd),
-            'DOM完成': this._fmtMs(nav.domContentLoadedEventEnd - nav.startTime),
-            '页面完全加载': this._fmtMs(nav.loadEventEnd - nav.startTime)
+            DNS查询: this._fmtMs(nav.domainLookupEnd - nav.domainLookupStart),
+            TCP连接: this._fmtMs(nav.connectEnd - nav.connectStart),
+            TLS握手: this._fmtMs(
+                nav.secureConnectionStart > 0 ? nav.connectEnd - nav.secureConnectionStart : 0
+            ),
+            请求响应: this._fmtMs(nav.responseEnd - nav.requestStart),
+            DOM解析: this._fmtMs(nav.domInteractive - nav.responseEnd),
+            DOM完成: this._fmtMs(nav.domContentLoadedEventEnd - nav.startTime),
+            页面完全加载: this._fmtMs(nav.loadEventEnd - nav.startTime)
         });
     },
 
@@ -75,10 +77,10 @@ const Perf = {
      */
     done(extra = {}) {
         const totalTime = performance.now() - this._startTime;
-        
+
         console.log(`[Perf] ========== ${this._pageName} 性能汇总 ==========`);
         console.log(`[Perf] ⏱️ 总加载时间: ${this._fmtMs(totalTime)}`);
-        
+
         // 计算各阶段耗时
         const marks = Object.entries(this._marks).sort((a, b) => a[1] - b[1]);
         if (marks.length > 1) {
@@ -87,7 +89,9 @@ const Perf = {
                 const duration = marks[i][1] - marks[i - 1][1];
                 const percent = ((duration / totalTime) * 100).toFixed(1);
                 const bar = '█'.repeat(Math.min(Math.round(percent / 5), 20));
-                console.log(`[Perf]   ${marks[i - 1][0]} → ${marks[i][0]}: ${this._fmtMs(duration)} (${percent}%) ${bar}`);
+                console.log(
+                    `[Perf]   ${marks[i - 1][0]} → ${marks[i][0]}: ${this._fmtMs(duration)} (${percent}%) ${bar}`
+                );
             }
         }
 
@@ -102,7 +106,7 @@ const Perf = {
 
         // 记录资源加载
         this._logResources();
-        
+
         console.log(`[Perf] ========== 性能监控结束 ==========`);
     },
 
@@ -127,7 +131,7 @@ const Perf = {
 
         // 按类型分组
         const byType = {};
-        resources.forEach(r => {
+        resources.forEach((r) => {
             const type = this._getResourceType(r.name);
             if (!byType[type]) byType[type] = { count: 0, totalSize: 0, totalDuration: 0 };
             byType[type].count++;
@@ -136,16 +140,20 @@ const Perf = {
         });
 
         Object.entries(byType).forEach(([type, data]) => {
-            console.log(`[Perf]   ${type}: ${data.count} 个, ${this._fmtMs(data.totalDuration)}, ${this._fmtSize(data.totalSize)}`);
+            console.log(
+                `[Perf]   ${type}: ${data.count} 个, ${this._fmtMs(data.totalDuration)}, ${this._fmtSize(data.totalSize)}`
+            );
         });
 
         // 最慢的 5 个资源
         const slowest = [...resources].sort((a, b) => b.duration - a.duration).slice(0, 5);
         if (slowest.length > 0) {
             console.log(`[Perf] 🐢 最慢的资源:`);
-            slowest.forEach(r => {
+            slowest.forEach((r) => {
                 const name = r.name.split('/').pop().slice(0, 40);
-                console.log(`[Perf]   ${name}: ${this._fmtMs(r.duration)} (${this._fmtSize(r.transferSize)})`);
+                console.log(
+                    `[Perf]   ${name}: ${this._fmtMs(r.duration)} (${this._fmtSize(r.transferSize)})`
+                );
             });
         }
     },

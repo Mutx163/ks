@@ -45,7 +45,7 @@ const LB = {
 
     async switchTab(sort) {
         this.currentSort = sort;
-        document.querySelectorAll('.lb-tab').forEach(tab => {
+        document.querySelectorAll('.lb-tab').forEach((tab) => {
             tab.classList.toggle('active', tab.dataset.sort === sort);
         });
         await this.loadLeaderboard();
@@ -111,9 +111,7 @@ const LB = {
             return;
         }
 
-        const rankDisplay = user.rank <= 3
-            ? ['🥇', '🥈', '🥉'][user.rank - 1]
-            : `#${user.rank}`;
+        const rankDisplay = user.rank <= 3 ? ['🥇', '🥈', '🥉'][user.rank - 1] : `#${user.rank}`;
 
         meEl.style.display = 'flex';
         meEl.innerHTML = `
@@ -141,21 +139,22 @@ const LB = {
 
         const maxVal = this.getRawValue(users[0]);
 
-        listEl.innerHTML = users.map((row, index) => {
-            const isMe = row.syncCode === myCode;
-            const rank = row.rank;
-            const rawVal = this.getRawValue(row);
-            const barPct = maxVal > 0 ? Math.round((rawVal / maxVal) * 100) : 0;
+        listEl.innerHTML = users
+            .map((row, index) => {
+                const isMe = row.syncCode === myCode;
+                const rank = row.rank;
+                const rawVal = this.getRawValue(row);
+                const barPct = maxVal > 0 ? Math.round((rawVal / maxVal) * 100) : 0;
 
-            // 排名样式
-            let rankClass = '';
-            if (rank <= 3) rankClass = `top-${rank}`;
-            else if (rank <= 10) rankClass = `rank-${rank}`;
+                // 排名样式
+                let rankClass = '';
+                if (rank <= 3) rankClass = `top-${rank}`;
+                else if (rank <= 10) rankClass = `rank-${rank}`;
 
-            const medalIcon = rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : '';
-            const rowClass = rank <= 3 ? `top-${rank}` : '';
+                const medalIcon = rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : '';
+                const rowClass = rank <= 3 ? `top-${rank}` : '';
 
-            return `
+                return `
                 <div class="lb-row ${rowClass} ${isMe ? 'is-me' : ''}" style="animation: rowSlideIn 0.3s ease both; animation-delay: ${Math.min(index * 0.03, 0.5)}s;">
                     <div class="lb-rank ${rankClass}">
                         ${medalIcon || `<span class="lb-rank-num">${rank}</span>`}
@@ -172,7 +171,8 @@ const LB = {
                     <div class="lb-row-bar" style="width:${barPct}%;"></div>
                 </div>
             `;
-        }).join('');
+            })
+            .join('');
     },
 
     /**
@@ -180,28 +180,40 @@ const LB = {
      */
     getRawValue(row) {
         switch (this.currentSort) {
-            case 'answered': return row.answered || 0;
-            case 'accuracy': return row.accuracy || 0;
-            case 'duration': return row.duration || 0;
-            default: return 0;
+            case 'answered':
+                return row.answered || 0;
+            case 'accuracy':
+                return row.accuracy || 0;
+            case 'duration':
+                return row.duration || 0;
+            default:
+                return 0;
         }
     },
 
     formatValue(row) {
         switch (this.currentSort) {
-            case 'answered': return (row.answered || 0) + ' 题';
-            case 'accuracy': return (row.accuracy || 0) + '%';
-            case 'duration': return this.formatDuration(row.duration);
-            default: return '';
+            case 'answered':
+                return (row.answered || 0) + ' 题';
+            case 'accuracy':
+                return (row.accuracy || 0) + '%';
+            case 'duration':
+                return this.formatDuration(row.duration);
+            default:
+                return '';
         }
     },
 
     formatSub(row) {
         switch (this.currentSort) {
-            case 'answered': return `正确率 ${row.accuracy || 0}%`;
-            case 'accuracy': return `${row.answered || 0} 题`;
-            case 'duration': return `${row.answered || 0} 题`;
-            default: return '';
+            case 'answered':
+                return `正确率 ${row.accuracy || 0}%`;
+            case 'accuracy':
+                return `${row.answered || 0} 题`;
+            case 'duration':
+                return `${row.answered || 0} 题`;
+            default:
+                return '';
         }
     },
 

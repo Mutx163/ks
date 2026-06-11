@@ -23,7 +23,8 @@ export function initAI(Admin) {
             el.innerHTML = `
                 ${this.pageHeader({
                     title: 'AI 解读配置',
-                    description: '控制前台 AI 按钮显示、网页内流式解读、全站默认模型和用户自定义权限。',
+                    description:
+                        '控制前台 AI 按钮显示、网页内流式解读、全站默认模型和用户自定义权限。',
                     crumbs: ['管理后台', 'AI 解读'],
                     actions: '<button class="abtn" onclick="Admin.renderAI()">刷新</button>'
                 })}
@@ -62,7 +63,12 @@ export function initAI(Admin) {
                             <label>
                                 <span>协议</span>
                                 <select class="admin-select" id="ai-provider">
-                                    ${Object.entries(PROVIDERS).map(([id, label]) => `<option value="${id}" ${c.provider === id ? 'selected' : ''}>${label}</option>`).join('')}
+                                    ${Object.entries(PROVIDERS)
+                                        .map(
+                                            ([id, label]) =>
+                                                `<option value="${id}" ${c.provider === id ? 'selected' : ''}>${label}</option>`
+                                        )
+                                        .join('')}
                                 </select>
                             </label>
                             <label>
