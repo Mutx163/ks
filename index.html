@@ -39,13 +39,13 @@
         <!-- DNS 预解析 + 预连接（减少首次请求延迟） -->
         <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc" />
         <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin />
-        <link rel="dns-prefetch" href="https://cdn.bootcdn.net" />
+        <link rel="dns-prefetch" href="https://fastly.jsdelivr.net" />
         <link rel="dns-prefetch" href="https://fastly.jsdelivr.net" />
 
         <!-- 预加载已移除：因为实际请求带 _ts 参数，预加载的请求未被使用 -->
 
         <!-- Lucide 图标（最先加载，页面需要） -->
-        <script src="https://cdn.bootcdn.net/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
+        <script src="https://fastly.jsdelivr.net/lucide@0.344.0/dist/umd/lucide.min.js" defer></script>
 
         <!-- KaTeX 数学公式（defer，不阻塞骨架屏） -->
         <link
