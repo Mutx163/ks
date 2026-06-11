@@ -36,7 +36,13 @@ const state = {
     _statsTimer: null,
     _lastPushAnswered: 0,
     _lastPushCorrect: 0,
-    _lastPushDuration: 0
+    _lastPushDuration: 0,
+    // 临时字段
+    _resultStats: null,
+    _finishEscHandler: null,
+    _beforeUnloadHandler: null,
+    autoSaveInterval: null,
+    timerInterval: null
 };
 
 export default state;

@@ -18,54 +18,32 @@ const Nav = {
         Quiz = q;
     },
 
-    nextQuestion() {
+    _navigateTo(index) {
         if (state.isNavigating) return;
-        if (state.currentIndex < state.questions.length - 1) {
-            state.isNavigating = true;
-            Quiz.recordQuestionTime();
-            state.currentIndex++;
-            state.questionStartTime = Date.now();
-            Quiz.saveSession();
-            this._markStatsDirty();
-            Quiz.render();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => {
-                state.isNavigating = false;
-            }, NAV_UNLOCK_DELAY_MS);
-        }
+        if (index < 0 || index >= state.questions.length) return;
+        state.isNavigating = true;
+        Quiz.recordQuestionTime();
+        state.currentIndex = index;
+        state.questionStartTime = Date.now();
+        Quiz.saveSession();
+        this._markStatsDirty();
+        Quiz.render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+            state.isNavigating = false;
+        }, NAV_UNLOCK_DELAY_MS);
+    },
+
+    nextQuestion() {
+        this._navigateTo(state.currentIndex + 1);
     },
 
     prevQuestion() {
-        if (state.isNavigating) return;
-        if (state.currentIndex > 0) {
-            state.isNavigating = true;
-            Quiz.recordQuestionTime();
-            state.currentIndex--;
-            state.questionStartTime = Date.now();
-            Quiz.saveSession();
-            this._markStatsDirty();
-            Quiz.render();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => {
-                state.isNavigating = false;
-            }, NAV_UNLOCK_DELAY_MS);
-        }
+        this._navigateTo(state.currentIndex - 1);
     },
 
     goToQuestion(index) {
-        if (state.isNavigating) return;
-        if (index >= 0 && index < state.questions.length) {
-            state.isNavigating = true;
-            Quiz.recordQuestionTime();
-            state.currentIndex = index;
-            state.questionStartTime = Date.now();
-            Quiz.saveSession();
-            Quiz.render();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setTimeout(() => {
-                state.isNavigating = false;
-            }, NAV_UNLOCK_DELAY_MS);
-        }
+        this._navigateTo(index);
     },
 
     finish() {
@@ -79,51 +57,16 @@ const Nav = {
         setTimeout(() => (window.location.href = 'index.html'), SAVE_AND_QUIT_DELAY_MS);
     },
 
-    _saveAndTrackStats() {
+    _calculateStats() {
         const duration = Math.round((Date.now() - state.startTime) / 1000);
         const submittedIds = Object.keys(state.submitted);
         const correctCount = submittedIds.filter((qId) => {
             const q = state.questions.find((q) => q.id == qId);
             return q && Quiz.checkAnswer(q);
         }).length;
+        const accuracy =
+            submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0;
         const isExam = state.mode === 'exam';
-
-        Quiz._saveReviewDuration();
-
-        Storage.addHistory({
-            bankId: state.bankId,
-            bankName: state.bank.name,
-            mode: state.mode,
-            total: state.questions.length,
-            correct: correctCount,
-            duration
-        });
-
-        if (isExam) {
-            Tracker.finishExam(
-                state.bankId,
-                state.questions.length,
-                correctCount,
-                submittedIds.length > 0
-                    ? Math.round((correctCount / submittedIds.length) * 100)
-                    : 0,
-                duration,
-                false
-            );
-        } else {
-            Tracker.finishQuiz(
-                state.bankId,
-                state.bank.name,
-                state.mode,
-                state.questions.length,
-                correctCount,
-                submittedIds.length - correctCount,
-                submittedIds.length > 0
-                    ? Math.round((correctCount / submittedIds.length) * 100)
-                    : 0,
-                duration
-            );
-        }
 
         const heatmapData = submittedIds.map((qId) => {
             const q = state.questions.find((q) => q.id == qId);
@@ -136,6 +79,50 @@ const Nav = {
                 isCorrect: q ? Quiz.checkAnswer(q) : false
             };
         });
+
+        return {
+            duration,
+            submittedIds,
+            correctCount,
+            wrongCount: submittedIds.length - correctCount,
+            accuracy,
+            isExam,
+            heatmapData,
+            total: state.questions.length
+        };
+    },
+
+    _saveAndTrackStats() {
+        const stats = this._calculateStats();
+        const { duration, submittedIds, correctCount, accuracy, isExam, heatmapData, total } =
+            stats;
+
+        Quiz._saveReviewDuration();
+
+        Storage.addHistory({
+            bankId: state.bankId,
+            bankName: state.bank.name,
+            mode: state.mode,
+            total,
+            correct: correctCount,
+            duration
+        });
+
+        if (isExam) {
+            Tracker.finishExam(state.bankId, total, correctCount, accuracy, duration, false);
+        } else {
+            Tracker.finishQuiz(
+                state.bankId,
+                state.bank.name,
+                state.mode,
+                total,
+                correctCount,
+                submittedIds.length - correctCount,
+                accuracy,
+                duration
+            );
+        }
+
         Tracker.questionHeatmap(state.bankId, state.bank.name, heatmapData);
 
         if (state._statsTimer) {
@@ -143,6 +130,7 @@ const Nav = {
             state._statsTimer = null;
         }
         state._statsDirty = false;
+
         const dA = submittedIds.length - (state._lastPushAnswered || 0);
         const dC = correctCount - (state._lastPushCorrect || 0);
         const dD = duration - (state._lastPushDuration || 0);
@@ -159,30 +147,17 @@ const Nav = {
             });
         }
 
-        Quiz._resultStats = {
-            duration,
-            correctCount,
-            wrongCount: submittedIds.length - correctCount,
-            total: state.questions.length,
-            submittedCount: submittedIds.length
-        };
+        state._resultStats = stats;
     },
 
     renderResult() {
-        const duration = Math.round((Date.now() - state.startTime) / 1000);
+        const stats = this._calculateStats();
+        const { duration, submittedIds, correctCount, accuracy, isExam, heatmapData, total } =
+            stats;
         const minutes = Math.floor(duration / 60);
         const seconds = duration % 60;
 
-        const submittedIds = Object.keys(state.submitted);
-        const correctCount = submittedIds.filter((qId) => {
-            const q = state.questions.find((q) => q.id == qId);
-            return q && Quiz.checkAnswer(q);
-        }).length;
-        const thisAccuracy =
-            submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0;
-
-        const isExam = state.mode === 'exam';
-        const passed = isExam ? thisAccuracy >= state.examPassRate : null;
+        const passed = isExam ? accuracy >= state.examPassRate : null;
         const resultIconName = isExam && !passed ? 'frown' : 'party-popper';
         const resultIconClass = isExam && !passed ? 'result-icon-danger' : 'result-icon-success';
         const resultTitle = isExam ? (passed ? '考试通过！' : '未通过考试') : '答题完成！';
@@ -193,44 +168,26 @@ const Nav = {
             bankId: state.bankId,
             bankName: state.bank.name,
             mode: state.mode,
-            total: state.questions.length,
+            total,
             correct: correctCount,
             duration
         });
 
         if (isExam) {
-            Tracker.finishExam(
-                state.bankId,
-                state.questions.length,
-                correctCount,
-                thisAccuracy,
-                duration,
-                false
-            );
+            Tracker.finishExam(state.bankId, total, correctCount, accuracy, duration, false);
         } else {
             Tracker.finishQuiz(
                 state.bankId,
                 state.bank.name,
                 state.mode,
-                state.questions.length,
+                total,
                 correctCount,
                 submittedIds.length - correctCount,
-                thisAccuracy,
+                accuracy,
                 duration
             );
         }
 
-        const heatmapData = submittedIds.map((qId) => {
-            const q = state.questions.find((q) => q.id == qId);
-            return {
-                id: qId,
-                category: q?.category,
-                type: q?.type,
-                difficulty: q?.difficulty,
-                timeSpent: state.questionTimes[qId] || 0,
-                isCorrect: q ? Quiz.checkAnswer(q) : false
-            };
-        });
         Tracker.questionHeatmap(state.bankId, state.bank.name, heatmapData);
 
         if (state._statsTimer) {
@@ -264,7 +221,7 @@ const Nav = {
                 </div>
                 <div class="result-title">${resultTitle}</div>
                 <div class="result-subtitle">${Utils.escapeHtml(state.bank.name)}</div>
-                ${isExam ? `<div class="result-exam-info">及格线 ${state.examPassRate}%，正确率 ${thisAccuracy}%</div>` : ''}
+                ${isExam ? `<div class="result-exam-info">及格线 ${state.examPassRate}%，正确率 ${accuracy}%</div>` : ''}
                 <div class="result-stats">
                     <div class="result-stat">
                         <div class="result-stat-value success">${correctCount}</div>
@@ -275,7 +232,7 @@ const Nav = {
                         <div class="result-stat-label">答错</div>
                     </div>
                     <div class="result-stat">
-                        <div class="result-stat-value ${isExam && !passed ? 'danger' : ''}">${thisAccuracy}%</div>
+                        <div class="result-stat-value ${isExam && !passed ? 'danger' : ''}">${accuracy}%</div>
                         <div class="result-stat-label">正确率</div>
                     </div>
                     <div class="result-stat">

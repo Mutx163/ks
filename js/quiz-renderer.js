@@ -591,16 +591,16 @@ const Renderer = {
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) Quiz.closeFinishModal();
         });
-        Quiz._finishEscHandler = (e) => {
+        state._finishEscHandler = (e) => {
             if (e.key === 'Escape') Quiz.closeFinishModal();
         };
-        document.addEventListener('keydown', Quiz._finishEscHandler);
+        document.addEventListener('keydown', state._finishEscHandler);
     },
 
     closeFinishModal() {
-        if (Quiz._finishEscHandler) {
-            document.removeEventListener('keydown', Quiz._finishEscHandler);
-            Quiz._finishEscHandler = null;
+        if (state._finishEscHandler) {
+            document.removeEventListener('keydown', state._finishEscHandler);
+            state._finishEscHandler = null;
         }
         document.getElementById('finish-modal')?.remove();
     },
@@ -612,7 +612,7 @@ const Renderer = {
             clearInterval(state.examTimer);
             state.examTimer = null;
         }
-        if (Quiz.autoSaveInterval) clearInterval(Quiz.autoSaveInterval);
+        if (state.autoSaveInterval) clearInterval(state.autoSaveInterval);
 
         Quiz.recordQuestionTime();
         Storage.clearSession(state.bankId, state.mode);
@@ -627,7 +627,7 @@ const Renderer = {
     },
 
     showResultModal() {
-        const { duration, correctCount, wrongCount, submittedCount } = Quiz._resultStats || {};
+        const { duration, correctCount, wrongCount, submittedCount } = state._resultStats || {};
         const minutes = Math.floor((duration || 0) / 60);
         const seconds = (duration || 0) % 60;
         const accuracy = submittedCount > 0 ? Math.round((correctCount / submittedCount) * 100) : 0;

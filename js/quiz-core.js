@@ -13,6 +13,11 @@ import state from './quiz-state.js';
 
 let Quiz = null;
 
+function redirectAfter(msg, type = 'info', delay = 1000) {
+    Utils.showToast(msg, type);
+    setTimeout(() => (window.location.href = 'index.html'), delay);
+}
+
 const Core = {
     state,
 
@@ -22,7 +27,6 @@ const Core = {
 
     async init() {
         Perf.init('刷题页');
-        console.log('[Quiz] ========== 刷题页面初始化开始 ==========');
 
         const params = new URLSearchParams(window.location.search);
         state.bankId = params.get('bank');
@@ -32,18 +36,8 @@ const Core = {
         state.examPassRate = parseInt(params.get('pass')) || 60;
         state.examCount = parseInt(params.get('count')) || 0;
 
-        console.log('[Quiz] 📋 URL 参数:', {
-            bank: state.bankId,
-            mode: state.mode,
-            type: state.filterType,
-            time: state.examTimeLimit,
-            pass: state.examPassRate,
-            count: state.examCount
-        });
-
         if (params.get('q')) {
             state.searchKeyword = params.get('q') || '';
-            console.log('[Quiz] 🔍 搜索关键词:', state.searchKeyword);
         }
 
         const settings = Storage.getSettings();
@@ -51,34 +45,20 @@ const Core = {
         const aiConfigPromise = AIExplain.init().catch((e) => {
             console.warn('[Quiz] AI 解读配置加载失败:', e.message);
         });
-        console.log('[Quiz] ⚙️ 用户设置:', settings);
 
         if (settings.fontSize) Utils.applyFontSize(settings.fontSize);
 
         if (!state.bankId) {
-            console.error('[Quiz] ❌ 缺少题库参数');
+            console.error('[Quiz] 缺少题库参数');
             Utils.showToast('缺少题库参数', 'error');
             setTimeout(() => (window.location.href = 'index.html'), 1000);
             return;
         }
 
         Perf.mark('开始加载题库');
-        console.log('[Quiz] 📚 开始加载题库:', state.bankId);
         state.bank = Storage.getBank(state.bankId);
 
-        if (state.bank) {
-            console.log('[Quiz] ⚡ 从本地缓存加载题库:', {
-                id: state.bank.id,
-                name: state.bank.name,
-                version: state.bank.version,
-                questionCount: state.bank.questions?.length
-            });
-        } else {
-            console.log('[Quiz] 📡 本地无缓存，从 JSON 文件加载...');
-        }
-
         if (!state.bank || !Array.isArray(state.bank.questions)) {
-            console.log('[Quiz] 📡 尝试从云端加载题库...');
             await this.loadBankFromJson();
         }
 
@@ -97,21 +77,12 @@ const Core = {
         }
 
         Perf.mark('题库加载完成');
-        console.log('[Quiz] ✅ 题库加载成功:', {
-            id: state.bank.id,
-            name: state.bank.name,
-            version: state.bank.version,
-            questionCount: state.bank.questions.length
-        });
 
         Perf.mark('准备题目');
-        console.log('[Quiz] 🔄 准备题目列表...');
         this.prepareQuestions();
         Perf.mark('题目准备完成');
-        console.log('[Quiz] ✅ 题目准备完成:', state.questions.length, '题');
 
         if (state.mode === 'review') {
-            console.log('[Quiz] 📖 背题模式：自动显示所有答案');
             state.questions.forEach((q) => {
                 state.submitted[q.id] = true;
                 state.showExplanation[q.id] = true;
@@ -120,62 +91,49 @@ const Core = {
         }
 
         if (state.mode === 'wrong' && state.questions.length === 0) {
-            console.log('[Quiz] ✨ 没有错题');
-            Utils.showToast('没有错题，真棒！', 'success');
-            setTimeout(() => (window.location.href = 'index.html'), 1000);
+            redirectAfter('没有错题，真棒！', 'success');
             return;
         }
 
         if (state.mode === 'spaced' && state.questions.length === 0) {
-            console.log('[Quiz] 📅 没有需要复习的题目');
-            Utils.showToast('没有需要复习的题目', 'info');
-            setTimeout(() => (window.location.href = 'index.html'), 1000);
+            redirectAfter('没有需要复习的题目');
             return;
         }
 
         if (state.mode === 'bookmark' && state.questions.length === 0) {
-            console.log('[Quiz] ⭐ 没有收藏的题目');
-            Utils.showToast('没有收藏的题目', 'info');
-            setTimeout(() => (window.location.href = 'index.html'), 1000);
+            redirectAfter('没有收藏的题目');
             return;
         }
 
         if (!API.isRegistered()) {
-            console.log('[Quiz] 👤 未注册用户');
-            Utils.showToast('请先在首页注册后再刷题', 'error');
-            setTimeout(() => (window.location.href = 'index.html'), 1500);
+            redirectAfter('请先在首页注册后再刷题', 'error', 1500);
             return;
         }
 
         Perf.mark('恢复会话');
-        console.log('[Quiz] 📂 恢复会话状态...');
         this.restoreSession();
         state.startTime = Date.now();
         state.questionStartTime = Date.now();
 
         if (state.mode === 'exam') {
-            console.log('[Quiz] ⏱️ 考试模式：启动计时器');
             Quiz.startExamTimer();
         }
 
         await aiConfigPromise;
 
         Perf.mark('开始渲染');
-        console.log('[Quiz] 🎨 开始渲染页面...');
         Quiz.render();
         this.showBankWelcome();
         Quiz.bindEvents();
         Perf.mark('渲染完成');
 
-        Quiz.autoSaveInterval = setInterval(() => Quiz.saveSession(), 30000);
-        Quiz.timerInterval = setInterval(() => Quiz.updateTimerDisplay(), 1000);
+        state.autoSaveInterval = setInterval(() => Quiz.saveSession(), 30000);
+        state.timerInterval = setInterval(() => Quiz.updateTimerDisplay(), 1000);
 
         Tracker.startQuiz(state.bankId, state.bank?.name || '', state.mode, state.questions.length);
 
-        Quiz._beforeUnloadHandler = () => Quiz._flushStatsSync();
-        window.addEventListener('beforeunload', Quiz._beforeUnloadHandler);
-
-        console.log('[Quiz] ========== 刷题页面初始化完成 ==========');
+        state._beforeUnloadHandler = () => Quiz._flushStatsSync();
+        window.addEventListener('beforeunload', state._beforeUnloadHandler);
 
         Perf.done({
             bankId: state.bankId,
@@ -187,13 +145,6 @@ const Core = {
 
     restoreSession() {
         const session = Storage.getSession(state.bankId, state.mode);
-        console.log('[Quiz] 📂 恢复会话:', {
-            bankId: state.bankId,
-            mode: state.mode,
-            found: !!session,
-            answers: session ? Object.keys(session.answers || {}).length : 0,
-            submitted: session ? Object.keys(session.submitted || {}).length : 0
-        });
         if (!session) {
             if (
                 state.mode === 'exam' ||

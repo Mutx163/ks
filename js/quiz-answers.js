@@ -21,6 +21,15 @@ const Answers = {
         Quiz = q;
     },
 
+    _shouldAutoAdvance(questionId) {
+        const isAutoMode = ['lightning', 'instant'].includes(state.answerMode);
+        return isAutoMode && state.submitted[questionId];
+    },
+
+    _isAutoSubmit() {
+        return ['lightning', 'instant'].includes(state.answerMode);
+    },
+
     getQuestionCard() {
         return document.querySelector('#question-container .question-card');
     },
@@ -104,14 +113,12 @@ const Answers = {
     },
 
     selectAnswer(questionId, answer) {
-        const isLightning = state.answerMode === 'lightning';
-        const isInstant = state.answerMode === 'instant';
-        if ((isLightning || isInstant) && state.submitted[questionId]) {
+        if (this._shouldAutoAdvance(questionId)) {
             Quiz.nextQuestion();
             return;
         }
         state.answers[questionId] = answer;
-        if (isLightning || isInstant) {
+        if (this._isAutoSubmit()) {
             this.submitCurrent();
             return;
         }
@@ -121,9 +128,7 @@ const Answers = {
     },
 
     toggleAnswer(questionId, answer) {
-        const isLightning = state.answerMode === 'lightning';
-        const isInstant = state.answerMode === 'instant';
-        if ((isLightning || isInstant) && state.submitted[questionId]) {
+        if (this._shouldAutoAdvance(questionId)) {
             Quiz.nextQuestion();
             return;
         }

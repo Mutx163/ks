@@ -15,74 +15,177 @@ const Quiz = {
     },
 
     // ---- core ----
-    init: () => Core.init(),
-    restoreSession: () => Core.restoreSession(),
-    saveSession: () => Core.saveSession(),
-    loadBankFromJson: () => Core.loadBankFromJson(),
-    prepareQuestions: () => Core.prepareQuestions(),
-    recordQuestionTime: () => Core.recordQuestionTime(),
-    getQuestionTimeDisplay: () => Core.getQuestionTimeDisplay(),
-    startExamTimer: () => Core.startExamTimer(),
-    updateExamTimerDisplay: () => Core.updateExamTimerDisplay(),
-    updateTimerDisplay: () => Core.updateTimerDisplay(),
-    getDisplayOptions: (q) => Core.getDisplayOptions(q),
-    _saveReviewDuration: () => Core._saveReviewDuration(),
+    init() {
+        return Core.init();
+    },
+    restoreSession() {
+        return Core.restoreSession();
+    },
+    saveSession() {
+        return Core.saveSession();
+    },
+    loadBankFromJson() {
+        return Core.loadBankFromJson();
+    },
+    prepareQuestions() {
+        return Core.prepareQuestions();
+    },
+    recordQuestionTime() {
+        return Core.recordQuestionTime();
+    },
+    getQuestionTimeDisplay() {
+        return Core.getQuestionTimeDisplay();
+    },
+    startExamTimer() {
+        return Core.startExamTimer();
+    },
+    updateExamTimerDisplay() {
+        return Core.updateExamTimerDisplay();
+    },
+    updateTimerDisplay() {
+        return Core.updateTimerDisplay();
+    },
+    getDisplayOptions(q) {
+        return Core.getDisplayOptions(q);
+    },
+    _saveReviewDuration() {
+        return Core._saveReviewDuration();
+    },
 
     // ---- renderer ----
-    render: () => Renderer.render(),
-    renderHeader: () => Renderer.renderHeader(),
-    renderQuestion: () => Renderer.renderQuestion(),
-    renderFooter: () => Renderer.renderFooter(),
-    renderSidebarGrid: () => Renderer.renderSidebarGrid(),
-    renderQuestionNav: () => Renderer.renderQuestionNav(),
-    toggleNav: () => Renderer.toggleNav(),
-    updateProgress: () => Renderer.updateProgress(),
-    showFinishModal: (t) => Renderer.showFinishModal(t),
-    closeFinishModal: () => Renderer.closeFinishModal(),
-    confirmFinish: () => Renderer.confirmFinish(),
-    showResultModal: () => Renderer.showResultModal(),
-    getSubmittedHint: (q) => Renderer.getSubmittedHint(q),
-    updateSelectedOptionState: (a) => Renderer.updateSelectedOptionState(a),
-    updateMultipleOptionState: (a) => Renderer.updateMultipleOptionState(a),
+    render() {
+        return Renderer.render();
+    },
+    renderHeader() {
+        return Renderer.renderHeader();
+    },
+    renderQuestion() {
+        return Renderer.renderQuestion();
+    },
+    renderFooter() {
+        return Renderer.renderFooter();
+    },
+    renderSidebarGrid() {
+        return Renderer.renderSidebarGrid();
+    },
+    renderQuestionNav() {
+        return Renderer.renderQuestionNav();
+    },
+    toggleNav() {
+        return Renderer.toggleNav();
+    },
+    updateProgress() {
+        return Renderer.updateProgress();
+    },
+    showFinishModal(t) {
+        return Renderer.showFinishModal(t);
+    },
+    closeFinishModal() {
+        return Renderer.closeFinishModal();
+    },
+    confirmFinish() {
+        return Renderer.confirmFinish();
+    },
+    showResultModal() {
+        return Renderer.showResultModal();
+    },
+    getSubmittedHint(q) {
+        return Renderer.getSubmittedHint(q);
+    },
+    updateSelectedOptionState(a) {
+        return Renderer.updateSelectedOptionState(a);
+    },
+    updateMultipleOptionState(a) {
+        return Renderer.updateMultipleOptionState(a);
+    },
 
     // ---- answers ----
-    getQuestionCard: () => Answers.getQuestionCard(),
-    bindOptionEvents: (q) => Answers.bindOptionEvents(q),
-    selectAnswer: (id, a) => Answers.selectAnswer(id, a),
-    toggleAnswer: (id, a) => Answers.toggleAnswer(id, a),
-    updateFillAnswer: (id) => Answers.updateFillAnswer(id),
-    submitEssay: (id) => Answers.submitEssay(id),
-    selfMarkEssay: (id, c) => Answers.selfMarkEssay(id, c),
-    submitCurrent: () => Answers.submitCurrent(),
-    hasAnswer: (q) => Answers.hasAnswer(q),
-    checkAnswer: (q) => Answers.checkAnswer(q),
-    checkFillAnswer: (u, c) => Answers.checkFillAnswer(u, c),
-    toggleBookmark: (id) => Answers.toggleBookmark(id),
-    openAIAnalysis: (id) => Answers.openAIAnalysis(id),
+    getQuestionCard() {
+        return Answers.getQuestionCard();
+    },
+    bindOptionEvents(q) {
+        return Answers.bindOptionEvents(q);
+    },
+    selectAnswer(id, a) {
+        return Answers.selectAnswer(id, a);
+    },
+    toggleAnswer(id, a) {
+        return Answers.toggleAnswer(id, a);
+    },
+    updateFillAnswer(id) {
+        return Answers.updateFillAnswer(id);
+    },
+    submitEssay(id) {
+        return Answers.submitEssay(id);
+    },
+    selfMarkEssay(id, c) {
+        return Answers.selfMarkEssay(id, c);
+    },
+    submitCurrent() {
+        return Answers.submitCurrent();
+    },
+    hasAnswer(q) {
+        return Answers.hasAnswer(q);
+    },
+    checkAnswer(q) {
+        return Answers.checkAnswer(q);
+    },
+    checkFillAnswer(u, c) {
+        return Answers.checkFillAnswer(u, c);
+    },
+    toggleBookmark(id) {
+        return Answers.toggleBookmark(id);
+    },
+    openAIAnalysis(id) {
+        return Answers.openAIAnalysis(id);
+    },
 
     // ---- nav ----
-    nextQuestion: () => Nav.nextQuestion(),
-    prevQuestion: () => Nav.prevQuestion(),
-    goToQuestion: (i) => Nav.goToQuestion(i),
-    finish: () => Nav.finish(),
-    saveAndQuit: () => Nav.saveAndQuit(),
-    restart: () => Nav.restart(),
-    startReview: () => Nav.startReview(),
-    goHome: () => Nav.goHome(),
-    showSettings: () => Nav.showSettings(),
-    bindEvents: () => Nav.bindEvents(),
-    _saveAndTrackStats: () => Nav._saveAndTrackStats(),
-    _markStatsDirty: () => Nav._markStatsDirty(),
-    _flushStatsNow: () => Nav._flushStatsNow(),
-    _flushStatsSync: () => Nav._flushStatsSync(),
-    renderResult: () => Nav.renderResult(),
-
-    // 供子模块写入的临时字段
-    _resultStats: null,
-    _finishEscHandler: null,
-    _beforeUnloadHandler: null,
-    autoSaveInterval: null,
-    timerInterval: null
+    nextQuestion() {
+        return Nav.nextQuestion();
+    },
+    prevQuestion() {
+        return Nav.prevQuestion();
+    },
+    goToQuestion(i) {
+        return Nav.goToQuestion(i);
+    },
+    finish() {
+        return Nav.finish();
+    },
+    saveAndQuit() {
+        return Nav.saveAndQuit();
+    },
+    restart() {
+        return Nav.restart();
+    },
+    startReview() {
+        return Nav.startReview();
+    },
+    goHome() {
+        return Nav.goHome();
+    },
+    showSettings() {
+        return Nav.showSettings();
+    },
+    bindEvents() {
+        return Nav.bindEvents();
+    },
+    _saveAndTrackStats() {
+        return Nav._saveAndTrackStats();
+    },
+    _markStatsDirty() {
+        return Nav._markStatsDirty();
+    },
+    _flushStatsNow() {
+        return Nav._flushStatsNow();
+    },
+    _flushStatsSync() {
+        return Nav._flushStatsSync();
+    },
+    renderResult() {
+        return Nav.renderResult();
+    }
 };
 
 // 注入 Quiz 引用到各子模块（避免循环依赖）
