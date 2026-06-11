@@ -22,42 +22,34 @@ const App = {
 
     async init() {
         Perf.init('首页');
-        console.log('[App] ========== 首页初始化开始 ==========');
         window._pageStartTime = window._pageStartTime || Date.now();
         AIExplain.init().catch((e) => console.warn('[App] AI 解读配置加载失败:', e.message));
 
         // 加载题库（30秒超时，失败不影响页面显示）
         Perf.mark('开始加载题库');
-        console.log('[App] 📚 开始加载题库...');
         try {
             await Promise.race([
                 BankLoader.loadAllBanks(),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
             ]);
             Perf.mark('题库加载完成');
-            console.log('[App] ✅ 题库加载完成');
         } catch (e) {
             Perf.mark('题库加载失败');
-            console.warn('[App] ⚠️ 题库加载超时或失败:', e.message);
+            console.warn('[App] 题库加载超时或失败:', e.message);
         }
 
         // 云同步（异步执行，不阻塞页面渲染）
-        // 排行榜页面会自己调用 API.autoSync()，这里只是预同步
         Perf.mark('开始云同步');
-        console.log('[App] ☁️ 开始云同步（异步）...');
         API.autoSync()
             .then(() => {
-                console.log('[App] ✅ 云同步完成（后台）');
-                // 同步完成后刷新统计数据
                 this.state.stats = Storage.getGlobalStats();
             })
             .catch((e) => {
-                console.warn('[App] ⚠️ 云同步失败（后台）:', e.message);
+                console.warn('[App] 云同步失败:', e.message);
             });
         Perf.mark('云同步已启动');
 
         Perf.mark('加载本地数据');
-        console.log('[App] 📦 加载本地数据...');
         this.loadData();
 
         // 隐藏骨架屏，显示真实内容（最少显示 500ms）
@@ -72,26 +64,19 @@ const App = {
         else showReal();
 
         Perf.mark('开始渲染');
-        console.log('[App] 🎨 开始渲染页面...');
         this.render();
         this.bindEvents();
         Perf.mark('渲染完成');
 
         // 首次访问：提示注册
         if (!API.isRegistered()) {
-            console.log('[App] 👤 首次访问，提示注册');
             setTimeout(() => API.showRegisterModal(), 1500);
         }
 
         // 加载公告横幅
         Perf.mark('加载公告');
-        console.log('[App] 📢 加载公告...');
         this.loadAnnouncement();
 
-        const totalElapsed = Date.now() - window._pageStartTime;
-        console.log(`[App] ========== 首页初始化完成 (${totalElapsed}ms) ==========`);
-
-        // 输出性能汇总
         Perf.done({
             bankCount: this.state.banks.length,
             isRegistered: API.isRegistered()
@@ -99,34 +84,17 @@ const App = {
     },
 
     loadData() {
-        console.log('[App] 📦 开始加载本地数据...');
-
         // 过滤掉禁用的题库（兼容本地缓存）
         const allBanks = Storage.getBanks();
         const enabledBanks = allBanks.filter((b) => b.enabled !== false);
-        const disabledCount = allBanks.length - enabledBanks.length;
-
-        console.log(
-            `[App] 📊 题库统计: 总计 ${allBanks.length} 个, 启用 ${enabledBanks.length} 个, 禁用 ${disabledCount} 个`
-        );
-        if (disabledCount > 0) {
-            console.log(
-                '[App] 🚫 已禁用的题库:',
-                allBanks.filter((b) => b.enabled === false).map((b) => b.name || b.id)
-            );
-        }
 
         this.state.banks = enabledBanks;
         this.state.stats = Storage.getGlobalStats();
-
-        console.log('[App] 📊 统计数据:', this.state.stats);
 
         // 恢复排序选项
         this.state.bankSort = localStorage.getItem('quiz_bank_sort') || 'recent';
         const sortSelect = document.getElementById('bank-sort');
         if (sortSelect) sortSelect.value = this.state.bankSort;
-
-        console.log('[App] ✅ 本地数据加载完成');
     },
 
     render() {
@@ -242,9 +210,7 @@ const App = {
 
         // 尝试云 API
         try {
-            console.log('[公告] 请求中...');
             const d = await API.request('/api/announce');
-            console.log('[公告] 响应:', JSON.stringify(d));
             if (d?.ok && d.announce?.content) {
                 const text = Utils.escapeHtml(d.announce.content.replace(/\n/g, ' '));
                 try {
@@ -1035,14 +1001,6 @@ const App = {
                         const newLogCollection =
                             modal.querySelector('#setting-log-collection').checked;
                         LogCollector.setEnabled(newLogCollection);
-
-                        console.log('[Settings] 💾 保存设置:', {
-                            answerMode: newAnswerMode,
-                            swipeNavigation: newSwipe,
-                            logCollection: newLogCollection,
-                            aiEngine: aiForm.aiEngine,
-                            customAiEngines: aiForm.customAiEngines
-                        });
 
                         Storage.updateSettings({
                             answerMode: newAnswerMode,
