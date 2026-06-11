@@ -49,6 +49,7 @@ export default [
                 HTMLScriptElement: 'readonly',
                 HTMLLinkElement: 'readonly',
                 HTMLIFrameElement: 'readonly',
+                CustomEvent: 'readonly',
                 LA: 'readonly',
                 lucide: 'readonly',
                 eruda: 'readonly',

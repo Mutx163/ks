@@ -552,6 +552,72 @@ const Utils = {
         }
 
         return overlay;
+    },
+
+    // ==================== 网络状态检测 ====================
+
+    _networkListeners: null,
+
+    /**
+     * 初始化网络状态监听
+     * 在线时显示成功提示，离线时显示错误提示
+     */
+    initNetworkMonitor() {
+        if (this._networkListeners) return;
+
+        const onOnline = () => {
+            this.showToast('网络已恢复', 'success', 3000);
+            // 触发自定义事件，方便其他模块监听
+            window.dispatchEvent(new CustomEvent('network-restored'));
+        };
+
+        const onOffline = () => {
+            this.showToast('网络连接已断开，请检查网络后重试', 'error', 5000);
+            // 触发自定义事件
+            window.dispatchEvent(new CustomEvent('network-lost'));
+        };
+
+        window.addEventListener('online', onOnline);
+        window.addEventListener('offline', onOffline);
+
+        this._networkListeners = { onOnline, onOffline };
+    },
+
+    /**
+     * 检查当前是否在线
+     * @returns {boolean}
+     */
+    isOnline() {
+        return navigator.onLine !== false;
+    },
+
+    /**
+     * 显示网络错误提示（带重试按钮）
+     * @param {string} message - 错误消息
+     * @param {Function} onRetry - 重试回调
+     */
+    showNetworkError(message, onRetry) {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-error toast-network';
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span>${this.escapeHtml(message)}</span>
+                ${onRetry ? '<button class="btn btn-sm btn-retry" onclick="this.closest(\'.toast\').remove()">重试</button>' : ''}
+            </div>
+        `;
+
+        if (onRetry) {
+            toast.querySelector('.btn-retry')?.addEventListener('click', () => {
+                onRetry();
+            });
+        }
+
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 8000);
     }
 };
 

@@ -25,8 +25,12 @@ const App = {
         window._pageStartTime = window._pageStartTime || Date.now();
         AIExplain.init().catch((e) => console.warn('[App] AI 解读配置加载失败:', e.message));
 
+        // 初始化网络状态监听
+        Utils.initNetworkMonitor();
+
         // 加载题库（30秒超时，失败不影响页面显示）
         Perf.mark('开始加载题库');
+        let banksLoadFailed = false;
         try {
             await Promise.race([
                 BankLoader.loadAllBanks(),
@@ -35,6 +39,7 @@ const App = {
             Perf.mark('题库加载完成');
         } catch (e) {
             Perf.mark('题库加载失败');
+            banksLoadFailed = true;
             console.warn('[App] 题库加载超时或失败:', e.message);
         }
 
@@ -77,6 +82,11 @@ const App = {
         Perf.mark('加载公告');
         this.loadAnnouncement();
 
+        // 显示题库加载失败提示
+        if (banksLoadFailed && this.state.banks.length === 0) {
+            this.showBanksLoadError();
+        }
+
         Perf.done({
             bankCount: this.state.banks.length,
             isRegistered: API.isRegistered()
@@ -95,6 +105,33 @@ const App = {
         this.state.bankSort = localStorage.getItem('quiz_bank_sort') || 'recent';
         const sortSelect = document.getElementById('bank-sort');
         if (sortSelect) sortSelect.value = this.state.bankSort;
+    },
+
+    /**
+     * 显示题库加载失败的友好提示
+     */
+    showBanksLoadError() {
+        const bankGrid = document.getElementById('bank-grid');
+        if (!bankGrid) return;
+
+        bankGrid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i data-lucide="wifi-off"></i>
+                </div>
+                <div class="empty-title">网络连接失败</div>
+                <div class="empty-desc">无法加载题库，请检查网络后重试</div>
+                <button class="btn btn-primary" onclick="location.reload()">
+                    <i data-lucide="refresh-cw"></i> 重新加载
+                </button>
+            </div>
+        `;
+        Utils.initIcons?.();
+
+        // 同时显示 toast 提示
+        Utils.showNetworkError('题库加载失败，请检查网络连接', () => {
+            location.reload();
+        });
     },
 
     render() {

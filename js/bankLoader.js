@@ -14,10 +14,7 @@ const BankLoader = {
      */
     async loadBankList() {
         try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 15000);
-            const data = await API.request('/api/banks', { signal: controller.signal });
-            clearTimeout(timer);
+            const data = await API.requestWithRetry('/api/banks', {}, 2, 1000);
 
             if (data?.ok && data.banks) {
                 const allBanks = data.banks;
@@ -27,9 +24,6 @@ const BankLoader = {
             console.warn('[BankLoader] API 返回异常:', data);
         } catch (e) {
             console.error('[BankLoader] 获取题库列表失败:', e.message);
-            if (e.name === 'AbortError') {
-                console.error('[BankLoader] 请求超时 (15秒)');
-            }
         }
         return [];
     },
@@ -42,10 +36,7 @@ const BankLoader = {
         const startTime = Date.now();
 
         try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 15000);
-            const data = await API.request(`/api/bank/${bankId}`, { signal: controller.signal });
-            clearTimeout(timer);
+            const data = await API.requestWithRetry(`/api/bank/${bankId}`, {}, 2, 1000);
 
             const elapsed = Date.now() - startTime;
 
@@ -64,9 +55,6 @@ const BankLoader = {
         } catch (e) {
             const elapsed = Date.now() - startTime;
             console.error(`[BankLoader] 加载异常 (${elapsed}ms):`, bankId, e.message);
-            if (e.name === 'AbortError') {
-                console.error('[BankLoader] 请求超时 (15秒)');
-            }
             return null;
         }
     },

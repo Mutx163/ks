@@ -87,7 +87,6 @@ const API = {
                 urlObj.searchParams.set('_ts', Date.now().toString());
             }
             const url = urlObj.toString();
-            console.log(`[API] 📡 ${method} ${url}`);
 
             const res = await fetch(url, {
                 cache: 'no-store',
@@ -96,7 +95,6 @@ const API = {
             });
 
             const elapsed = Date.now() - startTime;
-            console.log(`[API] ✅ ${method} ${path} (${elapsed}ms) 状态: ${res.status}`);
 
             const text = await res.text();
             let data = null;
@@ -104,7 +102,7 @@ const API = {
                 try {
                     data = JSON.parse(text);
                 } catch {
-                    console.warn(`[API] ❌ 非 JSON 响应: ${text.slice(0, 200)}`);
+                    console.warn(`[API] 非 JSON 响应: ${text.slice(0, 200)}`);
                     if (!res.ok) {
                         if (res.status === 403)
                             return { ok: false, disabled: true, error: '资源不可用' };
@@ -115,7 +113,7 @@ const API = {
             }
 
             if (!res.ok) {
-                console.warn(`[API] ❌ 请求失败: ${data?.error || '未知错误'}`);
+                console.warn(`[API] 请求失败 (${elapsed}ms): ${data?.error || '未知错误'}`);
                 // 403 表示资源被禁用，返回特殊标记以区分网络错误
                 if (res.status === 403)
                     return { ok: false, disabled: true, error: data?.error || '资源不可用' };
@@ -124,9 +122,46 @@ const API = {
             return data;
         } catch (e) {
             const elapsed = Date.now() - startTime;
-            console.error(`[API] ❌ ${method} ${path} 异常 (${elapsed}ms):`, e.message);
+            console.error(`[API] ${method} ${path} 异常 (${elapsed}ms):`, e.message);
             return null;
         }
+    },
+
+    /**
+     * 带重试的请求方法
+     * @param {string} path - API 路径
+     * @param {object} options - 请求选项
+     * @param {number} maxRetries - 最大重试次数（默认 2）
+     * @param {number} baseDelay - 基础延迟毫秒数（默认 1000）
+     * @returns {Promise<object|null>}
+     */
+    async requestWithRetry(path, options = {}, maxRetries = 2, baseDelay = 1000) {
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                const result = await this.request(path, options);
+                // 成功获取数据（包括 403 禁用标记）
+                if (result !== null) return result;
+            } catch {
+                // 继续重试
+            }
+
+            // 最后一次尝试失败，不再重试
+            if (attempt === maxRetries) break;
+
+            // 检查网络状态，离线时不重试
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                console.warn('[API] 离线状态，跳过重试');
+                break;
+            }
+
+            // 指数退避延迟
+            const delay = baseDelay * Math.pow(2, attempt);
+            console.log(`[API] 第 ${attempt + 1} 次重试，等待 ${delay}ms...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        console.error(`[API] ${path} 重试 ${maxRetries} 次后仍然失败`);
+        return null;
     },
 
     // ==================== 注册 / 绑定 ====================
