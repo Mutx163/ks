@@ -187,7 +187,7 @@ const LogCollector = {
 
         // 未处理的 Promise 拒绝
         window.addEventListener('unhandledrejection', function (event) {
-            let message = '';
+            let message;
             let stack = '';
             if (event.reason instanceof Error) {
                 message = event.reason.message;

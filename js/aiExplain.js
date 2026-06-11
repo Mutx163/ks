@@ -288,7 +288,7 @@ const AIExplain = {
         
         // 格式化学生作答，附带选项内容
         if (userAnswer !== undefined && userAnswer !== null) {
-            let answerDisplay = '';
+            let answerDisplay;
             
             if (type === 'single' && typeof userAnswer === 'string' && /^[A-Z]$/.test(userAnswer)) {
                 const opt = optList.find(o => o.displayLetter === userAnswer);
@@ -309,7 +309,7 @@ const AIExplain = {
         // 格式化正确答案，附带选项内容
         const correctAnswer = question.answer;
         if (correctAnswer !== undefined && correctAnswer !== null) {
-            let correctDisplay = '';
+            let correctDisplay;
             
             if (type === 'single' && typeof correctAnswer === 'string' && /^[A-Z]$/.test(correctAnswer)) {
                 const opt = optList.find(o => o.displayLetter === correctAnswer);

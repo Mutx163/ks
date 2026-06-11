@@ -498,7 +498,7 @@
 }
 
 .question-text {
-    font-size: 15px;
+    font-size: var(--font-size-base);
     line-height: 1.7;
     color: var(--text);
     margin-bottom: var(--space-4);
@@ -788,7 +788,7 @@
 
 .option-content {
     flex: 1;
-    font-size: 14px;
+    font-size: var(--font-size-sm);
     line-height: 1.5;
     padding-top: 2px;
     color: var(--text);
@@ -1391,7 +1391,7 @@
         padding: var(--space-4);
     }
     .question-text {
-        font-size: 15px;
+        font-size: var(--font-size-base);
         line-height: 1.65;
         word-break: break-word;
     }
@@ -1412,7 +1412,7 @@
         flex-shrink: 0;
     }
     .option-content {
-        font-size: 15px;
+        font-size: var(--font-size-base);
         line-height: 1.5;
         padding-top: 3px;
     }
@@ -1548,7 +1548,7 @@
         font-size: 12px;
     }
     .option-content {
-        font-size: 14px;
+        font-size: var(--font-size-sm);
     }
 
     .result-stats {
