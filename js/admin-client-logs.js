@@ -113,7 +113,7 @@ export function initClientLogs(Admin) {
                     <div class="card-header"><h3>📱 最近活跃设备</h3></div>
                     <div class="table-wrap"><table>
                         <thead><tr><th>用户</th><th>同步码</th><th>日志数</th><th>最后活跃</th></tr></thead>
-                        <tbody>${activeDevices.map(dev => `<tr style="cursor:pointer" onclick="Admin.filterClientLogsByDevice('${Utils.escapeHtml(dev.device_id)}')">
+                        <tbody>${activeDevices.map(dev => `<tr style="cursor:pointer" onclick="Admin.filterClientLogsByDevice(decodeURIComponent('${encodeURIComponent(dev.device_id)}'))">
                             <td>${dev.user_name ? `<strong>${Utils.escapeHtml(dev.user_name)}</strong>` : '<span style="color:var(--admin-text-tertiary)">未绑定</span>'}</td>
                             <td><code style="font-size:11px">${dev.sync_code ? Utils.escapeHtml(dev.sync_code) : '-'}</code></td>
                             <td>${dev.log_count}</td>
