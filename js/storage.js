@@ -75,7 +75,7 @@ const Storage = {
                     try {
                         localStorage.setItem(key, JSON.stringify(value));
                         return true;
-                    } catch (_e2) {
+                    } catch {
                         this._notifyQuotaExceeded();
                         return false;
                     }
@@ -97,7 +97,7 @@ const Storage = {
             history.length = 20;
             try {
                 localStorage.setItem(this.KEYS.HISTORY, JSON.stringify(history));
-            } catch (_e) {
+            } catch {
                 // 忽略
             }
         }

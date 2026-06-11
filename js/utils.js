@@ -80,7 +80,7 @@ const Utils = {
         if (obj === null || typeof obj !== 'object') return obj;
         try {
             return JSON.parse(JSON.stringify(obj));
-        } catch (_e) {
+        } catch {
             return obj;
         }
     },
@@ -328,7 +328,7 @@ const Utils = {
             await navigator.clipboard.writeText(text);
             this.showToast('已复制到剪贴板', 'success');
             return true;
-        } catch (_e) {
+        } catch {
             // 降级方案
             const textarea = document.createElement('textarea');
             textarea.value = text;
@@ -383,7 +383,7 @@ const Utils = {
                 try {
                     const data = JSON.parse(e.target.result);
                     resolve(data);
-                } catch (_err) {
+                } catch {
                     reject(new Error('文件格式错误，请确保是有效的JSON文件'));
                 }
             };

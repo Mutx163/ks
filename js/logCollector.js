@@ -311,14 +311,14 @@ const LogCollector = {
                     if (typeof a === 'object') {
                         try {
                             return JSON.stringify(a);
-                        } catch (e) {
+                        } catch {
                             return String(a);
                         }
                     }
                     return String(a);
                 })
                 .join(' ');
-        } catch (e) {
+        } catch {
             return '无法序列化日志参数';
         }
     },
@@ -379,7 +379,7 @@ const LogCollector = {
                 // 不关心的响应，fire-and-forget
                 keepalive: true
             });
-        } catch (e) {
+        } catch {
             // 上报失败不产生新日志，直接放回缓冲区
             this._buffer = [...batch, ...this._buffer].slice(0, this.config.maxBufferSize);
             // 自身日志不上报
@@ -419,7 +419,7 @@ const LogCollector = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ logs: [entry], deviceId: this._deviceId })
             });
-        } catch (e) {
+        } catch {
             // 静默失败
         }
     }

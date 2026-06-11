@@ -693,7 +693,6 @@ const AIExplain = {
                 let remaining = rawBuf;
 
                 // 先处理 \x00[THINK]\x00 标记
-                let hasThinkMarker = false;
                 let parsed = '';
                 let cursor = 0;
                 while (cursor < remaining.length) {
