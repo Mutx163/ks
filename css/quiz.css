@@ -1105,6 +1105,14 @@
     color: var(--text-secondary);
 }
 
+/* ===== 优化：当选项区域与解析卡片或结果Banner直接相邻时，自动补充顶部间距 ===== */
+.options-list + .explanation,
+.options-list + .result-banner,
+.judge-options + .explanation,
+.judge-options + .result-banner {
+    margin-top: var(--space-4);
+}
+
 /* ===== 💡 详细解析卡片 ===== */
 .explanation {
     background-color: var(--bg); /* 采用页面背景底色，在大卡片中形成优雅的“内凹”层级 */

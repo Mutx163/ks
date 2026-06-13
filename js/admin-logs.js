@@ -82,10 +82,15 @@ export function initLogs(Admin) {
                             <option value="0" ${okFilter === '0' ? 'selected' : ''}>失败</option>
                         </select>
                     </div>
-                    <div class="toolbar-group"><span class="status-pill info">${total} 条记录</span></div>
                 </div>
                 <div class="card">
-                    <div class="card-header"><h3>操作记录</h3><span class="count">按时间倒序</span></div>
+                    <div class="card-header">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <h3>操作记录</h3>
+                            <span class="status-pill info">${total} 条记录</span>
+                        </div>
+                        <span class="count">按时间倒序</span>
+                    </div>
                     <div class="table-wrap">
                         <table>
                             <thead><tr><th>时间</th><th>操作</th><th>对象类型</th><th>对象ID</th><th>结果</th><th>详情</th><th>操作人</th></tr></thead>

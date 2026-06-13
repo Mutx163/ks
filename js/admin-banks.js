@@ -118,10 +118,15 @@ export function initBanks(Admin) {
                             ${categories.map((c) => `<option value="${Utils.escapeHtml(c)}" ${category === c ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('')}
                         </select>
                     </div>
-                    <div class="toolbar-group"><span class="status-pill info">${banks.length}/${(d.banks || []).length} 个题库</span></div>
                 </div>
                 <div class="card">
-                    <div class="card-header"><h3>题库列表</h3><span class="count">点击行进入详情</span></div>
+                    <div class="card-header">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <h3>题库列表</h3>
+                            <span class="status-pill info">${banks.length}/${(d.banks || []).length} 个题库</span>
+                        </div>
+                        <span class="count">点击行进入详情</span>
+                    </div>
                     <div class="table-wrap">
                         <table>
                             <thead><tr><th>题库</th><th>分类</th><th>题目数</th><th>版本</th><th>前台状态</th><th>更新时间</th><th>操作</th></tr></thead>

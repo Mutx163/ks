@@ -67,7 +67,12 @@ export function initUsers(Admin) {
                 </div>
             </div>
             <div class="card">
-                <div class="card-header"><h3>用户列表</h3><span class="count">${list.length}/${this.users.length}</span></div>
+                <div class="card-header">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <h3>用户列表</h3>
+                        <span class="status-pill info">${list.length}/${this.users.length} 用户</span>
+                    </div>
+                </div>
                 <div class="table-wrap">
                     <table>
                         <thead><tr>

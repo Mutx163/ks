@@ -391,7 +391,7 @@ const Renderer = {
                     (opt) => opt.originalLetter === question.answer
                 );
                 answerBody = correctOpt
-                    ? `<span class="answer-badge">${correctOpt.displayLetter}</span>. ${Utils.escapeHtml(correctOpt.text.replace(/^[A-Z][.\s、]*/, ''))}`
+                    ? `<span class="answer-badge">${correctOpt.displayLetter}</span>`
                     : `<span class="answer-badge">${Utils.escapeHtml(question.answer)}</span>`;
                 break;
             }
@@ -406,11 +406,15 @@ const Renderer = {
                     correctOpts.length > 0
                         ? correctOpts
                               .map(
-                                  (opt) =>
-                                      `<span class="answer-badge">${opt.displayLetter}</span>. ${Utils.escapeHtml(opt.text.replace(/^[A-Z][.\s、]*/, ''))}`
+                                  (opt) => `<span class="answer-badge">${opt.displayLetter}</span>`
                               )
-                              .join('<span class="answer-divider">|</span>')
-                        : `<span class="answer-badge">${Utils.escapeHtml(correctLetters.join(', '))}</span>`;
+                              .join('')
+                        : correctLetters
+                              .map(
+                                  (letter) =>
+                                      `<span class="answer-badge">${Utils.escapeHtml(letter)}</span>`
+                              )
+                              .join('');
                 break;
             }
             case 'judge': {
@@ -521,7 +525,7 @@ const Renderer = {
                     : ''
             }
 
-            ${correctAnswerCardHTML}
+            ${['single', 'multiple', 'judge'].includes(question.type) ? '' : correctAnswerCardHTML}
 
             <div class="explanation">
                 <div class="explanation-header">
