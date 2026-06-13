@@ -1,8 +1,8 @@
 /* ================= 专业管理后台样式 ================= */
 
 /* 字体导入 - Geist (Vercel) */
-@import url('https://cdn.jsdelivr.net/npm/geist@1.2.2/dist/fonts/geist-sans/style.css');
-@import url('https://cdn.jsdelivr.net/npm/geist@1.2.2/dist/fonts/geist-mono/style.css');
+@import url('https://cdn.jsdmirror.com/npm/geist@1.2.2/dist/fonts/geist-sans/style.css');
+@import url('https://cdn.jsdmirror.com/npm/geist@1.2.2/dist/fonts/geist-mono/style.css');
 
 :root {
     /* 字体系统 */
