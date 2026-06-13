@@ -35,6 +35,7 @@
 .skel-logo-glow {
     position: absolute;
     inset: -10px;
+    font-family: var(--font-serif);
     font-size: 48px;
     font-weight: 900;
     letter-spacing: 8px;
@@ -53,6 +54,7 @@
 /* 主文字 - 多层渐变交叠 */
 .skel-logo {
     position: relative;
+    font-family: var(--font-serif);
     font-size: 48px;
     font-weight: 900;
     letter-spacing: 10px;
@@ -1118,6 +1120,10 @@
     }
 
     /* 头部：紧凑布局 */
+    #btn-header-leaderboard,
+    #btn-header-leaderboard + .header-divider {
+        display: none !important;
+    }
     .home-actions {
         gap: 4px;
     }
@@ -1397,4 +1403,124 @@
 /* ===== 暗色模式适配 ===== */
 [data-theme='dark'] .bank-card-icon.c-lang {
     background: #1a1a2e;
+}
+
+/* ===== 自定义统计挂件样式 ===== */
+.custom-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.custom-stat-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-2);
+    text-align: center;
+    border: 1px solid var(--border);
+    transition:
+        transform var(--transition),
+        border-color var(--transition);
+}
+
+.custom-stat-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+}
+
+.custom-stat-card .custom-stat-value {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.custom-stat-card .custom-stat-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    margin-top: var(--space-1);
+}
+
+/* 最近活跃标题 */
+.recent-active-title {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-2);
+    font-weight: 600;
+}
+
+/* 活跃用户列表样式 */
+.recent-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: 50px;
+}
+
+.recent-user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.recent-user-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.recent-user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 11px;
+    border: 1px solid var(--border);
+}
+
+.recent-user-name {
+    font-weight: 500;
+    color: var(--text);
+    font-size: var(--font-size-sm);
+}
+
+.recent-user-time {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+/* 挂件内加载动画 */
+.stats-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4) 0;
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    gap: var(--space-2);
+}
+
+.stats-loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: statsSpin 0.7s linear infinite;
+}
+
+@keyframes statsSpin {
+    to {
+        transform: rotate(360deg);
+    }
 }

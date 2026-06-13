@@ -227,4 +227,15 @@ const LB = {
 };
 
 window.LB = LB;
-document.addEventListener('DOMContentLoaded', () => LB.init());
+
+// 仅在独立页面载入或当前路由匹配时执行自动初始化
+if (
+    window.location.pathname.includes('leaderboard.html') ||
+    window.location.hash === '#/leaderboard'
+) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => LB.init());
+    } else {
+        LB.init();
+    }
+}

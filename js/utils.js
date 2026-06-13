@@ -107,6 +107,26 @@ const Utils = {
     },
 
     /**
+     * 格式化相对时间（例如：刚刚，5分钟前，1小时前，1天前）
+     */
+    formatRelativeTime(dateStr) {
+        if (!dateStr) return '未知';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+
+        if (diffSec < 60) return '刚刚';
+        if (diffMin < 60) return `${diffMin}分钟前`;
+        if (diffHour < 24) return `${diffHour}小时前`;
+        if (diffDay < 7) return `${diffDay}天前`;
+        return date.toLocaleDateString();
+    },
+
+    /**
      * 格式化数字（添加千位分隔符）
      */
     formatNumber(num) {
@@ -232,6 +252,25 @@ const Utils = {
         root.setProperty('--font-size-xl', Math.round(base * 1.125) + 'px');
         root.setProperty('--font-size-2xl', Math.round(base * 1.5) + 'px');
         root.setProperty('--font-size-3xl', Math.round(base * 1.75) + 'px');
+    },
+
+    /**
+     * 更新浏览器地址栏/底栏主题色以适配当前网页
+     */
+    updateBrowserThemeColor() {
+        try {
+            // 获取当前页面计算后的 --bg-card 颜色值（底栏/卡片背景色）
+            const bgCard = window
+                .getComputedStyle(document.documentElement)
+                .getPropertyValue('--bg-card')
+                .trim();
+            const meta = document.getElementById('meta-theme-color');
+            if (meta && bgCard) {
+                meta.setAttribute('content', bgCard);
+            }
+        } catch (e) {
+            console.warn('[Utils] 更新浏览器主题色失败:', e.message);
+        }
     },
 
     /**
@@ -618,8 +657,213 @@ const Utils = {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
         }, 8000);
+    },
+
+    /**
+     * 初始化响应式双模导航栏
+     */
+    initNavigation() {
+        // 老多页面自动重定向为 SPA 路由
+        const currentFilename = window.location.pathname.split('/').pop() || 'index.html';
+        const oldPages = ['leaderboard.html', 'analysis.html', 'trend.html'];
+        if (oldPages.includes(currentFilename)) {
+            const pageName = currentFilename.replace('.html', '');
+            window.location.replace('index.html#/' + pageName);
+            return;
+        }
+
+        // 全屏沉浸答题态时不渲染导航
+        if (document.body.classList.contains('layout-fullscreen')) return;
+
+        const hash = window.location.hash || '#/home';
+
+        // 动态同步管理员权限状态
+        const hasAdminPwd = !!localStorage.getItem('admin_pwd');
+        const isAdmin = hasAdminPwd || localStorage.getItem('ks_is_admin') === '1';
+
+        // 1. 桌面端顶部水平导航栏 DOM
+        const headerHTML = `
+            <header class="global-header">
+                <div class="header-brand title-gradient">城科卷王</div>
+                <nav class="desktop-nav">
+                    <a href="#/home" class="${hash.includes('home') ? 'active' : ''}">首页</a>
+                    <a href="#/leaderboard" class="${hash.includes('leaderboard') ? 'active' : ''}">排行榜</a>
+                    <a href="#/analysis" class="${hash.includes('analysis') ? 'active' : ''}">学习分析</a>
+                    <a href="#/trend" class="${hash.includes('trend') ? 'active' : ''}">答题趋势</a>
+                    ${isAdmin ? '<a href="admin.html">管理后台</a>' : ''}
+                </nav>
+                <div class="header-actions">
+                    <button class="btn btn-header btn-sm action-history-toggle" aria-label="答题历史" title="答题历史">
+                        <i data-lucide="clipboard-list" class="icon"></i> <span>历史</span>
+                    </button>
+                    <div class="header-divider"></div>
+                    <button class="btn btn-header-icon btn-sm action-sync-toggle" aria-label="多设备同步" title="多设备同步">
+                        <i data-lucide="smartphone" class="icon"></i>
+                    </button>
+                    <button class="btn btn-header-icon btn-sm action-shortcuts-toggle" aria-label="快捷键" title="快捷键参考">
+                        <i data-lucide="keyboard" class="icon"></i>
+                    </button>
+                    <button class="btn btn-header-icon btn-sm action-theme-toggle" aria-label="切换主题" title="切换主题">
+                        <i data-lucide="sun-moon" class="icon"></i>
+                    </button>
+                    <button class="btn btn-header-icon btn-sm action-settings-toggle" aria-label="设置" title="设置">
+                        <i data-lucide="settings" class="icon"></i>
+                    </button>
+                </div>
+            </header>
+        `;
+
+        // 2. 移动端底部固定标签栏 DOM (全面屏安全区自适应)
+        const tabbarHTML = `
+            <nav class="global-tabbar">
+                <a href="#/home" class="tabbar-item ${hash.includes('home') ? 'active' : ''}">
+                    <span class="label">首页</span>
+                </a>
+                <a href="#/leaderboard" class="tabbar-item ${hash.includes('leaderboard') ? 'active' : ''}">
+                    <span class="label">排行</span>
+                </a>
+                <a href="#/analysis" class="tabbar-item ${hash.includes('analysis') ? 'active' : ''}">
+                    <span class="label">分析</span>
+                </a>
+                <a href="#/trend" class="tabbar-item ${hash.includes('trend') ? 'active' : ''}">
+                    <span class="label">趋势</span>
+                </a>
+            </nav>
+        `;
+
+        // 插入到 body (存在旧的则替换，支持动态状态重载)
+        const oldHeader = document.querySelector('.global-header');
+        if (oldHeader) {
+            oldHeader.outerHTML = headerHTML;
+        } else {
+            document.body.insertAdjacentHTML('afterbegin', headerHTML);
+        }
+
+        const oldTabbar = document.querySelector('.global-tabbar');
+        if (oldTabbar) {
+            oldTabbar.outerHTML = tabbarHTML;
+        } else {
+            document.body.insertAdjacentHTML('beforeend', tabbarHTML);
+        }
+
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
     }
 };
+
+/**
+ * 轻量级原生 Hash 路由器
+ */
+const Router = {
+    routes: {
+        home: () => {
+            if (window.App && typeof window.App.loadData === 'function') {
+                window.App.loadData();
+                if (typeof window.App.render === 'function') {
+                    window.App.render();
+                }
+            }
+        },
+        leaderboard: () => {
+            if (window.LB && typeof window.LB.init === 'function') {
+                window.LB.init();
+            }
+        },
+        analysis: () => {
+            if (window.Insights && typeof window.Insights.init === 'function') {
+                window.Insights.init('analysis');
+            }
+        },
+        trend: () => {
+            if (window.Insights && typeof window.Insights.init === 'function') {
+                window.Insights.init('trend');
+            }
+        }
+    },
+
+    init() {
+        // 全屏模式下不加载路由控制
+        if (document.body.classList.contains('layout-fullscreen')) return;
+
+        window.addEventListener('hashchange', () => this.handleRouting());
+        window.addEventListener('load', () => this.handleRouting());
+
+        // 设备锁屏/切后台唤醒：自动重新云同步，并重绘当前活动视图
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                console.log('[Router] 唤醒重连，重新静默云同步...');
+                if (window.API && typeof window.API.autoSync === 'function') {
+                    window.API.autoSync()
+                        .then(() => {
+                            if (window.App && typeof window.App.loadData === 'function') {
+                                window.App.loadData();
+                            }
+                            this.handleRouting();
+                        })
+                        .catch((e) => {
+                            console.warn('[Router] 自动同步数据失败:', e.message);
+                            this.handleRouting();
+                        });
+                } else {
+                    this.handleRouting();
+                }
+            }
+        });
+    },
+
+    handleRouting() {
+        if (document.body.classList.contains('layout-fullscreen')) return;
+
+        const hash = window.location.hash || '#/home';
+        const route = hash.replace('#/', '') || 'home';
+
+        const validRoutes = ['home', 'leaderboard', 'analysis', 'trend'];
+        if (!validRoutes.includes(route)) return;
+
+        // 1. 切换包装显隐
+        document.querySelectorAll('.view-wrapper').forEach((el) => {
+            el.classList.toggle('active', el.id === `${route}-view`);
+        });
+
+        // 2. 更新高亮
+        document.querySelectorAll('.desktop-nav a, .global-tabbar a').forEach((a) => {
+            const href = a.getAttribute('href');
+            a.classList.toggle('active', href.includes(route));
+        });
+
+        // 3. 执行渲染生命周期
+        if (this.routes[route]) {
+            this.routes[route]();
+        }
+    }
+};
+
+window.Router = Router;
+
+// 自动初始化导航、路由和浏览器主题色
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        Utils.initNavigation();
+        Router.init();
+        setTimeout(() => Utils.updateBrowserThemeColor(), 100);
+    });
+} else {
+    Utils.initNavigation();
+    Router.init();
+    setTimeout(() => Utils.updateBrowserThemeColor(), 100);
+}
+
+// 监听系统主题变化，自动刷新浏览器地址栏/底栏颜色
+try {
+    const mediaQueryDark = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSchemeChange = () => {
+        setTimeout(() => Utils.updateBrowserThemeColor(), 150);
+    };
+    mediaQueryDark.addEventListener('change', handleSchemeChange);
+} catch (e) {
+    console.warn('[Utils] 无法为 prefers-color-scheme 添加监听:', e.message);
+}
 
 // 导出
 window.Utils = Utils;

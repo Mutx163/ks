@@ -13,19 +13,19 @@ const Insights = {
         questionActivity: []
     },
 
-    async init() {
+    async init(pageType) {
         Perf.init('数据洞察');
-        this.state.page = document.body.dataset.page || 'trend';
+        this.state.page = pageType || document.body.dataset.page || 'trend';
         this.applySettings();
 
         Perf.mark('加载题库');
         await this.loadBuiltinBanks();
         Perf.mark('题库加载完成');
 
-        // 云同步
+        // 云同步异步后台执行，切换页面时绝不阻塞渲染
         Perf.mark('云同步');
-        await API.autoSync();
-        Perf.mark('云同步完成');
+        API.autoSync().catch((e) => console.warn('[Insights] 静默云同步失败:', e.message));
+        Perf.mark('云同步已启动');
 
         Perf.mark('加载数据');
         this.loadData();
@@ -53,7 +53,14 @@ const Insights = {
     },
 
     async loadBuiltinBanks() {
+        if (window.localBanksCache && window.localBanksCache.length > 0) {
+            this.state.banks = window.localBanksCache;
+            return;
+        }
         await BankLoader.loadAllBanks();
+        const enabledBanks = Storage.getBanks().filter((b) => b.enabled !== false);
+        this.state.banks = enabledBanks;
+        window.localBanksCache = enabledBanks;
     },
 
     loadData() {
@@ -548,9 +555,20 @@ const Insights = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    Insights.init();
-});
-
 window.Insights = Insights;
+
+// 仅在老页面直接载入或当前路由匹配时执行自动初始化
+const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+const isOldPage = currentPath.includes('analysis.html') || currentPath.includes('trend.html');
+const isMatchingRoute =
+    window.location.hash.includes('analysis') || window.location.hash.includes('trend');
+
+if (isOldPage || isMatchingRoute) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => Insights.init());
+    } else {
+        Insights.init();
+    }
+}
+
 export default Insights;

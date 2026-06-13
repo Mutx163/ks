@@ -17,7 +17,8 @@ const App = {
         banks: [],
         stats: null,
         lightningMode: false,
-        selectedTypes: {}
+        selectedTypes: {},
+        customStatsLoaded: false
     },
 
     async init() {
@@ -101,6 +102,9 @@ const App = {
         this.state.banks = enabledBanks;
         this.state.stats = Storage.getGlobalStats();
 
+        // 写入共享内存，供排行榜、分析、趋势等路由免除重新提取开销
+        window.localBanksCache = enabledBanks;
+
         // 恢复排序选项
         this.state.bankSort = localStorage.getItem('quiz_bank_sort') || 'recent';
         const sortSelect = document.getElementById('bank-sort');
@@ -139,6 +143,123 @@ const App = {
         this.renderWrongBook();
         this.renderStatsOverview();
         this.renderBankGrid();
+        this.renderCustomStats();
+    },
+
+    async renderCustomStats() {
+        const totalEl = document.getElementById('stat-total-active');
+        const todayEl = document.getElementById('stat-today-active');
+        const listEl = document.getElementById('recent-users-container');
+        if (!totalEl || !todayEl || !listEl) return;
+
+        // 如果还没有加载过 stats，显示 loading 骨架
+        if (!this.state.customStatsLoaded) {
+            listEl.innerHTML = `
+                <div class="stats-loading">
+                    <div class="stats-loading-spinner"></div>
+                    <span>加载中...</span>
+                </div>
+            `;
+        }
+
+        // 数字滚动动画辅助函数
+        const animateNumber = (element, targetValue) => {
+            let startTimestamp = null;
+            const duration = 800; // 动画持续 800ms
+            const startValue = parseInt(element.textContent.replace(/,/g, '')) || 0;
+            if (startValue === targetValue) {
+                element.textContent = Utils.formatNumber(targetValue);
+                return;
+            }
+
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const current = Math.floor(progress * (targetValue - startValue) + startValue);
+                element.textContent = Utils.formatNumber(current);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        };
+
+        try {
+            console.log('[Stats Widget] 开始拉取系统活跃及刷题人数数据...');
+            // 通过 stats=1 参数获取数据，限额设为 50 以备前端降级计算所需
+            const data = await API.getLeaderboard('answered', 50, true);
+
+            if (!data || !data.ok) {
+                console.warn('[Stats Widget] 数据拉取失败，返回格式不符合预期:', data);
+                if (!this.state.customStatsLoaded) {
+                    listEl.innerHTML = `<div style="color:var(--text-tertiary); font-size:var(--font-size-xs); text-align:center; padding:var(--space-2) 0;">获取数据失败</div>`;
+                }
+                return;
+            }
+
+            let statsData = data.statsData;
+            if (statsData) {
+                console.log('[Stats Widget] 数据拉取成功！使用云端精确统计数据:', statsData);
+            } else {
+                // 降级计算：若云端未升级，利用排行榜前50个样本在前端本地计算活跃数
+                const leaderboard = data.leaderboard || [];
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const todayActiveCount = leaderboard.filter((user) => {
+                    return user.lastActive && user.lastActive.startsWith(todayStr);
+                }).length;
+                const recentActiveUsers = leaderboard
+                    .filter((user) => user.lastActive)
+                    .sort((a, b) => new Date(b.lastActive) - new Date(a.lastActive))
+                    .slice(0, 5)
+                    .map((user) => ({
+                        initials: user.initials || '??',
+                        lastActive: user.lastActive
+                    }));
+                statsData = {
+                    totalActiveCount: leaderboard.length,
+                    todayActiveCount: todayActiveCount,
+                    recentActiveUsers: recentActiveUsers
+                };
+                console.info(
+                    '[Stats Widget] 云端暂未提供统计指标，已自动启用前端数据源降级计算:',
+                    statsData
+                );
+            }
+
+            const { totalActiveCount, todayActiveCount, recentActiveUsers } = statsData;
+
+            // 数字递增滚动
+            animateNumber(totalEl, totalActiveCount);
+            animateNumber(todayEl, todayActiveCount);
+
+            // 渲染最近活跃列表
+            if (!recentActiveUsers || recentActiveUsers.length === 0) {
+                listEl.innerHTML = `<div style="color:var(--text-tertiary); font-size:var(--font-size-xs); text-align:center; padding:var(--space-2) 0;">暂无活跃记录</div>`;
+            } else {
+                listEl.innerHTML = recentActiveUsers
+                    .map((u) => {
+                        const initials = Utils.escapeHtml(u.initials || '??').toUpperCase();
+                        const relativeTime = Utils.formatRelativeTime(u.lastActive);
+                        return `
+                        <div class="recent-user-item">
+                            <div class="recent-user-info">
+                                <div class="recent-user-avatar">${initials}</div>
+                                <span class="recent-user-name">${initials}</span>
+                            </div>
+                            <span class="recent-user-time">${relativeTime}</span>
+                        </div>
+                    `;
+                    })
+                    .join('');
+            }
+
+            this.state.customStatsLoaded = true;
+        } catch (e) {
+            console.error('[Stats Widget] 请求网络失败或发生代码内部崩溃:', e);
+            if (!this.state.customStatsLoaded) {
+                listEl.innerHTML = `<div style="color:var(--text-tertiary); font-size:var(--font-size-xs); text-align:center; padding:var(--space-2) 0;">服务连接失败</div>`;
+            }
+        }
     },
 
     /**
@@ -156,10 +277,10 @@ const App = {
         }
 
         el.innerHTML = `
-            <div class="wrong-book">
+            <div class="wrong-book card-fade-in">
                 <div class="wrong-book-header">
                     <span class="wrong-book-icon">${Utils.icon('x-circle')}</span>
-                    <span class="wrong-book-title">错题本</span>
+                    <span class="wrong-book-title title-gradient">错题本</span>
                     <span class="wrong-book-count">${stats.totalWrong} 题</span>
                 </div>
                 <div class="wrong-book-body">
@@ -541,7 +662,7 @@ const App = {
                 const iconText = bank.id.includes('c-language') ? 'C' : 'Q';
 
                 return `
-                <div class="bank-card" data-id="${bank.id}">
+                <div class="bank-card card-fade-in" data-id="${bank.id}">
                     <div class="bank-card-header">
                         <div class="bank-card-icon ${iconClass}">${iconText}</div>
                         <div class="bank-card-info">
@@ -868,7 +989,7 @@ const App = {
     /**
      * 主题切换（循环：auto → light → dark → auto）
      */
-    cycleTheme() {
+    cycleTheme(triggerElement) {
         const current = document.documentElement.getAttribute('data-theme') || 'auto';
         const themeOrder = ['auto', 'light', 'dark'];
         const nextIndex = (themeOrder.indexOf(current) + 1) % themeOrder.length;
@@ -881,6 +1002,27 @@ const App = {
         }
 
         Storage.updateSettings({ theme });
+        Utils.updateBrowserThemeColor();
+
+        // 旋转动效增强
+        const applySpin = (el) => {
+            if (el) {
+                el.classList.add('theme-spin');
+                el.addEventListener(
+                    'animationend',
+                    () => {
+                        el.classList.remove('theme-spin');
+                    },
+                    { once: true }
+                );
+            }
+        };
+
+        if (triggerElement) {
+            applySpin(triggerElement);
+        } else {
+            document.querySelectorAll('.action-theme-toggle, #btn-theme').forEach(applySpin);
+        }
 
         const themeLabels = { auto: '跟随系统', light: '浅色模式', dark: '深色模式' };
         const themeIconNames = { auto: 'monitor', light: 'sun', dark: 'moon' };
@@ -932,6 +1074,7 @@ const App = {
                             document.documentElement.setAttribute('data-theme', theme);
                         }
                         Storage.updateSettings({ theme });
+                        Utils.updateBrowserThemeColor();
                         Utils.showToast(`已切换为 ${themeNames[theme]}`, 'success');
                         modal.remove();
                     }
@@ -1105,41 +1248,63 @@ const App = {
             });
         }
 
-        // 主题切换按钮
-        const themeBtn = document.getElementById('btn-theme');
-        if (themeBtn) {
-            themeBtn.addEventListener('click', () => this.cycleTheme());
-        }
+        // 全局顶栏/动作按钮事件委托
+        document.addEventListener('click', (e) => {
+            // 1. 切换主题
+            const themeBtn =
+                e.target.closest('.action-theme-toggle') || e.target.closest('#btn-theme');
+            if (themeBtn) {
+                e.preventDefault();
+                this.cycleTheme(themeBtn);
+                return;
+            }
 
-        // 设置按钮
-        const settingsBtn = document.getElementById('btn-settings');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => this.showSettings());
-        }
+            // 2. 全局设置
+            const settingsBtn =
+                e.target.closest('.action-settings-toggle') || e.target.closest('#btn-settings');
+            if (settingsBtn) {
+                e.preventDefault();
+                this.showSettings();
+                return;
+            }
 
-        const historyBtn = document.getElementById('btn-history');
-        if (historyBtn) {
-            historyBtn.addEventListener('click', () => {
-                window.location.href = 'trend.html#recent-history';
-            });
-        }
+            // 3. 历史记录
+            const historyBtn =
+                e.target.closest('.action-history-toggle') || e.target.closest('#btn-history');
+            if (historyBtn) {
+                e.preventDefault();
+                window.location.hash = '#/trend';
+                setTimeout(() => {
+                    const el = document.getElementById('recent-history');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 150);
+                return;
+            }
 
-        const syncBtn = document.getElementById('btn-sync');
-        if (syncBtn) {
-            syncBtn.addEventListener('click', () => {
+            // 4. 多设备云同步
+            const syncBtn =
+                e.target.closest('.action-sync-toggle') || e.target.closest('#btn-sync');
+            if (syncBtn) {
+                e.preventDefault();
                 if (API.isRegistered()) {
                     API.showAccountPanel();
                 } else {
-                    API.showRegisterModal();
+                    API.showRegisterModal().then((ok) => {
+                        if (ok) location.reload();
+                    });
                 }
-            });
-        }
+                return;
+            }
 
-        // 快捷键帮助
-        const shortcutsBtn = document.getElementById('btn-shortcuts');
-        if (shortcutsBtn) {
-            shortcutsBtn.addEventListener('click', () => this.showShortcuts());
-        }
+            // 5. 快捷键帮助
+            const shortcutsBtn =
+                e.target.closest('.action-shortcuts-toggle') || e.target.closest('#btn-shortcuts');
+            if (shortcutsBtn) {
+                e.preventDefault();
+                this.showShortcuts();
+                return;
+            }
+        });
 
         // 应用字体大小
         const settings = Storage.getSettings();

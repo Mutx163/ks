@@ -449,9 +449,9 @@ const API = {
 
     // ==================== 排行榜 ====================
 
-    async getLeaderboard(sort = 'answered', limit = 50) {
+    async getLeaderboard(sort = 'answered', limit = 50, stats = false) {
         return await this.request(
-            `/api/leaderboard?sort=${sort}&limit=${limit}&deviceId=${this.getDeviceId()}`
+            `/api/leaderboard?sort=${sort}&limit=${limit}&deviceId=${this.getDeviceId()}${stats ? '&stats=1' : ''}`
         );
     },
 

@@ -778,7 +778,45 @@ async function handleLeaderboard(url, env, origin) {
         }
     }
 
-    return json({ ok: true, leaderboard, currentUser }, 200, origin);
+    let statsData = null;
+    if (url.searchParams.get('stats') === '1') {
+        const today = new Date().toISOString().slice(0, 10) + '%';
+        
+        const totalActiveResult = await env.DB.prepare(`
+            SELECT COUNT(DISTINCT s.user_id) as cnt
+            FROM stats s
+            INNER JOIN users u ON s.user_id = u.id
+            WHERE u.banned = 0 OR u.banned IS NULL
+        `).first();
+
+        const todayActiveResult = await env.DB.prepare(`
+            SELECT COUNT(DISTINCT s.user_id) as cnt
+            FROM stats s
+            INNER JOIN users u ON s.user_id = u.id
+            WHERE (u.banned = 0 OR u.banned IS NULL) AND s.updated_at LIKE ?
+        `).bind(today).first();
+
+        const { results: recentResults } = await env.DB.prepare(`
+            SELECT u.initials, MAX(s.updated_at) as last_active
+            FROM users u
+            INNER JOIN stats s ON u.id = s.user_id
+            WHERE u.banned = 0 OR u.banned IS NULL
+            GROUP BY u.id
+            ORDER BY last_active DESC
+            LIMIT 5
+        `).all();
+
+        statsData = {
+            totalActiveCount: totalActiveResult?.cnt || 0,
+            todayActiveCount: todayActiveResult?.cnt || 0,
+            recentActiveUsers: (recentResults || []).map(row => ({
+                initials: row.initials,
+                lastActive: row.last_active
+            }))
+        };
+    }
+
+    return json({ ok: true, leaderboard, currentUser, statsData }, 200, origin);
 }
 
 // ========== 工具函数：设备ID → 用户ID ==========
