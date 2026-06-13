@@ -376,25 +376,139 @@ const Renderer = {
         const isEssay = question.type === 'essay' || question.type === '简答题';
         const essaySelfMarked = !isEssay || state.answers[question.id]?.selfCorrect !== undefined;
         const showResultBanner = !isReviewMode && essaySelfMarked;
-        const essayAnswer =
-            isEssay && question.answer
-                ? `
-            <div style="margin-bottom:var(--space-4)">
-                <strong>参考答案：</strong>
-                <div style="margin-top:8px">${Utils.parseMarkdown(question.answer)}</div>
-                ${question.answerImg ? `<div style="margin-top:8px"><img src="${Utils.escapeHtml(question.answerImg)}" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border)" alt="答案图片"></div>` : ''}
+
+        // 获取当前题目的显示选项（处理了乱序）
+        const displayOpts =
+            typeof Quiz !== 'undefined' && typeof Quiz.getDisplayOptions === 'function'
+                ? Quiz.getDisplayOptions(question)
+                : [];
+
+        let answerBody;
+
+        switch (question.type) {
+            case 'single': {
+                const correctOpt = displayOpts.find(
+                    (opt) => opt.originalLetter === question.answer
+                );
+                answerBody = correctOpt
+                    ? `<span class="answer-badge">${correctOpt.displayLetter}</span>. ${Utils.escapeHtml(correctOpt.text.replace(/^[A-Z][.\s、]*/, ''))}`
+                    : `<span class="answer-badge">${Utils.escapeHtml(question.answer)}</span>`;
+                break;
+            }
+            case 'multiple': {
+                const correctLetters = Array.isArray(question.answer)
+                    ? question.answer
+                    : (question.answer || '').split(/,\s*/);
+                const correctOpts = displayOpts.filter((opt) =>
+                    correctLetters.includes(opt.originalLetter)
+                );
+                answerBody =
+                    correctOpts.length > 0
+                        ? correctOpts
+                              .map(
+                                  (opt) =>
+                                      `<span class="answer-badge">${opt.displayLetter}</span>. ${Utils.escapeHtml(opt.text.replace(/^[A-Z][.\s、]*/, ''))}`
+                              )
+                              .join('<span class="answer-divider">|</span>')
+                        : `<span class="answer-badge">${Utils.escapeHtml(correctLetters.join(', '))}</span>`;
+                break;
+            }
+            case 'judge': {
+                let text;
+                if (
+                    question.answer === true ||
+                    question.answer === 'true' ||
+                    question.answer === '对' ||
+                    question.answer === '正确' ||
+                    question.answer === 'A'
+                ) {
+                    text = '正确';
+                } else if (
+                    question.answer === false ||
+                    question.answer === 'false' ||
+                    question.answer === '错' ||
+                    question.answer === '错误' ||
+                    question.answer === 'B'
+                ) {
+                    text = '错误';
+                } else {
+                    text = question.answer;
+                }
+                answerBody = `<span class="answer-badge text">${Utils.escapeHtml(text)}</span>`;
+                break;
+            }
+            case 'fill': {
+                let ansList = [];
+                if (Array.isArray(question.answer)) {
+                    ansList = question.answer;
+                } else if (typeof question.answer === 'string') {
+                    ansList = question.answer.split(/\||,\s*/);
+                }
+                answerBody =
+                    ansList.length > 0
+                        ? ansList
+                              .map(
+                                  (ans, idx) => `
+                        <div class="fill-answer-item">
+                            <span class="fill-answer-index">(空 ${idx + 1})：</span>
+                            <strong class="fill-answer-text">${Utils.escapeHtml(ans)}</strong>
+                        </div>
+                    `
+                              )
+                              .join('')
+                        : `<span class="answer-badge text">${Utils.escapeHtml(question.answer || '暂无答案')}</span>`;
+                break;
+            }
+            case 'essay':
+            case '简答题': {
+                answerBody = `
+                    <div class="essay-answer-content">
+                        ${Utils.parseMarkdown(question.answer || '请参考解析')}
+                    </div>
+                    ${question.answerImg ? `<div class="essay-answer-image-wrapper"><img src="${Utils.escapeHtml(question.answerImg)}" alt="答案图片"></div>` : ''}
+                `;
+                break;
+            }
+            case 'code': {
+                answerBody = `
+                    <pre class="code-answer-wrapper"><code class="language-${question.codeLanguage || 'c'}">${Utils.escapeHtml(question.answer || '')}</code></pre>
+                `;
+                break;
+            }
+            default:
+                answerBody = Utils.escapeHtml(question.answer || '暂无答案');
+        }
+
+        const correctAnswerCardHTML = `
+            <div class="correct-answer-card">
+                <div class="correct-answer-header">
+                    <span class="correct-answer-icon">${Utils.icon('key-round')}</span>
+                    <span>正确答案</span>
+                </div>
+                <div class="correct-answer-content">
+                    ${answerBody}
+                </div>
             </div>
-        `
-                : '';
-        const essayAnswerImgOnly =
-            isEssay && !question.answer && question.answerImg
-                ? `
-            <div style="margin-bottom:var(--space-4)">
-                <strong>参考答案：</strong>
-                <div style="margin-top:8px"><img src="${Utils.escapeHtml(question.answerImg)}" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border)" alt="答案图片"></div>
+        `;
+
+        const memoryAidHtml = question.memoryAid
+            ? `
+            <div class="memory-aid">
+                <span class="memory-aid-icon">${Utils.icon('brain')}</span>
+                <span class="memory-aid-text">${Utils.escapeHtml(question.memoryAid)}</span>
             </div>
-        `
-                : '';
+            `
+            : '';
+
+        const codeHtml = question.code
+            ? `
+            <div class="code-reference-wrapper">
+                <strong>参考代码：</strong>
+                <pre><code class="language-${question.codeLanguage || 'c'}">${Utils.escapeHtml(question.code)}</code></pre>
+            </div>
+            `
+            : '';
+
         return `
             ${
                 showResultBanner
@@ -407,36 +521,18 @@ const Renderer = {
                     : ''
             }
 
+            ${correctAnswerCardHTML}
+
             <div class="explanation">
                 <div class="explanation-header">
-                    <span class="explanation-icon">💡</span>
+                    <span class="explanation-icon">${Utils.icon('lightbulb')}</span>
                     <span>答案解析</span>
                 </div>
                 <div class="explanation-content">
-                    ${essayAnswer}
-                    ${essayAnswerImgOnly}
                     ${Utils.parseMarkdown(question.explanation || '暂无解析')}
                 </div>
-                ${
-                    question.memoryAid
-                        ? `
-                    <div class="memory-aid">
-                        <span class="memory-aid-icon">🧠</span>
-                        <span class="memory-aid-text">${Utils.escapeHtml(question.memoryAid)}</span>
-                    </div>
-                `
-                        : ''
-                }
-                ${
-                    question.code
-                        ? `
-                    <div style="margin-top:var(--space-4)">
-                        <strong>参考代码：</strong>
-                        <pre><code class="language-${question.codeLanguage || 'c'}">${Utils.escapeHtml(question.code)}</code></pre>
-                    </div>
-                `
-                        : ''
-                }
+                ${memoryAidHtml}
+                ${codeHtml}
             </div>
         `;
     },

@@ -966,32 +966,180 @@
     border: 1px solid var(--danger);
 }
 
-/* ===== 解析 ===== */
-.explanation {
-    margin-top: var(--space-4);
+/* ===== 🎯 正确答案卡片 ===== */
+.correct-answer-card {
+    background-color: var(--bg); /* 统一内凹底色 */
+    border: 1px solid var(--border); /* 普通细边框 */
+    border-radius: var(--radius); /* 12px rounded-xl */
     padding: var(--space-4);
-    background: var(--bg);
+    margin-bottom: var(--space-4);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+
+    /* 渐入动效 */
+    animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.correct-answer-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--text-secondary); /* 统一使用次要文本色，保持调性一致 */
+    margin-bottom: var(--space-3);
+    border-bottom: 1px dashed var(--border); /* 统一虚线分隔 */
+    padding-bottom: 8px;
+}
+
+.correct-answer-header .lucide {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.2px; /* 与解析图标笔画粗细一致 */
+}
+
+.correct-answer-content {
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.6;
+}
+
+/* 选项字母徽章（如 A, B, C） */
+.answer-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 6px;
+    border-radius: 6px; /* rounded-md */
+    background: var(--primary);
+    color: #ffffff !important; /* 徽章内强制白字，防范黑夜模式反色 */
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    margin-right: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* 文本徽章（适用于 判断题“正确/错误” 等） */
+.answer-badge.text {
+    border-radius: 12px; /* rounded-full */
+    min-width: auto;
+    padding: 2px 14px;
+    height: auto;
+}
+
+/* 多个答案间的分隔线 */
+.answer-divider {
+    color: var(--text-tertiary);
+    margin: 0 var(--space-3);
+    font-weight: 300;
+}
+
+/* 填空题答案项 */
+.fill-answer-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: var(--font-size-sm);
+}
+.fill-answer-item:last-child {
+    margin-bottom: 0;
+}
+.fill-answer-index {
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+}
+.fill-answer-text {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* 简答题答案排版 */
+.essay-answer-content {
+    font-size: var(--font-size-base);
+    color: var(--text);
+    line-height: 1.7;
+    margin-top: 6px;
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+.essay-answer-image-wrapper {
+    margin-top: var(--space-2);
+}
+.essay-answer-image-wrapper img {
+    max-width: 100%;
+    max-height: 300px;
     border-radius: var(--radius);
     border: 1px solid var(--border);
-    animation: slideUp 0.3s ease;
+}
+
+/* 代码答案排版 */
+.code-answer-wrapper {
+    margin: 6px 0 0 0;
+    padding: var(--space-3);
+    background: var(--type-code-bg);
+    border-radius: var(--radius-sm);
+    border: none !important; /* 彻底剥离双重框框 */
+    overflow-x: auto;
+}
+.code-answer-wrapper code {
+    font-family: monospace;
+    font-size: 13px;
+    color: var(--text);
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+/* 参考代码包装器 */
+.code-reference-wrapper {
+    margin-top: var(--space-4);
+}
+.code-reference-wrapper strong {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* ===== 💡 详细解析卡片 ===== */
+.explanation {
+    background-color: var(--bg); /* 采用页面背景底色，在大卡片中形成优雅的“内凹”层级 */
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+
+    /* 依次延迟渐入，创造视觉节奏 */
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards;
+    opacity: 0; /* 动画开始前先保持隐藏 */
 }
 
 .explanation-header {
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: var(--font-size-xs);
-    font-weight: 600;
-    color: var(--primary);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--text-secondary);
     margin-bottom: var(--space-3);
-    padding-bottom: var(--space-2);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px dashed var(--border); /* 仿书籍排版虚线 */
+    padding-bottom: 8px;
+}
+
+.explanation-header .lucide {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.2px;
 }
 
 .explanation-content {
-    font-size: var(--font-size-sm);
-    line-height: 1.8;
+    font-size: var(--font-size-base);
     color: var(--text);
+    line-height: 1.7; /* 适当放宽行高，适合长段落解析阅读 */
 }
 
 .explanation-content p {
@@ -1011,29 +1159,46 @@
 
 /* ===== 记忆口诀 ===== */
 .memory-aid {
-    margin-top: var(--space-3);
-    padding-top: var(--space-3);
-    border-top: 1px dashed var(--border);
+    margin-top: var(--space-4);
+    background: var(--primary-light);
+    border-left: 3px solid var(--primary);
+    padding: var(--space-3);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
 }
 
-.memory-aid::before {
-    content: '记忆口诀';
-    display: block;
-    font-size: var(--font-size-xs);
-    color: var(--text-muted);
-    margin-bottom: var(--space-1);
-    letter-spacing: 0.5px;
+.memory-aid-icon {
+    display: flex;
+    align-items: center;
+    color: var(--primary);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.memory-aid-icon .lucide {
+    width: 14px;
+    height: 14px;
 }
 
 .memory-aid-text {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
-    line-height: 1.8;
-    font-style: italic;
+    line-height: 1.6;
 }
 
-.memory-aid-icon {
-    display: none;
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ===== 结束确认模态框 ===== */
@@ -1468,10 +1633,21 @@
         margin: var(--space-3) 0;
     }
 
-    /* 解析 */
+    /* 解析 & 答案卡片 */
+    .correct-answer-card {
+        padding: var(--space-3);
+        margin-bottom: var(--space-3);
+    }
+    .correct-answer-content {
+        font-size: var(--font-size-base);
+    }
+    .essay-answer-content {
+        font-size: var(--font-size-sm);
+    }
     .explanation {
         padding: var(--space-3);
         margin-top: var(--space-3);
+        margin-bottom: var(--space-3);
     }
     .explanation-content {
         font-size: 13px;

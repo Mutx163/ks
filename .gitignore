@@ -13,6 +13,9 @@ gclx/
 _*.py
 reviews/
 
+# Gemini CLI
+.antigravitycli/
+
 # IDE
 .vscode/
 .idea/
