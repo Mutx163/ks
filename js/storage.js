@@ -35,6 +35,7 @@ const Storage = {
                 swipeNavigation: true,
                 fontSize: 16,
                 theme: 'auto',
+                colorScheme: 'parchment',
                 aiEngine: 'metaso',
                 customAiEngines: []
             });
@@ -386,6 +387,7 @@ const Storage = {
                 swipeNavigation: true,
                 fontSize: 16,
                 theme: 'auto',
+                colorScheme: 'parchment',
                 aiEngine: 'metaso',
                 customAiEngines: []
             }

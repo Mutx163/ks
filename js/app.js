@@ -1037,7 +1037,8 @@ const App = {
      * 打开主题设置
      */
     showThemePicker() {
-        const current = document.documentElement.getAttribute('data-theme') || 'auto';
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'auto';
+        const currentColor = document.documentElement.getAttribute('data-color') || 'parchment';
         const themeNames = { auto: '跟随系统', light: '浅色模式', dark: '深色模式' };
 
         const themes = [
@@ -1046,36 +1047,75 @@ const App = {
             { value: 'dark', icon: 'moon', label: '深色模式' }
         ];
 
-        const content = themes
-            .map(
-                (t) => `
-            <label style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; cursor: pointer;">
-                <input type="radio" name="theme" value="${t.value}" ${t.value === current ? 'checked' : ''}>
-                <span>${Utils.icon(t.icon)} ${t.label}</span>
-            </label>
-        `
-            )
-            .join('');
+        const colors = [
+            { value: 'parchment', label: '暖色羊皮纸', bg: '#f1e9d2', fg: '#155e9c' },
+            { value: 'white', label: '白色简洁', bg: '#f8fafc', fg: '#2563eb' }
+        ];
+
+        const content = `
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">色彩风格</label>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    ${colors
+                        .map(
+                            (c) => `
+                        <label style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; padding: 10px 16px; border-radius: 12px; border: 2px solid ${c.value === currentColor ? 'var(--primary)' : 'var(--border)'}; background: ${c.value === currentColor ? 'var(--bg-hover)' : 'transparent'}; transition: all 0.2s ease;">
+                            <input type="radio" name="colorScheme" value="${c.value}" ${c.value === currentColor ? 'checked' : ''} style="display: none;">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: ${c.bg}; border: 3px solid ${c.fg}; box-shadow: inset 0 -3px 6px rgba(0,0,0,0.1);"></div>
+                            <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">${c.label}</span>
+                        </label>
+                    `
+                        )
+                        .join('')}
+                </div>
+            </div>
+            <div style="border-top: 1px solid var(--border); padding-top: 12px;">
+                <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">亮度模式</label>
+                ${themes
+                    .map(
+                        (t) => `
+                    <label style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; cursor: pointer;">
+                        <input type="radio" name="theme" value="${t.value}" ${t.value === currentTheme ? 'checked' : ''}>
+                        <span>${Utils.icon(t.icon)} ${t.label}</span>
+                    </label>
+                `
+                    )
+                    .join('')}
+            </div>
+        `;
 
         Utils.showModal({
-            title: `${Utils.icon('palette')} 选择主题`,
+            title: `${Utils.icon('palette')} 主题设置`,
             content,
             buttons: [
                 {
                     label: '确定',
                     class: 'btn-primary',
                     onClick: (modal) => {
-                        const selected = modal.querySelector('input[name="theme"]:checked');
-                        if (!selected) return;
-                        const theme = selected.value;
-                        if (theme === 'auto') {
-                            document.documentElement.removeAttribute('data-theme');
-                        } else {
-                            document.documentElement.setAttribute('data-theme', theme);
+                        // 应用亮度
+                        const selectedTheme = modal.querySelector('input[name="theme"]:checked');
+                        if (selectedTheme) {
+                            const theme = selectedTheme.value;
+                            if (theme === 'auto') {
+                                document.documentElement.removeAttribute('data-theme');
+                            } else {
+                                document.documentElement.setAttribute('data-theme', theme);
+                            }
+                            Storage.updateSettings({ theme });
                         }
-                        Storage.updateSettings({ theme });
+                        // 应用色彩
+                        const selectedColor = modal.querySelector('input[name="colorScheme"]:checked');
+                        if (selectedColor) {
+                            const color = selectedColor.value;
+                            if (color === 'parchment') {
+                                document.documentElement.removeAttribute('data-color');
+                            } else {
+                                document.documentElement.setAttribute('data-color', color);
+                            }
+                            Storage.updateSettings({ colorScheme: color });
+                        }
                         Utils.updateBrowserThemeColor();
-                        Utils.showToast(`已切换为 ${themeNames[theme]}`, 'success');
+                        Utils.showToast('主题已更新', 'success');
                         modal.remove();
                     }
                 },
@@ -1250,12 +1290,12 @@ const App = {
 
         // 全局顶栏/动作按钮事件委托
         document.addEventListener('click', (e) => {
-            // 1. 切换主题
+            // 1. 打开主题设置
             const themeBtn =
                 e.target.closest('.action-theme-toggle') || e.target.closest('#btn-theme');
             if (themeBtn) {
                 e.preventDefault();
-                this.cycleTheme(themeBtn);
+                this.showThemePicker();
                 return;
             }
 
@@ -1315,6 +1355,11 @@ const App = {
         // 应用主题
         if (settings.theme && settings.theme !== 'auto') {
             document.documentElement.setAttribute('data-theme', settings.theme);
+        }
+
+        // 应用色彩主题
+        if (settings.colorScheme && settings.colorScheme !== 'parchment') {
+            document.documentElement.setAttribute('data-color', settings.colorScheme);
         }
 
         // 首次访问显示快捷键提示

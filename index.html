@@ -12,6 +12,10 @@
                 if (theme !== 'auto') {
                     document.documentElement.setAttribute('data-theme', theme);
                 }
+                const colorScheme = settings.colorScheme || 'parchment';
+                if (colorScheme !== 'parchment') {
+                    document.documentElement.setAttribute('data-color', colorScheme);
+                }
             } catch (e) {}
         </script>
         <title>城科卷王</title>
@@ -50,47 +54,48 @@
         <!-- DNS 预解析 + 预连接（减少首次请求延迟） -->
         <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc" />
         <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin />
-        <link rel="dns-prefetch" href="https://cdn.jsdmirror.com" />
+        <link rel="dns-prefetch" href="https://cdn.bootcdn.net" />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
 
         <!-- 预加载已移除：因为实际请求带 _ts 参数，预加载的请求未被使用 -->
 
         <!-- Lucide 图标（最先加载，页面需要） -->
         <script
-            src="https://cdn.jsdmirror.com/npm/lucide@0.344.0/dist/umd/lucide.min.js"
+            src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"
             defer
         ></script>
 
         <!-- KaTeX 数学公式（defer，不阻塞骨架屏） -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdmirror.com/npm/katex@0.16.9/dist/katex.min.css"
+            href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
         />
-        <script src="https://cdn.jsdmirror.com/npm/katex@0.16.9/dist/katex.min.js" defer></script>
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" defer></script>
 
         <!-- Prism.js 代码高亮（defer，不阻塞骨架屏） -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdmirror.com/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css"
+            href="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
         />
-        <script src="https://cdn.jsdmirror.com/npm/prismjs@1.29.0/prism.min.js" defer></script>
+        <script src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
         <script
-            src="https://cdn.jsdmirror.com/npm/prismjs@1.29.0/components/prism-c.min.js"
+            src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-c.min.js"
             defer
         ></script>
         <script
-            src="https://cdn.jsdmirror.com/npm/prismjs@1.29.0/components/prism-cpp.min.js"
+            src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"
             defer
         ></script>
         <script
-            src="https://cdn.jsdmirror.com/npm/prismjs@1.29.0/components/prism-java.min.js"
+            src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-java.min.js"
             defer
         ></script>
         <script
-            src="https://cdn.jsdmirror.com/npm/prismjs@1.29.0/components/prism-python.min.js"
+            src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-python.min.js"
             defer
         ></script>
         <script
-            src="https://cdn.jsdmirror.com/npm/prismjs@1.29.0/components/prism-javascript.min.js"
+            src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"
             defer
         ></script>
 
