@@ -1037,10 +1037,10 @@ const App = {
      * 打开主题设置
      */
     showThemePicker() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'auto';
-        const currentColor = document.documentElement.getAttribute('data-color') || 'parchment';
-        const themeNames = { auto: '跟随系统', light: '浅色模式', dark: '深色模式' };
-
+        // 记录打开时的初始状态
+        const initialTheme = document.documentElement.getAttribute('data-theme') || 'auto';
+        const initialColor = document.documentElement.getAttribute('data-color') || 'parchment';
+        
         const themes = [
             { value: 'auto', icon: 'monitor', label: '跟随系统' },
             { value: 'light', icon: 'sun', label: '浅色模式' },
@@ -1048,85 +1048,147 @@ const App = {
         ];
 
         const colors = [
-            { value: 'parchment', label: '暖色羊皮纸', bg: '#f1e9d2', fg: '#155e9c' },
-            { value: 'white', label: '白色简洁', bg: '#f8fafc', fg: '#2563eb' }
+            { 
+                value: 'parchment', 
+                label: '暖色羊皮纸', 
+                primary: '#155e9c', 
+                bg: '#f1e9d2', 
+                fg: '#4a3e2a' 
+            },
+            { 
+                value: 'white', 
+                label: '白色简洁', 
+                primary: '#2563eb', 
+                bg: '#ffffff', 
+                fg: '#0f172a' 
+            }
         ];
 
+        // 拼接全新卡片式 UI
         const content = `
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">色彩风格</label>
-                <div style="display: flex; gap: 12px; justify-content: center;">
-                    ${colors
-                        .map(
-                            (c) => `
-                        <label style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; padding: 10px 16px; border-radius: 12px; border: 2px solid ${c.value === currentColor ? 'var(--primary)' : 'var(--border)'}; background: ${c.value === currentColor ? 'var(--bg-hover)' : 'transparent'}; transition: all 0.2s ease;">
-                            <input type="radio" name="colorScheme" value="${c.value}" ${c.value === currentColor ? 'checked' : ''} style="display: none;">
-                            <div style="width: 32px; height: 32px; border-radius: 50%; background: ${c.bg}; border: 3px solid ${c.fg}; box-shadow: inset 0 -3px 6px rgba(0,0,0,0.1);"></div>
-                            <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">${c.label}</span>
-                        </label>
-                    `
-                        )
-                        .join('')}
+            <div class="theme-picker-section">
+                <span class="theme-picker-label">色彩风格</span>
+                <div class="theme-picker-grid-2">
+                    ${colors.map(c => `
+                        <div class="theme-picker-card ${c.value === initialColor ? 'active' : ''}" data-type="color" data-value="${c.value}">
+                            <div class="check-badge">✓</div>
+                            <div class="color-preview-dots">
+                                <span class="color-dot" style="background-color: ${c.primary};" title="主色"></span>
+                                <span class="color-dot" style="background-color: ${c.bg};" title="背景色"></span>
+                                <span class="color-dot" style="background-color: ${c.fg};" title="文本色"></span>
+                            </div>
+                            <input type="radio" name="colorScheme" value="${c.value}" ${c.value === initialColor ? 'checked' : ''}>
+                            <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">${c.label}</span>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
-            <div style="border-top: 1px solid var(--border); padding-top: 12px;">
-                <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">亮度模式</label>
-                ${themes
-                    .map(
-                        (t) => `
-                    <label style="display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; cursor: pointer;">
-                        <input type="radio" name="theme" value="${t.value}" ${t.value === currentTheme ? 'checked' : ''}>
-                        <span>${Utils.icon(t.icon)} ${t.label}</span>
-                    </label>
-                `
-                    )
-                    .join('')}
+            <div class="theme-picker-section" style="border-top: 1px solid var(--border); padding-top: var(--space-3); margin-top: var(--space-3);">
+                <span class="theme-picker-label">亮度模式</span>
+                <div class="theme-picker-grid">
+                    ${themes.map(t => `
+                        <div class="theme-picker-card ${t.value === initialTheme ? 'active' : ''}" data-type="theme" data-value="${t.value}">
+                            <div class="check-badge">✓</div>
+                            ${Utils.icon(t.icon, 'theme-picker-icon')}
+                            <input type="radio" name="theme" value="${t.value}" ${t.value === initialTheme ? 'checked' : ''}>
+                            <span style="font-size: 11px; white-space: nowrap; color: var(--text-secondary);">${t.label}</span>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
         `;
 
-        Utils.showModal({
+        let confirmed = false;
+
+        // 应用临时状态辅助函数
+        const applyTempState = (theme, color) => {
+            if (theme === 'auto') {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+
+            if (color === 'parchment') {
+                document.documentElement.removeAttribute('data-color');
+            } else {
+                document.documentElement.setAttribute('data-color', color);
+            }
+            Utils.updateBrowserThemeColor();
+        };
+
+        const modal = Utils.showModal({
             title: `${Utils.icon('palette')} 主题设置`,
             content,
             buttons: [
                 {
                     label: '确定',
                     class: 'btn-primary',
-                    onClick: (modal) => {
-                        // 应用亮度
-                        const selectedTheme = modal.querySelector('input[name="theme"]:checked');
-                        if (selectedTheme) {
-                            const theme = selectedTheme.value;
-                            if (theme === 'auto') {
-                                document.documentElement.removeAttribute('data-theme');
-                            } else {
-                                document.documentElement.setAttribute('data-theme', theme);
-                            }
-                            Storage.updateSettings({ theme });
-                        }
-                        // 应用色彩
-                        const selectedColor = modal.querySelector('input[name="colorScheme"]:checked');
-                        if (selectedColor) {
-                            const color = selectedColor.value;
-                            if (color === 'parchment') {
-                                document.documentElement.removeAttribute('data-color');
-                            } else {
-                                document.documentElement.setAttribute('data-color', color);
-                            }
-                            Storage.updateSettings({ colorScheme: color });
-                        }
-                        Utils.updateBrowserThemeColor();
+                    onClick: (overlay) => {
+                        confirmed = true;
+                        
+                        // 获取当前高亮的卡片选项
+                        const activeThemeCard = overlay.querySelector('.theme-picker-card[data-type="theme"].active');
+                        const activeColorCard = overlay.querySelector('.theme-picker-card[data-type="color"].active');
+                        
+                        const theme = activeThemeCard ? activeThemeCard.dataset.value : 'auto';
+                        const colorScheme = activeColorCard ? activeColorCard.dataset.value : 'parchment';
+
+                        // 持久化保存
+                        Storage.updateSettings({ theme, colorScheme });
+                        applyTempState(theme, colorScheme);
+                        
                         Utils.showToast('主题已更新', 'success');
-                        modal.remove();
+                        overlay.remove();
                     }
                 },
                 {
                     label: '取消',
                     class: 'btn-secondary',
-                    onClick: (modal) => modal.remove()
+                    onClick: (overlay) => {
+                        // 还原初始状态并关闭
+                        applyTempState(initialTheme, initialColor);
+                        overlay.remove();
+                    }
                 }
             ],
-            size: 'sm'
+            size: 'sm',
+            onClose: () => {
+                // 如果没有点击确定直接关闭弹窗（例如 Esc/遮罩/右上角X），还原状态
+                if (!confirmed) {
+                    applyTempState(initialTheme, initialColor);
+                }
+            }
         });
+
+        // 动态绑定卡片点击与实时预览事件
+        if (modal) {
+            modal.querySelectorAll('.theme-picker-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const type = card.dataset.type;
+
+                    // 1. 清除当前类别中所有其他卡片的 active 状态，并取消 radio 选中
+                    modal.querySelectorAll(`.theme-picker-card[data-type="${type}"]`).forEach(c => {
+                        c.classList.remove('active');
+                        const radio = c.querySelector('input[type="radio"]');
+                        if (radio) radio.checked = false;
+                    });
+
+                    // 2. 激活当前点击的卡片并选中 radio
+                    card.classList.add('active');
+                    const currentRadio = card.querySelector('input[type="radio"]');
+                    if (currentRadio) currentRadio.checked = true;
+
+                    // 3. 读取最新的选择状态
+                    const activeThemeCard = modal.querySelector('.theme-picker-card[data-type="theme"].active');
+                    const activeColorCard = modal.querySelector('.theme-picker-card[data-type="color"].active');
+                    const activeTheme = activeThemeCard ? activeThemeCard.dataset.value : 'auto';
+                    const activeColor = activeColorCard ? activeColorCard.dataset.value : 'parchment';
+
+                    // 4. 即时生效（Live Preview）
+                    applyTempState(activeTheme, activeColor);
+                });
+            });
+        }
     },
 
     /**
@@ -1140,60 +1202,110 @@ const App = {
         const swipeEnabled = settings.swipeNavigation !== false;
         const aiSettings = AIEngines.normalizeSettings(settings);
 
-        // 检查是否是管理员（本地管理员密码或云端管理员标记）
+        // 检查是否是管理员
         const hasAdminPwd = !!localStorage.getItem('admin_pwd');
         const isAdmin = hasAdminPwd || localStorage.getItem('ks_is_admin') === '1';
 
         const content = `
-            <label>字体大小</label>
-            <select id="setting-font-size">
-                <option value="14" ${fontSize === 14 ? 'selected' : ''}>14px - 较小</option>
-                <option value="16" ${fontSize === 16 ? 'selected' : ''}>16px - 标准</option>
-                <option value="18" ${fontSize === 18 ? 'selected' : ''}>18px - 较大</option>
-                <option value="20" ${fontSize === 20 ? 'selected' : ''}>20px - 大</option>
-                <option value="24" ${fontSize === 24 ? 'selected' : ''}>24px - 超大</option>
-            </select>
-            <label>答题模式</label>
-            <select id="setting-answer-mode">
-                <option value="normal" ${answerMode === 'normal' ? 'selected' : ''}>普通模式 - 手动提交手动跳题</option>
-                <option value="autoNext" ${answerMode === 'autoNext' ? 'selected' : ''}>自动跳题 - 手动提交答对自动跳</option>
-                <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
-                <option value="instant" ${answerMode === 'instant' ? 'selected' : ''}>即时判断 - 点击即判不自动跳</option>
-            </select>
-            <label>左右滑动</label>
-            <label class="toggle-label">
-                <input type="checkbox" id="setting-swipe" ${swipeEnabled ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-                <span>滑动切换题目</span>
-            </label>
+            <div class="settings-container">
+                <!-- 基础个性化 -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        ${Utils.icon('user', 'settings-group-icon')}
+                        <span>基础个性化</span>
+                    </div>
+                    <div class="settings-group-body">
+                        <div class="settings-item">
+                            <div class="settings-item-info">
+                                <span class="settings-item-title">字体大小</span>
+                                <span class="settings-item-desc">调整刷题与解析内容的字体显示大小</span>
+                            </div>
+                            <div class="settings-item-control">
+                                <select id="setting-font-size" class="settings-select">
+                                    <option value="14" ${fontSize === 14 ? 'selected' : ''}>14px - 较小</option>
+                                    <option value="16" ${fontSize === 16 ? 'selected' : ''}>16px - 标准</option>
+                                    <option value="18" ${fontSize === 18 ? 'selected' : ''}>18px - 较大</option>
+                                    <option value="20" ${fontSize === 20 ? 'selected' : ''}>20px - 大</option>
+                                    <option value="24" ${fontSize === 24 ? 'selected' : ''}>24px - 超大</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-item-info">
+                                <span class="settings-item-title">左右滑动切换</span>
+                                <span class="settings-item-desc">在刷题页左右滑动屏幕来切换题目</span>
+                            </div>
+                            <div class="settings-item-control">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="setting-swipe" ${swipeEnabled ? 'checked' : ''}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            ${AIEngines.renderSettingsFields(aiSettings)}
-            ${AIExplain.renderSettingsFields()}
+                <!-- 答题偏好 -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        ${Utils.icon('check-square', 'settings-group-icon')}
+                        <span>答题偏好</span>
+                    </div>
+                    <div class="settings-group-body">
+                        <div class="settings-item vertical">
+                            <div class="settings-item-info">
+                                <span class="settings-item-title">答题判定模式</span>
+                                <span class="settings-item-desc">控制点击选项后的验证逻辑与自动跳转方式</span>
+                            </div>
+                            <div class="settings-item-control">
+                                <select id="setting-answer-mode" class="settings-select">
+                                    <option value="normal" ${answerMode === 'normal' ? 'selected' : ''}>普通模式 - 手动提交手动跳题</option>
+                                    <option value="autoNext" ${answerMode === 'autoNext' ? 'selected' : ''}>自动跳题 - 手动提交答对自动跳</option>
+                                    <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
+                                    <option value="instant" ${answerMode === 'instant' ? 'selected' : ''}>即时判断 - 点击即判不自动跳</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-item-info">
+                                <span class="settings-item-title">日志收集</span>
+                                <span class="settings-item-desc">自动收集客户端运行错误以帮助改进产品稳定性</span>
+                            </div>
+                            <div class="settings-item-control">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="setting-log-collection" ${settings.logCollection !== false ? 'checked' : ''}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            <label>日志收集</label>
-            <label class="toggle-label">
-                <input type="checkbox" id="setting-log-collection" ${settings.logCollection !== false ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-                <span>自动收集错误日志帮助改进体验</span>
-            </label>
-            
-            ${
-                isAdmin
-                    ? `
-            <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
-                <button onclick="window.open('admin.html', '_blank'); this.closest('.modal').remove();" style="
-                    width: 100%; padding: 12px; 
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: #fff; border: none; border-radius: 10px;
-                    font-size: 14px; font-weight: 600; cursor: pointer;
-                    display: flex; align-items: center; justify-content: center; gap: 8px;
-                ">
-                    👑 进入管理后台
-                </button>
+                <!-- AI 智能助理 -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        ${Utils.icon('cpu', 'settings-group-icon')}
+                        <span>AI 智能助理</span>
+                    </div>
+                    <div class="settings-group-body">
+                        ${AIEngines.renderSettingsFields(aiSettings)}
+                        ${AIExplain.renderSettingsFields()}
+                    </div>
+                </div>
+
+                <!-- 管理入口 -->
+                ${
+                    isAdmin
+                        ? `
+                <div style="margin-top: var(--space-2);">
+                    <button class="btn-admin-entrance" onclick="window.open('admin.html', '_blank'); this.closest('.modal-overlay').remove();">
+                        👑 进入管理后台
+                    </button>
+                </div>
+                `
+                        : ''
+                }
             </div>
-            `
-                    : ''
-            }
         `;
 
         Utils.showModal({
@@ -1218,8 +1330,7 @@ const App = {
                         }
 
                         const newSwipe = modal.querySelector('#setting-swipe').checked;
-                        const newLogCollection =
-                            modal.querySelector('#setting-log-collection').checked;
+                        const newLogCollection = modal.querySelector('#setting-log-collection').checked;
                         LogCollector.setEnabled(newLogCollection);
 
                         Storage.updateSettings({
@@ -1230,7 +1341,7 @@ const App = {
                         });
                         AIExplain.saveSettingsFromModal(modal);
 
-                        // 同步设置到云端
+                        // 同步到云端
                         API.pushSettings(Storage.getSettings());
 
                         Utils.showToast('设置已保存', 'success');

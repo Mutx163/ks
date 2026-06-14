@@ -427,30 +427,80 @@ const Nav = {
         const aiSettings = AIEngines.normalizeSettings(settings);
 
         const content = `
-            <label>字体大小</label>
-            <select id="setting-font-size">
-                <option value="14" ${fontSize === 14 ? 'selected' : ''}>14px - 较小</option>
-                <option value="16" ${fontSize === 16 ? 'selected' : ''}>16px - 标准</option>
-                <option value="18" ${fontSize === 18 ? 'selected' : ''}>18px - 较大</option>
-                <option value="20" ${fontSize === 20 ? 'selected' : ''}>20px - 大</option>
-                <option value="24" ${fontSize === 24 ? 'selected' : ''}>24px - 超大</option>
-            </select>
-            <label>答题模式</label>
-            <select id="setting-answer-mode">
-                <option value="normal" ${answerMode === 'normal' ? 'selected' : ''}>普通模式 - 手动提交手动跳题</option>
-                <option value="autoNext" ${answerMode === 'autoNext' ? 'selected' : ''}>自动跳题 - 手动提交答对自动跳</option>
-                <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
-                <option value="instant" ${answerMode === 'instant' ? 'selected' : ''}>即时判断 - 点击即判不自动跳</option>
-            </select>
-            <label>左右滑动</label>
-            <label class="toggle-label">
-                <input type="checkbox" id="setting-swipe" ${swipeEnabled ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-                <span>滑动切换题目</span>
-            </label>
+            <div class="settings-container">
+                <!-- 基础个性化 -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        ${Utils.icon('user', 'settings-group-icon')}
+                        <span>基础个性化</span>
+                    </div>
+                    <div class="settings-group-body">
+                        <div class="settings-item">
+                            <div class="settings-item-info">
+                                <span class="settings-item-title">字体大小</span>
+                                <span class="settings-item-desc">调整刷题与解析内容的字体显示大小</span>
+                            </div>
+                            <div class="settings-item-control">
+                                <select id="setting-font-size" class="settings-select">
+                                    <option value="14" ${fontSize === 14 ? 'selected' : ''}>14px - 较小</option>
+                                    <option value="16" ${fontSize === 16 ? 'selected' : ''}>16px - 标准</option>
+                                    <option value="18" ${fontSize === 18 ? 'selected' : ''}>18px - 较大</option>
+                                    <option value="20" ${fontSize === 20 ? 'selected' : ''}>20px - 大</option>
+                                    <option value="24" ${fontSize === 24 ? 'selected' : ''}>24px - 超大</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-item-info">
+                                <span class="settings-item-title">左右滑动切换</span>
+                                <span class="settings-item-desc">在刷题页左右滑动屏幕来切换题目</span>
+                            </div>
+                            <div class="settings-item-control">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="setting-swipe" ${swipeEnabled ? 'checked' : ''}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            ${AIEngines.renderSettingsFields(aiSettings)}
-            ${AIExplain.renderSettingsFields()}
+                <!-- 答题偏好 -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        ${Utils.icon('check-square', 'settings-group-icon')}
+                        <span>答题偏好</span>
+                    </div>
+                    <div class="settings-group-body">
+                        <div class="settings-item vertical">
+                            <div class="settings-item-info">
+                                <span class="settings-item-title">答题判定模式</span>
+                                <span class="settings-item-desc">控制点击选项后的验证逻辑与自动跳转方式</span>
+                            </div>
+                            <div class="settings-item-control">
+                                <select id="setting-answer-mode" class="settings-select">
+                                    <option value="normal" ${answerMode === 'normal' ? 'selected' : ''}>普通模式 - 手动提交手动跳题</option>
+                                    <option value="autoNext" ${answerMode === 'autoNext' ? 'selected' : ''}>自动跳题 - 手动提交答对自动跳</option>
+                                    <option value="lightning" ${answerMode === 'lightning' ? 'selected' : ''}>闪电模式 - 点击即判答对自动跳</option>
+                                    <option value="instant" ${answerMode === 'instant' ? 'selected' : ''}>即时判断 - 点击即判不自动跳</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI 智能助理 -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        ${Utils.icon('cpu', 'settings-group-icon')}
+                        <span>AI 智能助理</span>
+                    </div>
+                    <div class="settings-group-body">
+                        ${AIEngines.renderSettingsFields(aiSettings)}
+                        ${AIExplain.renderSettingsFields()}
+                    </div>
+                </div>
+            </div>
         `;
 
         Utils.showModal({

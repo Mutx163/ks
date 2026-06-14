@@ -339,23 +339,44 @@ const Utils = {
      * 显示Toast提示
      */
     showToast(message, type = 'info', duration = 3000) {
-        // 移除现有的toast
+        // 1. 移除现有的toast
         const existingToast = document.querySelector('.toast');
         if (existingToast) {
             existingToast.remove();
         }
 
+        // 2. 创建 Toast 容器
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = message;
+        
+        // 3. 自动映射不同类型对应的图标
+        const iconMap = {
+            success: 'check-circle',
+            error: 'alert-triangle',
+            warning: 'alert-circle',
+            info: 'info'
+        };
+        const defaultIcon = iconMap[type] || 'info';
+        
+        // 4. 健壮的“双重图标判定”：判断调用者传入的 message 是否已经包含定制图标
+        const hasIcon = message.includes('data-lucide') || message.includes('<svg') || message.includes('class="icon"');
+        
+        if (hasIcon) {
+            toast.innerHTML = `<div class="toast-content">${message}</div>`;
+        } else {
+            const iconHtml = this.icon(defaultIcon, `toast-icon toast-icon-${type}`);
+            toast.innerHTML = `${iconHtml}<div class="toast-content">${message}</div>`;
+        }
+        
+        // 5. 渲染进入 DOM 并渲染图标
         document.body.appendChild(toast);
         this.initIcons();
 
-        // 自动移除
+        // 6. 自动移除定时器与平滑切出过渡
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateX(-50%) translateY(-20px)';
-            setTimeout(() => toast.remove(), 300);
+            setTimeout(() => toast.remove(), 250);
         }, duration);
     },
 
@@ -864,6 +885,32 @@ try {
 } catch (e) {
     console.warn('[Utils] 无法为 prefers-color-scheme 添加监听:', e.message);
 }
+
+// 跨标签页实时同步主题设置
+window.addEventListener('storage', (e) => {
+    if (e.key === 'quiz_settings') {
+        try {
+            const settings = JSON.parse(e.newValue || '{}');
+            const theme = settings.theme || 'auto';
+            const colorScheme = settings.colorScheme || 'parchment';
+            
+            if (theme === 'auto') {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+            
+            if (colorScheme === 'parchment') {
+                document.documentElement.removeAttribute('data-color');
+            } else {
+                document.documentElement.setAttribute('data-color', colorScheme);
+            }
+            Utils.updateBrowserThemeColor();
+        } catch (err) {
+            console.error('Failed to sync theme from storage event:', err);
+        }
+    }
+});
 
 // 导出
 window.Utils = Utils;

@@ -792,7 +792,7 @@
 
 .option-content {
     flex: 1;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-base);
     line-height: 1.5;
     padding-top: 2px;
     color: var(--text);
