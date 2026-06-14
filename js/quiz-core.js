@@ -110,6 +110,13 @@ const Core = {
             return;
         }
 
+        // 刷题前拉取云端数据，确保获取最新进度
+        try {
+            await API.pullCloudData();
+        } catch (e) {
+            console.warn('[Quiz] 拉取云端数据失败:', e.message);
+        }
+
         Perf.mark('恢复会话');
         this.restoreSession();
         state.startTime = Date.now();
@@ -144,6 +151,21 @@ const Core = {
     },
 
     restoreSession() {
+        // 1. 考试模式以外的常规模式下，先从已同步的全局 progress 中恢复答题状态
+        if (state.mode !== 'exam') {
+            const progress = Storage.getBankProgress(state.bankId);
+            if (progress && progress.questions) {
+                for (const [qid, cq] of Object.entries(progress.questions)) {
+                    if (cq && cq.userAnswer !== undefined) {
+                        state.answers[qid] = cq.userAnswer;
+                        state.submitted[qid] = true;
+                        state.showExplanation[qid] = true;
+                    }
+                }
+            }
+        }
+
+        // 2. 尝试从本地保存的 session (草稿) 中恢复
         const session = Storage.getSession(state.bankId, state.mode);
         if (!session) {
             if (
@@ -159,9 +181,10 @@ const Core = {
         state.currentIndex = session.currentIndex || 0;
         if (state.currentIndex >= state.questions.length) state.currentIndex = 0;
         if (state.mode !== 'review') {
-            state.answers = session.answers || {};
-            state.submitted = session.submitted || {};
-            state.showExplanation = session.showExplanation || {};
+            // 用活跃 session (草稿) 数据覆盖/合并
+            state.answers = { ...state.answers, ...(session.answers || {}) };
+            state.submitted = { ...state.submitted, ...(session.submitted || {}) };
+            state.showExplanation = { ...state.showExplanation, ...(session.showExplanation || {}) };
         }
         state.questionTimes = session.questionTimes || {};
         state.optionOrderCache = session.optionOrderCache || {};
@@ -196,8 +219,8 @@ const Core = {
         state._lastPushDuration = session.lastPushDuration || 0;
     },
 
-    saveSession() {
-        if (state.isFinished) return;
+    saveSession(immediate = false) {
+        if (state.isFinished) return Promise.resolve();
 
         const questionOrderIds =
             state.mode === 'random' || state.mode === 'shuffle_options' || state.mode === 'exam'
@@ -222,8 +245,10 @@ const Core = {
             ...extra
         });
 
-        API.pushProgress(Storage.getProgress());
-        this._saveReviewDuration();
+        return API.pushProgress(Storage.getProgress(), immediate).then((data) => {
+            this._saveReviewDuration();
+            return data;
+        });
     },
 
     _saveReviewDuration() {

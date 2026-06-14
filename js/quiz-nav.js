@@ -50,10 +50,16 @@ const Nav = {
         Quiz.showFinishModal();
     },
 
-    saveAndQuit() {
+    async saveAndQuit() {
         Quiz.closeFinishModal();
-        Quiz.saveSession();
-        Utils.showToast('进度已保存', 'success');
+        Utils.showToast('正在同步进度...', 'info', 2000);
+        try {
+            await this._flushStatsNow();
+            await Quiz.saveSession(true);
+            Utils.showToast('进度已安全同步', 'success');
+        } catch (e) {
+            console.warn('[Quiz] 退出同步异常:', e);
+        }
         setTimeout(() => (window.location.href = 'index.html'), SAVE_AND_QUIT_DELAY_MS);
     },
 
@@ -313,7 +319,16 @@ const Nav = {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
-    goHome() {
+    async goHome() {
+        if (!state.isFinished) {
+            Utils.showToast('正在同步并退出...', 'info', 1500);
+            try {
+                await this._flushStatsNow();
+                await Quiz.saveSession(true);
+            } catch (e) {
+                console.warn('[Quiz] 退出同步异常:', e);
+            }
+        }
         window.location.href = 'index.html';
     },
 
@@ -330,11 +345,11 @@ const Nav = {
             clearTimeout(state._statsTimer);
             state._statsTimer = null;
         }
-        if (!state._statsDirty) return;
+        if (!state._statsDirty) return Promise.resolve(null);
         state._statsDirty = false;
 
         const submittedIds = Object.keys(state.submitted);
-        if (submittedIds.length === 0) return;
+        if (submittedIds.length === 0) return Promise.resolve(null);
 
         const correctCount = submittedIds.filter((qId) => {
             const q = state.questions.find((q) => q.id == qId);
@@ -346,13 +361,13 @@ const Nav = {
         const dCorrect = correctCount - (state._lastPushCorrect || 0);
         const dDuration = duration - (state._lastPushDuration || 0);
 
-        if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) return;
+        if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) return Promise.resolve(null);
 
         state._lastPushAnswered = submittedIds.length;
         state._lastPushCorrect = correctCount;
         state._lastPushDuration = duration;
 
-        API.pushStats({
+        return API.pushStats({
             bankId: state.bankId,
             bankName: state.bank?.name || '',
             answered: dAnswered,

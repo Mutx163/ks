@@ -323,6 +323,14 @@ const API = {
             this._mergeProgress(data.progress);
         }
 
+        // 合并收藏
+        if (data.bookmarks && Object.keys(data.bookmarks).length > 0) {
+            const localBookmarks = Storage.getBookmarks();
+            const merged = { ...localBookmarks, ...data.bookmarks };
+            Storage.set(Storage.KEYS.BOOKMARKS, merged);
+            console.log('[API] 📁 收藏数据已合并');
+        }
+
         localStorage.setItem(this.KEYS.LAST_PULL, Date.now().toString());
         const elapsed = Date.now() - startTime;
         console.log(`[API] ✅ 云端数据拉取完成 (${elapsed}ms)`);
@@ -343,7 +351,29 @@ const API = {
         // 推送进度
         console.log('[API] 📤 推送进度...');
         this.pushProgress(Storage.getProgress());
+
+        // 推送收藏
+        console.log('[API] 📤 推送收藏...');
+        this.pushBookmarks(Storage.getBookmarks());
         console.log('[API] ✅ 本地数据推送完成');
+    },
+
+    /**
+     * 推送收藏到云端
+     */
+    pushBookmarks(bookmarks) {
+        if (!this.isRegistered() || !bookmarks) return;
+        this.request('/api/bookmarks', {
+            method: 'POST',
+            body: JSON.stringify({
+                deviceId: this.getDeviceId(),
+                bookmarks
+            })
+        }).then((data) => {
+            if (data && data.disabled) {
+                this._showBanNotice();
+            }
+        });
     },
 
     /**
@@ -366,12 +396,16 @@ const API = {
 
     /**
      * 推送进度到云端（防抖 5 秒）
+     * @param {object} progress - 进度数据
+     * @param {boolean} immediate - 是否立即推送
+     * @returns {Promise} 包含请求结果的 Promise
      */
-    pushProgress(progress) {
-        if (!this.isRegistered() || !progress) return;
+    pushProgress(progress, immediate = false) {
+        if (!this.isRegistered() || !progress) return Promise.resolve(null);
         clearTimeout(this._syncTimer);
-        this._syncTimer = setTimeout(() => {
-            this.request('/api/progress', {
+
+        const pushTask = () => {
+            return this.request('/api/progress', {
                 method: 'POST',
                 body: JSON.stringify({
                     deviceId: this.getDeviceId(),
@@ -381,8 +415,19 @@ const API = {
                 if (data && data.disabled) {
                     this._showBanNotice();
                 }
+                return data;
             });
-        }, 5000);
+        };
+
+        if (immediate) {
+            return pushTask();
+        }
+
+        return new Promise((resolve) => {
+            this._syncTimer = setTimeout(() => {
+                pushTask().then(resolve);
+            }, 5000);
+        });
     },
 
     /**
@@ -835,6 +880,9 @@ const API = {
         if (result && result.ok) {
             Utils.showToast(`已切换到 ${result.initials}`, 'success');
             document.querySelector('.modal-overlay')?.remove();
+            setTimeout(() => {
+                location.reload();
+            }, 500);
         } else {
             Utils.showToast(result?.error || '绑定失败', 'error');
         }

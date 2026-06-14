@@ -98,6 +98,11 @@ export default {
                 return await handleSyncProgress(request, env, origin);
             }
 
+            // POST /api/bookmarks
+            if (method === 'POST' && path === '/api/bookmarks') {
+                return await handleSyncBookmarks(request, env, origin);
+            }
+
             // GET /api/cloud-data/:did
             if (method === 'GET' && path.startsWith('/api/cloud-data/')) {
                 const did = path.split('/api/cloud-data/')[1];
@@ -670,21 +675,45 @@ async function handleSyncProgress(request, env, origin) {
     return json({ ok: true }, 200, origin);
 }
 
+// ========== 同步收藏 ==========
+async function handleSyncBookmarks(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, bookmarks } = body;
+
+    if (!deviceId || !bookmarks) return error('缺少参数', 400, origin);
+
+    const userId = await resolveUser(deviceId, env);
+    if (!userId) return error('设备未注册', 400, origin);
+
+    // 检查用户是否被封禁
+    const isBanned = await checkUserBanned(userId, env);
+    if (isBanned) return error('账号已被封禁', 403, origin);
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+        'UPDATE users SET bookmarks = ?, last_sync_at = ? WHERE id = ?'
+    ).bind(JSON.stringify(bookmarks), now, userId).run();
+
+    return json({ ok: true }, 200, origin);
+}
+
 // ========== 获取云端数据 ==========
 async function handleGetCloudData(did, env, origin) {
     const userId = await resolveUser(did, env);
     if (!userId) return json({ ok: false }, 200, origin);
 
     const user = await env.DB.prepare(
-        'SELECT initials, settings, progress, last_sync_at, banned FROM users WHERE id = ?'
+        'SELECT initials, settings, progress, bookmarks, last_sync_at, banned FROM users WHERE id = ?'
     ).bind(userId).first();
 
     if (!user) return json({ ok: false }, 200, origin);
 
     let settings = {};
     let progress = {};
+    let bookmarks = {};
     try { settings = JSON.parse(user.settings || '{}'); } catch {}
     try { progress = JSON.parse(user.progress || '{}'); } catch {}
+    try { bookmarks = JSON.parse(user.bookmarks || '{}'); } catch {}
 
     return json({
         ok: true,
@@ -695,6 +724,7 @@ async function handleGetCloudData(did, env, origin) {
         },
         settings,
         progress,
+        bookmarks,
         lastSyncAt: user.last_sync_at
     }, 200, origin);
 }
@@ -1239,15 +1269,16 @@ async function handleAdminUserCloudData(userId, url, env, origin) {
     if (!admin) return error('无权限', 403, origin);
 
     const user = await env.DB.prepare(
-        'SELECT id, initials, settings, progress, last_sync_at FROM users WHERE id = ?'
+        'SELECT id, initials, settings, progress, bookmarks, last_sync_at FROM users WHERE id = ?'
     ).bind(userId).first();
     if (!user) return error('用户不存在', 404, origin);
 
-    let settings = {}, progress = {};
+    let settings = {}, progress = {}, bookmarks = {};
     try { settings = JSON.parse(user.settings || '{}'); } catch {}
     try { progress = JSON.parse(user.progress || '{}'); } catch {}
+    try { bookmarks = JSON.parse(user.bookmarks || '{}'); } catch {}
 
-    return json({ ok: true, user: { id: user.id, initials: user.initials, lastSyncAt: user.last_sync_at }, settings, progress }, 200, origin);
+    return json({ ok: true, user: { id: user.id, initials: user.initials, lastSyncAt: user.last_sync_at }, settings, progress, bookmarks }, 200, origin);
 }
 
 // ==================== 题库管理 API ====================

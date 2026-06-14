@@ -4,6 +4,7 @@
 
 import Storage from './storage.js';
 import Utils from './utils.js';
+import API from './api.js';
 import Tracker from './tracker.js';
 import AIEngines from './aiEngines.js';
 import AIExplain from './aiExplain.js';
@@ -385,6 +386,7 @@ const Answers = {
         const isBookmarked = Storage.toggleBookmark(state.bankId, questionId);
         Utils.showToast(isBookmarked ? '已收藏' : '已取消收藏', 'success', 1500);
         Quiz.renderQuestion();
+        API.pushBookmarks(Storage.getBookmarks());
     }
 };
 

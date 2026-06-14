@@ -21,8 +21,8 @@ const Quiz = {
     restoreSession() {
         return Core.restoreSession();
     },
-    saveSession() {
-        return Core.saveSession();
+    saveSession(immediate = false) {
+        return Core.saveSession(immediate);
     },
     loadBankFromJson() {
         return Core.loadBankFromJson();

@@ -47,8 +47,11 @@ const App = {
         // 云同步（异步执行，不阻塞页面渲染）
         Perf.mark('开始云同步');
         API.autoSync()
-            .then(() => {
-                this.state.stats = Storage.getGlobalStats();
+            .then((synced) => {
+                if (synced) {
+                    this.loadData();
+                    this.render();
+                }
             })
             .catch((e) => {
                 console.warn('[App] 云同步失败:', e.message);
@@ -76,7 +79,14 @@ const App = {
 
         // 首次访问：提示注册
         if (!API.isRegistered()) {
-            setTimeout(() => API.showRegisterModal(), 1500);
+            setTimeout(() => {
+                API.showRegisterModal().then((ok) => {
+                    if (ok) {
+                        this.loadData();
+                        this.render();
+                    }
+                });
+            }, 1500);
         }
 
         // 加载公告横幅
@@ -1441,7 +1451,10 @@ const App = {
                     API.showAccountPanel();
                 } else {
                     API.showRegisterModal().then((ok) => {
-                        if (ok) location.reload();
+                        if (ok) {
+                            this.loadData();
+                            this.render();
+                        }
                     });
                 }
                 return;
