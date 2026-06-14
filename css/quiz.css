@@ -48,10 +48,10 @@
 }
 
 .quiz-title {
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xl);
     font-weight: 600;
     color: var(--text);
-    max-width: 200px;
+    max-width: 12em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -601,7 +601,7 @@
     padding: var(--space-3);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    font-size: 14px;
+    font-size: var(--font-size-base);
     font-family: inherit;
     line-height: 1.6;
     resize: vertical;
@@ -815,7 +815,7 @@
     border-radius: var(--radius);
     cursor: pointer;
     transition: var(--transition-bounce);
-    font-size: 15px;
+    font-size: var(--font-size-lg);
     font-weight: 500;
     user-select: none;
     -webkit-user-select: none;
@@ -882,7 +882,7 @@
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    font-size: 14px;
+    font-size: var(--font-size-base);
     font-family: inherit;
     transition: var(--transition);
     outline: none;
@@ -908,7 +908,7 @@
     width: 100%;
     padding: var(--space-3);
     font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
-    font-size: 14px;
+    font-size: var(--font-size-sm);
     line-height: 1.5;
     background: #1e1e2e;
     color: #cdd6f4;
@@ -1500,8 +1500,8 @@
         gap: 6px;
     }
     .quiz-title {
-        font-size: 14px;
-        max-width: 100px;
+        font-size: var(--font-size-base);
+        max-width: 10em;
     }
     .quiz-back {
         width: 32px;
@@ -1607,25 +1607,25 @@
     .judge-option {
         padding: var(--space-4);
         min-height: 52px;
-        font-size: 15px;
+        font-size: var(--font-size-lg);
     }
 
     /* 填空题 */
     .fill-input {
         padding: 12px;
         min-height: 44px;
-        font-size: 15px;
+        font-size: var(--font-size-base);
     }
 
     /* 代码编辑器 */
     .code-editor {
-        font-size: 13px;
+        font-size: var(--font-size-sm);
         padding: var(--space-3);
     }
 
     /* 简答题 */
     .essay-input {
-        font-size: 15px;
+        font-size: var(--font-size-base);
         padding: var(--space-3);
     }
 
@@ -1658,7 +1658,7 @@
         margin-bottom: var(--space-3);
     }
     .explanation-content {
-        font-size: 13px;
+        font-size: var(--font-size-sm);
     }
     .result-banner {
         padding: 10px 14px;
@@ -1719,8 +1719,9 @@
 
 @media (max-width: 480px) {
     .quiz-title {
-        max-width: 80px;
-        font-size: 13px;
+        max-width: 105px; /* 用 px 做安全兜底，但主要使用 em */
+        max-width: 10em;
+        font-size: var(--font-size-sm);
     }
 
     .judge-options {

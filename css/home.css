@@ -1058,7 +1058,7 @@
 .bank-card-footer {
     padding: var(--space-3) var(--space-5);
     border-top: 1px solid var(--border);
-    background: var(--bg);
+    background: color-mix(in srgb, var(--bg-card) 65%, var(--bg));
     display: flex;
     justify-content: flex-end;
     gap: var(--space-2);
