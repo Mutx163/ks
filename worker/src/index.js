@@ -810,7 +810,7 @@ async function handleLeaderboard(url, env, origin) {
 
     let statsData = null;
     if (url.searchParams.get('stats') === '1') {
-        const today = new Date().toISOString().slice(0, 10) + '%';
+        const todayChina = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
         
         const totalActiveResult = await env.DB.prepare(`
             SELECT COUNT(DISTINCT s.user_id) as cnt
@@ -823,8 +823,8 @@ async function handleLeaderboard(url, env, origin) {
             SELECT COUNT(DISTINCT s.user_id) as cnt
             FROM stats s
             INNER JOIN users u ON s.user_id = u.id
-            WHERE (u.banned = 0 OR u.banned IS NULL) AND s.updated_at LIKE ?
-        `).bind(today).first();
+            WHERE (u.banned = 0 OR u.banned IS NULL) AND date(s.updated_at, '+8 hours') = ?
+        `).bind(todayChina).first();
 
         const { results: recentResults } = await env.DB.prepare(`
             SELECT u.initials, MAX(s.updated_at) as last_active
@@ -1079,16 +1079,16 @@ async function handleAdminOverview(url, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    // 今日注册
-    const today = new Date().toISOString().slice(0, 10);
+    // 今日注册（北京时间）
+    const todayChina = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
     const todayReg = await env.DB.prepare(
-        "SELECT COUNT(*) as cnt FROM users WHERE created_at LIKE ?"
-    ).bind(today + '%').first();
+        "SELECT COUNT(*) as cnt FROM users WHERE date(created_at, '+8 hours') = ?"
+    ).bind(todayChina).first();
 
-    // 今日活跃（有更新记录的）
+    // 今日活跃（有更新记录的，北京时间）
     const todayActive = await env.DB.prepare(
-        "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE updated_at LIKE ?"
-    ).bind(today + '%').first();
+        "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE date(updated_at, '+8 hours') = ?"
+    ).bind(todayChina).first();
 
     // 总题库数
     const bankCount = await env.DB.prepare(
