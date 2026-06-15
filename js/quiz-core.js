@@ -152,7 +152,13 @@ const Core = {
 
     restoreSession() {
         // 1. 考试模式以外的常规模式下，先从已同步的全局 progress 中恢复答题状态
-        if (state.mode !== 'exam') {
+        if (
+            state.mode !== 'exam' &&
+            state.mode !== 'wrong' &&
+            state.mode !== 'spaced' &&
+            state.mode !== 'bookmark' &&
+            state.mode !== 'review'
+        ) {
             const progress = Storage.getBankProgress(state.bankId);
             if (progress && progress.questions) {
                 for (const [qid, cq] of Object.entries(progress.questions)) {

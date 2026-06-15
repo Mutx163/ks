@@ -649,8 +649,8 @@ const API = {
             const renderContent = () => {
                 return `
                     <div style="display: flex; gap: 0; margin-bottom: 20px; background: var(--bg-hover); border-radius: 10px; padding: 4px;">
-                        <button id="tab-register" onclick="document.getElementById('register-form').style.display='block';document.getElementById('bind-form').style.display='none';document.getElementById('tab-register').style.background='#fff';document.getElementById('tab-register').style.boxShadow='0 1px 3px rgba(0,0,0,0.1)';document.getElementById('tab-bind').style.background='transparent';document.getElementById('tab-bind').style.boxShadow='none';" style="flex:1; padding: 10px; border: none; background: #fff; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.2s;">✨ 新用户注册</button>
-                        <button id="tab-bind" onclick="document.getElementById('register-form').style.display='none';document.getElementById('bind-form').style.display='block';document.getElementById('tab-bind').style.background='#fff';document.getElementById('tab-bind').style.boxShadow='0 1px 3px rgba(0,0,0,0.1)';document.getElementById('tab-register').style.background='transparent';document.getElementById('tab-register').style.boxShadow='none';" style="flex:1; padding: 10px; border: none; background: transparent; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">🔗 绑定同步码</button>
+                        <button id="tab-register" style="flex:1; padding: 10px; border: none; background: #fff; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.2s;">✨ 新用户注册</button>
+                        <button id="tab-bind" style="flex:1; padding: 10px; border: none; background: transparent; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">🔗 绑定同步码</button>
                     </div>
                     
                     <div id="register-form">
@@ -683,7 +683,7 @@ const API = {
                 `;
             };
 
-            Utils.showModal({
+            const modal = Utils.showModal({
                 title: '🏆 欢迎使用城科卷王',
                 closable: false,
                 content: renderContent(),
@@ -750,6 +750,40 @@ const API = {
                 ],
                 size: 'sm'
             });
+
+            // 动态绑定 Tab 切换事件，避免全局 ID 冲突和行内 script 限制
+            const tabRegister = modal.querySelector('#tab-register');
+            const tabBind = modal.querySelector('#tab-bind');
+            const registerForm = modal.querySelector('#register-form');
+            const bindForm = modal.querySelector('#bind-form');
+
+            if (tabRegister && tabBind && registerForm && bindForm) {
+                tabRegister.addEventListener('click', () => {
+                    registerForm.style.display = 'block';
+                    bindForm.style.display = 'none';
+                    tabRegister.style.background = '#fff';
+                    tabRegister.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                    tabRegister.style.fontWeight = '600';
+                    tabRegister.style.color = '';
+                    tabBind.style.background = 'transparent';
+                    tabBind.style.boxShadow = 'none';
+                    tabBind.style.fontWeight = '500';
+                    tabBind.style.color = 'var(--text-secondary)';
+                });
+
+                tabBind.addEventListener('click', () => {
+                    registerForm.style.display = 'none';
+                    bindForm.style.display = 'block';
+                    tabBind.style.background = '#fff';
+                    tabBind.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                    tabBind.style.fontWeight = '600';
+                    tabBind.style.color = '';
+                    tabRegister.style.background = 'transparent';
+                    tabRegister.style.boxShadow = 'none';
+                    tabRegister.style.fontWeight = '500';
+                    tabRegister.style.color = 'var(--text-secondary)';
+                });
+            }
 
             setTimeout(() => document.getElementById('reg-initials')?.focus(), 100);
         });
@@ -818,8 +852,7 @@ const API = {
                               label: '复制同步码',
                               class: 'btn-primary',
                               onClick: () => {
-                                  navigator.clipboard?.writeText(code);
-                                  Utils.showToast('已复制', 'success');
+                                  Utils.copyToClipboard(code);
                               }
                           }
                       ]

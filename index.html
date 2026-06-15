@@ -16,6 +16,19 @@
                 if (colorScheme !== 'parchment') {
                     document.documentElement.setAttribute('data-color', colorScheme);
                 }
+
+                // 立即更新浏览器顶栏主题色，避免视觉闪白/闪黄
+                let isDark = theme === 'dark';
+                if (theme === 'auto') {
+                    isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+                const themeColor = isDark
+                    ? (colorScheme === 'white' ? '#1e293b' : '#2a251b')
+                    : (colorScheme === 'white' ? '#ffffff' : '#f9f6ec');
+                const meta = document.getElementById('meta-theme-color');
+                if (meta) {
+                    meta.setAttribute('content', themeColor);
+                }
             } catch (e) {}
         </script>
         <title>城科卷王</title>

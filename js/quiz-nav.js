@@ -268,6 +268,14 @@ const Nav = {
         document.getElementById('finish-modal')?.remove();
         Storage.clearSession(state.bankId, state.mode);
 
+        // 如果是常规练习模式，重置该题库的全局进度，并同步云端，防范刷新复活
+        if (state.mode === 'all' || state.mode === 'random' || state.mode === 'shuffle_options') {
+            Storage.resetBankProgress(state.bankId);
+            API.pushProgress(Storage.getProgress(), true).catch((e) => {
+                console.warn('[Quiz] 重置进度同步失败:', e);
+            });
+        }
+
         state.currentIndex = 0;
         state.answers = {};
         state.submitted = {};
@@ -363,9 +371,9 @@ const Nav = {
 
         if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) return Promise.resolve(null);
 
-        state._lastPushAnswered = submittedIds.length;
-        state._lastPushCorrect = correctCount;
-        state._lastPushDuration = duration;
+        const nextPushAnswered = submittedIds.length;
+        const nextPushCorrect = correctCount;
+        const nextPushDuration = duration;
 
         return API.pushStats({
             bankId: state.bankId,
@@ -373,6 +381,19 @@ const Nav = {
             answered: dAnswered,
             correct: dCorrect,
             duration: dDuration
+        }).then((result) => {
+            if (result) {
+                state._lastPushAnswered = nextPushAnswered;
+                state._lastPushCorrect = nextPushCorrect;
+                state._lastPushDuration = nextPushDuration;
+            } else {
+                state._statsDirty = true;
+            }
+            return result;
+        }).catch((err) => {
+            console.warn('[QuizNav] pushStats 错误:', err);
+            state._statsDirty = true;
+            return null;
         });
     },
 

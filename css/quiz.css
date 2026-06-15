@@ -26,6 +26,60 @@
     flex: 1;
 }
 
+/* quiz-header 内部按钮的基础样式，使其与 home 顶栏按钮一致，并完美适配暗色模式 */
+.quiz-header .btn-header,
+.quiz-header .btn-header-icon,
+.quiz-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    transition:
+        transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.25s ease,
+        background-color 0.25s ease,
+        border-color 0.25s ease,
+        color 0.25s ease;
+}
+
+.quiz-header .btn-header-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+}
+
+.quiz-header .btn-header .icon,
+.quiz-header .btn-header-icon .icon,
+.quiz-nav-btn .icon {
+    margin-right: 0 !important;
+}
+
+.quiz-header .btn-header:hover,
+.quiz-header .btn-header-icon:hover,
+.quiz-nav-btn:hover {
+    color: var(--text);
+    border-color: var(--primary);
+    background: var(--bg-hover);
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+.quiz-header .btn-header:active,
+.quiz-header .btn-header-icon:active,
+.quiz-nav-btn:active {
+    transform: translateY(0.5px);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
 #btn-finish {
     margin-left: auto;
 }
@@ -57,9 +111,10 @@
     white-space: nowrap;
 }
 
+#quiz-progress-text,
 .quiz-progress-text {
     font-size: var(--font-size-sm);
-    color: var(--text-secondary);
+    color: inherit;
     white-space: nowrap;
 }
 
