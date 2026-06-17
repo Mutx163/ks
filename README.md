@@ -1,103 +1,186 @@
 # 城科卷王
 
-城科卷王是一个面向题库刷题、学习进度追踪和排行榜同步的多页面 Web 应用。项目部署在 Cloudflare Pages，并通过 Cloudflare Worker + D1 提供题库管理、云同步、排行榜和公告接口。
+城科卷王是一个面向题库刷题、学习进度追踪和排行榜同步的多页面 Web 应用。
 
-## 在线部署
+## 部署架构
 
-- Cloudflare Pages 项目：https://dash.cloudflare.com/29384b90082af8364a4570c7da0b0549/pages/view/ks
-- Pages 生产域名：https://ks-cjx.pages.dev
-- 自定义域名：https://ks.mutx.ccwu.cc
-- API 服务：https://ks-api.mutx.ccwu.cc
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      宝塔面板服务器                          │
+│                   Ubuntu / 8.135.36.100                     │
+│                                                             │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
+│  │   Nginx      │───▶│  Node.js     │───▶│   MySQL 5.7  │  │
+│  │  (反向代理)   │    │  (Express)   │    │   (ks库)     │  │
+│  │  :80/:443    │    │  :3001       │    │  :3306       │  │
+│  └──────────────┘    └──────────────┘    └──────────────┘  │
+│          │                                       │         │
+│          ▼                                       │         │
+│  ┌──────────────┐                               │         │
+│  │  静态文件     │◀────── 前端 HTML/CSS/JS ──────┘         │
+│  │ /www/wwwroot/ │                                         │
+│  │ 127.0.0.1/   │                                         │
+│  └──────────────┘                                          │
+└─────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│     用户浏览器       │
+│  a.mutx.ccwu.cc     │
+└─────────────────────┘
+```
 
-> 注意：项目使用 Cloudflare Pages 自动构建，不需要提交 `dist/`。将代码推送到 GitHub `main` 分支后，Cloudflare Pages 会自动执行 `npm run build` 并部署。
+## 在线地址
+
+| 服务 | 地址 |
+|------|------|
+| 网站首页 | https://a.mutx.ccwu.cc |
+| API 服务 | https://a.mutx.ccwu.cc/api/* |
+| GitHub 仓库 | https://github.com/Mutx163/ks |
+| Cloudflare Pages（备用） | https://ks-cjx.pages.dev |
+
+## 服务器信息
+
+| 项目 | 详情 |
+|------|------|
+| 服务器 | 宝塔面板 / Ubuntu |
+| IP | 8.135.36.100 |
+| Node.js | v26.3.0 |
+| MySQL | 5.7.44 |
+| Nginx | 宝塔内置 |
+| PM2 进程名 | ks-api |
+| API 端口 | 3001 |
+| 数据库名 | ks |
+| 数据库用户 | ks_user |
 
 ## 技术栈
 
-- 前端：原生 HTML / CSS / JavaScript（ES Modules）
-- 构建：Vite 多页面构建
-- 代码高亮：Prism.js
-- 数学公式：KaTeX
-- 图标：Lucide
-- 前端存储：localStorage
-- 后端：Cloudflare Worker
-- 数据库：Cloudflare D1
-- 部署：Cloudflare Pages + GitHub 自动部署
+- **前端**：原生 HTML / CSS / JavaScript（ES Modules）
+- **构建**：Vite 多页面构建
+- **代码高亮**：Prism.js
+- **数学公式**：KaTeX
+- **图标**：Lucide
+- **后端**：Express.js (Node.js)
+- **数据库**：MySQL 5.7
+- **反向代理**：Nginx
+- **进程管理**：PM2
+- **部署**：宝塔面板
 
-## 页面入口
+## 项目结构
 
-| 页面 | 说明 |
-| --- | --- |
-| `index.html` | 首页，展示题库、统计、错题本、搜索和设置入口 |
-| `quiz.html` | 刷题页，支持顺序、随机、错题、背题、复习、收藏和考试 |
-| `analysis.html` | 学习分析页 |
-| `trend.html` | 学习趋势页 |
-| `leaderboard.html` | 排行榜页 |
-| `admin.html` | 管理后台 |
-
-Vite 会自动扫描根目录下所有 `.html` 文件作为构建入口，确保 Cloudflare Pages 部署时这些页面都会输出。
+```
+ks/
+├── index.html              # 首页
+├── quiz.html               # 刷题页
+├── analysis.html           # 学习分析页
+├── trend.html              # 学习趋势页
+├── leaderboard.html        # 排行榜页
+├── admin.html              # 管理后台
+├── css/                    # 样式文件
+├── js/                     # 前端逻辑
+│   ├── api.js              # API 调用（自动切换服务器）
+│   ├── config.js           # 前端配置
+│   └── ...
+├── banks/                  # 题库备份（不参与运行时）
+├── worker/                 # Cloudflare Worker（备用）
+│   └── src/index.js
+├── server/                 # 宝塔服务器后端
+│   ├── index.js            # Express API 入口
+│   ├── db.js               # MySQL 连接池
+│   ├── schema.mysql.sql    # 数据库表结构
+│   ├── import-data.js      # 数据导入工具
+│   └── README.md           # 部署文档
+└── vite.config.js
+```
 
 ## 本地开发
 
 ```bash
+# 安装依赖
 npm install
+
+# 启动开发服务器
 npm run dev
-```
 
-开发服务器默认：
-
-```text
-http://localhost:3000
-```
-
-## 构建验证
-
-```bash
+# 构建
 npm run build
+
+# 预览构建产物
 npm run preview
 ```
 
-构建输出目录为 `dist/`，该目录由 Cloudflare Pages 自动生成，已在 `.gitignore` 中忽略。
+开发服务器默认：`http://localhost:3000`
 
-## Cloudflare Pages 配置
+## API 接口
 
-Cloudflare Pages 项目应保持：
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/health` | GET | 健康检查 |
+| `/api/register` | POST | 注册/获取同步码 |
+| `/api/bind` | POST | 绑定设备 |
+| `/api/user/:did` | GET | 获取用户信息 |
+| `/api/sync` | POST | 同步数据 |
+| `/api/settings` | POST | 保存设置 |
+| `/api/progress` | POST | 保存进度 |
+| `/api/cloud-data/:did` | GET | 获取云端数据 |
+| `/api/leaderboard` | GET | 排行榜 |
+| `/api/banks` | GET | 题库列表 |
+| `/api/bank/:id` | GET | 题库详情 |
+| `/api/announce` | GET/POST | 公告 |
+| `/api/ai/explain` | POST | AI 解题（SSE） |
+| `/api/admin/*` | * | 管理接口 |
 
-```text
-Build command: npm run build
-Build output directory: dist
-Root directory: /
+## 前端 API 切换
+
+前端 API 地址优先级：
+
+```javascript
+window.__API_BASE__ > localStorage.getItem('ks_api_base') > 'https://a.mutx.ccwu.cc'
 ```
 
-部署流程：
-
-1. 本地修改代码
-2. 本地执行 `npm run build` 验证
-3. 提交并推送到 GitHub `main`
-4. Cloudflare Pages 自动拉取并部署
-
-不要手动提交 `dist/`，也不要在未确认前主动推送部署。
-
-## 题库来源
-
-生产环境题库只从 Worker API 加载：
-
-```text
-GET https://ks-api.mutx.ccwu.cc/api/banks
-GET https://ks-api.mutx.ccwu.cc/api/bank/:id
+切换回 Cloudflare（备用）：
+```javascript
+localStorage.setItem('ks_api_base', 'https://ks-api.mutx.ccwu.cc');
+location.reload();
 ```
 
-`banks/*.json` 仅作为人工备份文件，不参与前端运行时加载，也不会作为 API 失败时的兜底来源。构建产物中也不复制 `banks/` 目录。
+恢复宝塔服务器：
+```javascript
+localStorage.removeItem('ks_api_base');
+location.reload();
+```
 
-如果要让题库在生产环境出现，必须通过 `admin.html` 管理后台导入并启用云端题库。
+## 服务器运维
 
-备份文件清单可记录在 `js/config.js` 的 `backupBankFiles`，但这个清单只作人工备份说明，前端不会导入或读取它。
+```bash
+# SSH 登录
+ssh root@8.135.36.100
+
+# 查看 API 日志
+pm2 logs ks-api
+
+# 重启 API
+pm2 restart ks-api
+
+# 查看进程状态
+pm2 list
+
+# 测试 API
+curl https://a.mutx.ccwu.cc/api/health
+
+# 查看 Nginx 配置
+cat /www/server/panel/vhost/nginx/127.0.0.1.conf
+
+# 查看 MySQL 数据
+mysql -u ks_user -p'Ks@2024!Secure' ks -e "SELECT COUNT(*) FROM users;"
+```
 
 ## 用户数据存储
 
 浏览器本地数据保存在 localStorage：
 
 | Key | 说明 |
-| --- | --- |
+|-----|------|
 | `quiz_progress` | 答题进度、逐题状态、间隔复习数据、累计时长 |
 | `quiz_settings` | 用户设置 |
 | `quiz_history` | 答题历史 |
@@ -107,66 +190,42 @@ GET https://ks-api.mutx.ccwu.cc/api/bank/:id
 | `ks_sync_code` | 云同步码 |
 | `ks_device_id` | 当前设备 ID |
 
-## Worker / D1
-
-后端代码位于：
-
-```text
-worker/src/index.js
-worker/schema.sql
-worker/wrangler.toml
-```
-
-主要接口：
-
-```text
-POST /api/register
-POST /api/bind
-GET  /api/user/:did
-POST /api/sync
-POST /api/settings
-POST /api/progress
-GET  /api/cloud-data/:did
-GET  /api/leaderboard
-GET  /api/banks
-GET  /api/bank/:id
-GET/POST /api/announce
-/api/admin/*
-```
-
-D1 绑定见：
-
-```text
-worker/wrangler.toml
-```
-
 ## 常用命令
 
 ```bash
 npm run dev       # 本地开发
 npm run build     # 生产构建
 npm run preview   # 预览构建产物
-npm run lint      # ESLint 检查 js/
-npm run lint:fix  # 自动修复部分 lint 问题
-npm run format    # 格式化 JS/CSS/HTML
+npm run lint      # ESLint 检查
+npm run format    # 格式化代码
 ```
 
 ## 常见问题
 
-### 题库加载失败怎么办？
+### API 连不上？
 
-1. 先确认 Worker API 是否正常：`https://ks-api.mutx.ccwu.cc/api/banks`
-2. 如果 API 不可用，修复 Worker/D1 或检查 Cloudflare 服务状态；前端不会读取本地备份题库
-3. 检查云端题库数据是否存在、启用且 JSON 格式合法
+1. 检查 PM2 进程：`pm2 list`
+2. 查看日志：`pm2 logs ks-api`
+3. 测试本地：`curl http://127.0.0.1:3001/api/health`
+4. 测试外网：`curl https://a.mutx.ccwu.cc/api/health`
 
-### 为什么不提交 dist？
+### 数据库连不上？
 
-Cloudflare Pages 会在部署时执行 `npm run build` 自动生成 `dist/`。提交 `dist/` 会造成仓库膨胀、冲突和部署结果不一致。
+1. 检查 MySQL 状态：`systemctl status mysql`
+2. 测试连接：`mysql -u ks_user -p'Ks@2024!Secure' ks`
+3. 查看进程：`pm2 logs ks-api | grep -i error`
+
+### 如何回退到 Cloudflare？
+
+```javascript
+// 浏览器控制台
+localStorage.setItem('ks_api_base', 'https://ks-api.mutx.ccwu.cc');
+location.reload();
+```
 
 ### 如何清空本地数据？
 
-浏览器控制台执行：
-
-```js
+```javascript
+// 浏览器控制台
 Storage.clearAll();
 ```

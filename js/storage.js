@@ -7,17 +7,21 @@
 import Utils from './utils.js';
 
 const Storage = {
-    // 当前加载的题库数据（内存中，不持久化）
+    // 题库数据持久化前缀
+    BANK_DATA_PREFIX: 'ks_bank_data_',
+
+    // 当前加载的题库数据（内存 Map 配合 LocalStorage 缓存）
     _bankData: new Map(),
 
-    // 存储键名（只保留用户数据）
+    // 存储键名
     KEYS: {
         PROGRESS: 'quiz_progress',
         SETTINGS: 'quiz_settings',
         HISTORY: 'quiz_history',
         BOOKMARKS: 'quiz_bookmarks',
         SESSION: 'quiz_session',
-        RECENT_BANKS: 'quiz_recent_banks'
+        RECENT_BANKS: 'quiz_recent_banks',
+        CACHED_BANK_LIST: 'ks_cached_bank_list'
     },
 
     /**
@@ -130,12 +134,28 @@ const Storage = {
         }
     },
 
-    // ==================== 题库管理（内存中，不持久化）====================
+    // ==================== 题库管理（内存 Map 配合 LocalStorage 缓存）====================
 
     /**
-     * 获取所有题库（从内存）
+     * 获取所有题库
      */
     getBanks() {
+        if (this._bankData.size === 0) {
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith(this.BANK_DATA_PREFIX)) {
+                        const raw = localStorage.getItem(key);
+                        if (raw) {
+                            const bank = JSON.parse(raw);
+                            this._bankData.set(bank.id, bank);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[Storage] 恢复缓存题库列表失败:', e.message);
+            }
+        }
         return Array.from(this._bankData.values());
     },
 
@@ -143,7 +163,20 @@ const Storage = {
      * 获取单个题库
      */
     getBank(bankId) {
-        return this._bankData.get(bankId) || null;
+        if (this._bankData.has(bankId)) {
+            return this._bankData.get(bankId);
+        }
+        try {
+            const raw = localStorage.getItem(this.BANK_DATA_PREFIX + bankId);
+            if (raw) {
+                const bank = JSON.parse(raw);
+                this._bankData.set(bankId, bank);
+                return bank;
+            }
+        } catch (e) {
+            console.warn('[Storage] 读取缓存题库失败:', e.message);
+        }
+        return null;
     },
 
     /**
@@ -152,6 +185,11 @@ const Storage = {
     setBank(bank) {
         if (!bank || !bank.id) return false;
         this._bankData.set(bank.id, bank);
+        try {
+            localStorage.setItem(this.BANK_DATA_PREFIX + bank.id, JSON.stringify(bank));
+        } catch (e) {
+            console.warn('[Storage] 缓存题库失败:', e.message);
+        }
         return true;
     },
 
@@ -160,6 +198,18 @@ const Storage = {
      */
     clearBanks() {
         this._bankData.clear();
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(this.BANK_DATA_PREFIX)) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+        } catch (e) {
+            console.warn('[Storage] 清除缓存题库失败:', e.message);
+        }
     },
 
     // ==================== 进度管理 ====================
@@ -559,7 +609,7 @@ const Storage = {
      */
     clearAll() {
         Object.values(this.KEYS).forEach((key) => this.remove(key));
-        this._bankData.clear();
+        this.clearBanks();
         this.init();
     },
 

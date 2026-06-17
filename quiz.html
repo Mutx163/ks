@@ -34,53 +34,77 @@
         <title>刷题 - 城科卷王</title>
 
         <!-- DNS 预解析 -->
-        <link rel="dns-prefetch" href="https://ks-api.mutx.ccwu.cc" />
-        <link rel="preconnect" href="https://ks-api.mutx.ccwu.cc" crossorigin />
+        <link rel="dns-prefetch" href="https://a.mutx.ccwu.cc" />
+        <link rel="preconnect" href="https://a.mutx.ccwu.cc" crossorigin />
         <link rel="dns-prefetch" href="https://cdn.bootcdn.net" />
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
 
         <!-- KaTeX -->
         <link
+            id="katex-css"
             rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+            media="print"
+            onload="this.media='all'"
+            onerror="this.onerror=null;this.href='https://cdn.bootcdn.net/ajax/libs/katex/0.16.9/katex.min.css'"
         />
-        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.bootcdn.net/ajax/libs/katex/0.16.9/katex.min.js'"
+        ></script>
 
         <!-- Prism.js -->
         <link
             rel="stylesheet"
             href="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+            media="print"
+            onload="this.media='all'"
+            onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css'"
         />
-        <script defer src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/prism.min.js"></script>
+        <script
+            defer
+            src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/prism.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js'"
+        ></script>
         <script
             defer
             src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-c.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js'"
         ></script>
         <script
             defer
             src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js'"
         ></script>
         <script
             defer
             src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-java.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js'"
         ></script>
         <script
             defer
             src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-python.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js'"
         ></script>
         <script
             defer
             src="https://cdn.bootcdn.net/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js'"
         ></script>
 
         <!-- Marked.js（Markdown 解析，AI 解读用） -->
-        <script src="https://cdn.bootcdn.net/ajax/libs/marked/15.0.7/marked.min.js"></script>
+        <script
+            src="https://cdn.bootcdn.net/ajax/libs/marked/15.0.7/marked.min.js"
+            onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.min.js'"
+        ></script>
 
         <!-- Lucide 图标（异步加载，不阻塞页面） -->
         <script
             src="https://cdn.jsdelivr.net/npm/lucide@0.344.0/dist/umd/lucide.min.js"
             async
             defer
+            onerror="this.onerror=null;this.src='https://cdn.bootcdn.net/ajax/libs/lucide/0.344.0/lucide.min.js'"
         ></script>
 
         <link rel="stylesheet" href="css/base.css" />

@@ -15,6 +15,11 @@
  */
 
 const LogCollector = {
+    /** 获取 API 基础地址 */
+    _getBaseUrl() {
+        return window.__API_BASE__ || localStorage.getItem('ks_api_base') || 'https://a.mutx.ccwu.cc';
+    },
+
     /** 配置 */
     config: {
         enabled: true, // 总开关（从 localStorage 读取）
@@ -240,8 +245,9 @@ const LogCollector = {
         const sendRemaining = () => {
             if (self._buffer.length > 0 && self.config.enabled) {
                 const logs = self._buffer.splice(0);
+                const baseUrl = self._getBaseUrl ? self._getBaseUrl() : (window.__API_BASE__ || localStorage.getItem('ks_api_base') || 'https://ks-api.mutx.ccwu.cc');
                 navigator.sendBeacon(
-                    'https://ks-api.mutx.ccwu.cc/api/logs',
+                    `${baseUrl}/api/logs`,
                     JSON.stringify({ logs, deviceId: self._deviceId })
                 );
             }
@@ -372,7 +378,7 @@ const LogCollector = {
 
         try {
             const payload = JSON.stringify({ logs: batch, deviceId: this._deviceId });
-            await fetch('https://ks-api.mutx.ccwu.cc/api/logs', {
+            await fetch(`${this._getBaseUrl()}/api/logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: payload,
@@ -414,7 +420,7 @@ const LogCollector = {
         };
 
         try {
-            await fetch('https://ks-api.mutx.ccwu.cc/api/logs', {
+            await fetch(`${this._getBaseUrl()}/api/logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ logs: [entry], deviceId: this._deviceId })
