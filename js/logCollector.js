@@ -245,7 +245,7 @@ const LogCollector = {
         const sendRemaining = () => {
             if (self._buffer.length > 0 && self.config.enabled) {
                 const logs = self._buffer.splice(0);
-                const baseUrl = self._getBaseUrl ? self._getBaseUrl() : (window.__API_BASE__ || localStorage.getItem('ks_api_base') || 'https://ks-api.mutx.ccwu.cc');
+                const baseUrl = self._getBaseUrl ? self._getBaseUrl() : (window.__API_BASE__ || localStorage.getItem('ks_api_base') || 'https://a.mutx.ccwu.cc');
                 navigator.sendBeacon(
                     `${baseUrl}/api/logs`,
                     JSON.stringify({ logs, deviceId: self._deviceId })
