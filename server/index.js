@@ -554,7 +554,7 @@ app.get('/api/leaderboard', async (req, res) => {
                 SELECT COUNT(DISTINCT s.user_id) as cnt
                 FROM stats s
                 INNER JOIN users u ON s.user_id = u.id
-                WHERE (u.banned = 0 OR u.banned IS NULL) AND DATE(CONVERT_TZ(s.updated_at, '+00:00', '+08:00')) = ?
+                WHERE (u.banned = 0 OR u.banned IS NULL) AND DATE(s.updated_at, '+8 hours') = ?
             `, [todayChina]);
 
             const [recentResults] = await pool.execute(`
@@ -1145,12 +1145,12 @@ app.get('/api/admin/overview', async (req, res) => {
         const todayChina = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
 
         const [todayReg] = await pool.execute(
-            "SELECT COUNT(*) as cnt FROM users WHERE DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?",
+            "SELECT COUNT(*) as cnt FROM users WHERE DATE(created_at, '+8 hours') = ?",
             [todayChina]
         );
 
         const [todayActive] = await pool.execute(
-            "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE DATE(CONVERT_TZ(updated_at, '+00:00', '+08:00')) = ?",
+            "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE DATE(updated_at, '+8 hours') = ?",
             [todayChina]
         );
 
