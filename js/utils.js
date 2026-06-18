@@ -810,11 +810,20 @@ const Router = {
         window.addEventListener('hashchange', () => this.handleRouting());
         window.addEventListener('load', () => this.handleRouting());
 
+        // 记录上次同步时间，避免重复同步
+        let lastSyncTime = 0;
+        const SYNC_COOLDOWN = 30000; // 30秒冷却时间
+
         // 设备锁屏/切后台唤醒：静默云同步并刷新数据
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
+                const now = Date.now();
+                // 如果30秒内刚同步过，跳过
+                if (now - lastSyncTime < SYNC_COOLDOWN) return;
+                
                 // 静默云同步（不显示加载状态）
                 if (typeof API !== 'undefined' && API.autoSync) {
+                    lastSyncTime = now;
                     API.autoSync().then(() => {
                         // 同步完成后静默刷新数据和视图
                         if (typeof App !== 'undefined') {
