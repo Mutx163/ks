@@ -14,14 +14,12 @@ const BankLoader = {
      */
     async loadBankList() {
         try {
-            // 使用 cacheBust: false 开启 ETag 条件请求
-            const data = await API.requestWithRetry('/api/banks', { cacheBust: false }, 2, 1000);
+            // 使用 cacheBust: true 绕过 CDN 缓存
+            const data = await API.requestWithRetry('/api/banks', { cacheBust: true }, 2, 1000);
 
             if (data?.ok && data.banks) {
                 const allBanks = data.banks;
-                const enabledBanks = allBanks.filter((b) => b.enabled !== false);
-                // 缓存最新启用的题库列表
-                Storage.set(Storage.KEYS.CACHED_BANK_LIST, enabledBanks);
+                const enabledBanks = allBanks.filter((b) => b.enabled); // 0/1 或 true/false 都兼容
                 return enabledBanks;
             }
 
@@ -30,13 +28,7 @@ const BankLoader = {
             console.error('[BankLoader] 获取题库列表失败:', e.message);
         }
 
-        // 离线/故障降级：读取本地缓存列表
-        console.log('[BankLoader] 尝试从本地缓存恢复题库列表...');
-        const cached = Storage.get(Storage.KEYS.CACHED_BANK_LIST);
-        if (Array.isArray(cached) && cached.length > 0) {
-            console.log(`[BankLoader] ✅ 已从本地缓存恢复 ${cached.length} 个题库列表`);
-            return cached;
-        }
+        // 不使用本地缓存，直接返回空
         return [];
     },
 

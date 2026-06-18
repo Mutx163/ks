@@ -618,16 +618,21 @@ app.get('/api/ai/config', async (req, res) => {
 // ========== 获取题库列表（前端） ==========
 app.get('/api/banks', async (req, res) => {
     try {
+        const showAll = req.query.all === 'true'; // 管理后台传 all=true 显示所有题库
+        
         // 使用缓存（30秒）
-        const cached = cache.get('banks_list');
+        const cacheKey = showAll ? 'banks_list_all' : 'banks_list';
+        const cached = cache.get(cacheKey);
         if (cached) {
             res.set('X-Cache', 'HIT');
             return res.json(cached);
         }
 
-        const [rows] = await pool.execute(
-            'SELECT id, name, description, category, version, question_count, allowed_modes, enabled, updated_at FROM banks ORDER BY name'
-        );
+        const query = showAll 
+            ? 'SELECT id, name, description, category, version, question_count, allowed_modes, enabled, updated_at FROM banks ORDER BY name'
+            : 'SELECT id, name, description, category, version, question_count, allowed_modes, enabled, updated_at FROM banks WHERE enabled = 1 ORDER BY name';
+        
+        const [rows] = await pool.execute(query);
 
         const banks = rows.map(b => ({
             ...b,
@@ -636,7 +641,7 @@ app.get('/api/banks', async (req, res) => {
         }));
 
         const result = { ok: true, banks };
-        cache.set('banks_list', result, 30000); // 缓存30秒
+        cache.set(cacheKey, result, 30000); // 缓存30秒
         res.set('X-Cache', 'MISS');
         res.json(result);
     } catch (e) {
@@ -1512,6 +1517,7 @@ app.put('/api/admin/bank/:id/toggle', async (req, res) => {
         await pool.execute('UPDATE banks SET enabled = ?, updated_at = ? WHERE id = ?', [enabled ? 1 : 0, now, bankId]);
         // 清除题库缓存
         cache.invalidate('banks_list');
+        cache.invalidate('banks_list_all');
         cache.invalidate('bank_' + bankId);
 
         await pool.execute(
@@ -1554,6 +1560,7 @@ app.delete('/api/admin/bank/:id', async (req, res) => {
 
         // 清除题库缓存
         cache.invalidate('banks_list');
+        cache.invalidate('banks_list_all');
         cache.invalidate('bank_' + bankId);
 
         await writeAdminOperationLog({ action: '删除题库', targetType: 'bank', targetId: bankId, detail: rows[0].name, operator: admin.id });

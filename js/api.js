@@ -15,7 +15,8 @@ const API = {
     //   1. window.__API_BASE__ (可在 HTML 中注入)
     //   2. localStorage ks_api_base (用户/管理员设置)
     //   3. 默认宝塔服务器
-    BASE_URL: window.__API_BASE__ || localStorage.getItem('ks_api_base') || 'https://a.mutx.ccwu.cc',
+    // 如果通过 IP 访问，自动使用当前 origin；否则使用配置的域名
+    BASE_URL: window.__API_BASE__ || localStorage.getItem('ks_api_base') || (window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) ? window.location.origin : 'https://a.mutx.ccwu.cc'),
 
     // localStorage 键名
     KEYS: {

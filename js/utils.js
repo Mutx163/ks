@@ -814,21 +814,8 @@ const Router = {
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 console.log('[Router] 唤醒重连，重新静默云同步...');
-                if (window.API && typeof window.API.autoSync === 'function') {
-                    window.API.autoSync()
-                        .then(() => {
-                            if (window.App && typeof window.App.loadData === 'function') {
-                                window.App.loadData();
-                            }
-                            this.handleRouting();
-                        })
-                        .catch((e) => {
-                            console.warn('[Router] 自动同步数据失败:', e.message);
-                            this.handleRouting();
-                        });
-                } else {
-                    this.handleRouting();
-                }
+                // 直接刷新页面，确保数据最新
+                location.reload();
             }
         });
     },
