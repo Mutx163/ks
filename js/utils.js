@@ -810,12 +810,19 @@ const Router = {
         window.addEventListener('hashchange', () => this.handleRouting());
         window.addEventListener('load', () => this.handleRouting());
 
-        // 设备锁屏/切后台唤醒：自动重新云同步，并重绘当前活动视图
+        // 设备锁屏/切后台唤醒：静默云同步并刷新数据
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                console.log('[Router] 唤醒重连，重新静默云同步...');
-                // 直接刷新页面，确保数据最新
-                location.reload();
+                // 静默云同步（不显示加载状态）
+                if (typeof API !== 'undefined' && API.autoSync) {
+                    API.autoSync().then(() => {
+                        // 同步完成后静默刷新数据和视图
+                        if (typeof App !== 'undefined') {
+                            if (App.loadData) App.loadData();
+                            if (App.render) App.render();
+                        }
+                    }).catch(() => {});
+                }
             }
         });
     },

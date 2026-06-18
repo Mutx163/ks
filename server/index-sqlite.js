@@ -9,7 +9,7 @@ const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const crypto = require('crypto');
-const { pool, testConnection, config } = require('./db');
+const { pool, testConnection, config } = require('./db-sqlite');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -126,22 +126,16 @@ async function requireAdmin(deviceId, password, req) {
     if (!password && req) {
         password = req.headers['x-admin-password'] || req.query?.password || '';
     }
-    if (!password) return null;
+    if (!deviceId || !password) return null;
     if (sha256(password) !== ADMIN_PASSWORD_HASH) return null;
-    
-    // 密码正确，尝试解析用户
-    const userId = deviceId ? await resolveUser(deviceId) : null;
-    if (userId) {
-        const [rows] = await pool.execute(
-            'SELECT id, initials, is_admin FROM users WHERE id = ?',
-            [userId]
-        );
-        const user = rows[0];
-        if (user?.is_admin) return user;
-    }
-    
-    // 设备未绑定但密码正确，返回管理员身份
-    return { id: 'admin', initials: 'Admin', is_admin: 1 };
+    const userId = await resolveUser(deviceId);
+    if (!userId) return null;
+    const [rows] = await pool.execute(
+        'SELECT id, initials, is_admin FROM users WHERE id = ?',
+        [userId]
+    );
+    const user = rows[0];
+    return user?.is_admin ? user : null;
 }
 
 // 写入管理员操作日志

@@ -1,5 +1,5 @@
 /**
- * 城科卷王 API 服务端（宝塔 MySQL 版）
+ * 城科卷王 API 服务端（SQLite 版）
  * 
  * 从 Cloudflare Worker 移植，保持相同的 API 接口
  * 前端只需修改 BASE_URL 即可切换
@@ -9,7 +9,7 @@ const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
 const crypto = require('crypto');
-const { pool, testConnection, config } = require('./db');
+const { pool, testConnection, config } = require('./db-sqlite');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -126,22 +126,16 @@ async function requireAdmin(deviceId, password, req) {
     if (!password && req) {
         password = req.headers['x-admin-password'] || req.query?.password || '';
     }
-    if (!password) return null;
+    if (!deviceId || !password) return null;
     if (sha256(password) !== ADMIN_PASSWORD_HASH) return null;
-    
-    // 密码正确，尝试解析用户
-    const userId = deviceId ? await resolveUser(deviceId) : null;
-    if (userId) {
-        const [rows] = await pool.execute(
-            'SELECT id, initials, is_admin FROM users WHERE id = ?',
-            [userId]
-        );
-        const user = rows[0];
-        if (user?.is_admin) return user;
-    }
-    
-    // 设备未绑定但密码正确，返回管理员身份
-    return { id: 'admin', initials: 'Admin', is_admin: 1 };
+    const userId = await resolveUser(deviceId);
+    if (!userId) return null;
+    const [rows] = await pool.execute(
+        'SELECT id, initials, is_admin FROM users WHERE id = ?',
+        [userId]
+    );
+    const user = rows[0];
+    return user?.is_admin ? user : null;
 }
 
 // 写入管理员操作日志
@@ -256,7 +250,7 @@ app.post('/api/bind', async (req, res) => {
 
         const now = new Date().toISOString();
         await pool.execute(
-            'INSERT INTO devices (device_id, user_id, bound_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), bound_at = VALUES(bound_at)',
+            'INSERT OR REPLACE INTO devices (device_id, user_id, bound_at) VALUES (?, ?, ?)',
             [deviceId, code, now]
         );
 
@@ -267,11 +261,11 @@ app.post('/api/bind', async (req, res) => {
                 await pool.execute(`
                     INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                        answered = answered + VALUES(answered),
-                        correct = correct + VALUES(correct),
-                        duration = duration + VALUES(duration),
-                        updated_at = VALUES(updated_at)
+                    ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                        answered = answered + EXCLUDED.answered,
+                        correct = correct + EXCLUDED.correct,
+                        duration = duration + EXCLUDED.duration,
+                        updated_at = EXCLUDED.updated_at
                 `, [code, stat.bankId, stat.bankName || '', stat.answered || 0, stat.correct || 0, stat.duration || 0, now]);
             }
         }
@@ -328,12 +322,12 @@ app.post('/api/sync', async (req, res) => {
         await pool.execute(`
             INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                answered = answered + VALUES(answered),
-                correct = correct + VALUES(correct),
-                duration = duration + VALUES(duration),
-                bank_name = VALUES(bank_name),
-                updated_at = VALUES(updated_at)
+            ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                answered = answered + EXCLUDED.answered,
+                correct = correct + EXCLUDED.correct,
+                duration = duration + EXCLUDED.duration,
+                bank_name = EXCLUDED.bank_name,
+                updated_at = EXCLUDED.updated_at
         `, [userId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now]);
 
         res.json({ ok: true });
@@ -554,7 +548,7 @@ app.get('/api/leaderboard', async (req, res) => {
                 SELECT COUNT(DISTINCT s.user_id) as cnt
                 FROM stats s
                 INNER JOIN users u ON s.user_id = u.id
-                WHERE (u.banned = 0 OR u.banned IS NULL) AND DATE(CONVERT_TZ(s.updated_at, '+00:00', '+08:00')) = ?
+                WHERE (u.banned = 0 OR u.banned IS NULL) AND DATE(s.updated_at, '+8 hours') = ?
             `, [todayChina]);
 
             const [recentResults] = await pool.execute(`
@@ -1145,12 +1139,12 @@ app.get('/api/admin/overview', async (req, res) => {
         const todayChina = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
 
         const [todayReg] = await pool.execute(
-            "SELECT COUNT(*) as cnt FROM users WHERE DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?",
+            "SELECT COUNT(*) as cnt FROM users WHERE DATE(created_at, '+8 hours') = ?",
             [todayChina]
         );
 
         const [todayActive] = await pool.execute(
-            "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE DATE(CONVERT_TZ(updated_at, '+00:00', '+08:00')) = ?",
+            "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE DATE(updated_at, '+8 hours') = ?",
             [todayChina]
         );
 
@@ -1160,7 +1154,7 @@ app.get('/api/admin/overview', async (req, res) => {
         const [weekTrend] = await pool.execute(`
             SELECT SUBSTR(created_at, 1, 10) as day, COUNT(*) as cnt
             FROM users
-            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            WHERE created_at >= DATE('now', '-7 days')
             GROUP BY day
             ORDER BY day
         `);
@@ -1315,7 +1309,7 @@ app.put('/api/admin/ai-config', async (req, res) => {
         merged.updatedAt = new Date().toISOString();
 
         await pool.execute(
-            "INSERT INTO app_config (`key`, `value`, `updated_at`) VALUES ('ai_config', ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = VALUES(`updated_at`)",
+            "INSERT OR REPLACE INTO app_config (`key`, `value`, `updated_at`) VALUES ('ai_config', ?, ?)",
             [JSON.stringify(merged), merged.updatedAt]
         );
 
@@ -1342,7 +1336,6 @@ app.post('/api/admin/import-bank', async (req, res) => {
         await pool.execute(`
             INSERT INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
                 name = VALUES(name), description = VALUES(description), category = VALUES(category),
                 version = VALUES(version), question_count = VALUES(question_count),
                 questions_json = VALUES(questions_json), allowed_modes = VALUES(allowed_modes),
@@ -1380,7 +1373,6 @@ app.post('/api/admin/upload-bank', async (req, res) => {
         await pool.execute(`
             INSERT INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
                 name = VALUES(name), description = VALUES(description), category = VALUES(category),
                 version = VALUES(version), question_count = VALUES(question_count),
                 questions_json = VALUES(questions_json), allowed_modes = VALUES(allowed_modes),
@@ -1955,11 +1947,11 @@ app.post('/api/admin/adjust-stats', async (req, res) => {
         await pool.execute(`
             INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                answered = answered + VALUES(answered),
-                correct = correct + VALUES(correct),
-                duration = duration + VALUES(duration),
-                updated_at = VALUES(updated_at)
+            ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                answered = answered + EXCLUDED.answered,
+                correct = correct + EXCLUDED.correct,
+                duration = duration + EXCLUDED.duration,
+                updated_at = EXCLUDED.updated_at
         `, [targetUserId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now]);
 
         await writeAdminOperationLog({ action: '调整用户数据', targetType: 'user', targetId: targetUserId, detail: JSON.stringify({ bankId, answered, correct, duration }), operator: admin.id });
@@ -2029,7 +2021,7 @@ app.get('/api/admin/logs', async (req, res) => {
         const [errorSummary] = await pool.execute(`
             SELECT message, COUNT(*) as cnt
             FROM client_logs
-            WHERE level = 'error' AND created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+            WHERE level = 'error' AND created_at > DATETIME('now', '-7 days')
             GROUP BY message
             ORDER BY cnt DESC
             LIMIT 20
@@ -2042,7 +2034,7 @@ app.get('/api/admin/logs', async (req, res) => {
             FROM client_logs cl
             LEFT JOIN devices d ON cl.device_id = d.device_id
             LEFT JOIN users u ON d.user_id = u.id
-            WHERE cl.created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            WHERE cl.created_at > DATETIME('now', '-24 hours')
             GROUP BY cl.device_id
             ORDER BY last_active DESC
             LIMIT 20

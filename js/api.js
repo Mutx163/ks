@@ -14,9 +14,9 @@ const API = {
     // API 地址优先级：
     //   1. window.__API_BASE__ (可在 HTML 中注入)
     //   2. localStorage ks_api_base (用户/管理员设置)
-    //   3. 默认宝塔服务器
-    // 如果通过 IP 访问，自动使用当前 origin；否则使用配置的域名
-    BASE_URL: window.__API_BASE__ || localStorage.getItem('ks_api_base') || (window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) ? window.location.origin : 'https://a.mutx.ccwu.cc'),
+    //   3. 本地开发时使用相对路径（由 Vite proxy 转发）
+    //   4. 生产环境使用宝塔服务器
+    BASE_URL: window.__API_BASE__ || localStorage.getItem('ks_api_base') || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : window.location.origin),
 
     // localStorage 键名
     KEYS: {
@@ -87,7 +87,9 @@ const API = {
         const { cacheBust: _cacheBust, ...fetchOptions } = options;
         const method = fetchOptions.method || 'GET';
         try {
-            const urlObj = new URL(path, this.BASE_URL);
+            // 处理 BASE_URL 为空的情况（本地开发 Vite 代理）
+            const base = this.BASE_URL || window.location.origin;
+            const urlObj = new URL(path, base);
             if (method === 'GET' && options.cacheBust !== false) {
                 urlObj.searchParams.set('_ts', Date.now().toString());
             }
