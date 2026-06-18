@@ -582,7 +582,7 @@ app.get('/api/leaderboard', async (req, res) => {
 app.get('/api/ai/config', async (req, res) => {
     try {
         const [rows] = await pool.execute(
-            "SELECT value FROM app_config WHERE key = 'ai_config'"
+            "SELECT value FROM app_config WHERE `key` = 'ai_config'"
         );
         if (!rows[0]) {
             return res.json({ ok: true, config: { enabled: false, allowUserOverride: false, hasGlobalKey: false, mode: 'search', provider: 'openai', baseUrl: '', model: '' } });
@@ -716,7 +716,7 @@ app.post('/api/ai/explain', async (req, res) => {
         if (!question) return res.status(400).json({ error: '缺少 question 参数' });
 
         const [rows] = await pool.execute(
-            "SELECT value FROM app_config WHERE key = 'ai_config'"
+            "SELECT value FROM app_config WHERE `key` = 'ai_config'"
         );
         const globalCfg = rows[0] ? JSON.parse(rows[0].value) : {};
 
@@ -1243,7 +1243,7 @@ app.get('/api/admin/ai-config', async (req, res) => {
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [rows] = await pool.execute(
-            "SELECT value FROM app_config WHERE key = 'ai_config'"
+            "SELECT value FROM app_config WHERE `key` = 'ai_config'"
         );
         if (!rows[0]) {
             return res.json({ ok: true, config: { enabled: false, allowUserOverride: false, hasGlobalKey: false, mode: 'search', provider: 'openai', baseUrl: '', model: '', systemPrompt: '', updatedAt: null } });
@@ -1277,7 +1277,7 @@ app.put('/api/admin/ai-config', async (req, res) => {
         if (!config) return res.status(400).json({ error: '缺少 config' });
 
         const [rows] = await pool.execute(
-            "SELECT value FROM app_config WHERE key = 'ai_config'"
+            "SELECT value FROM app_config WHERE `key` = 'ai_config'"
         );
         const existing = rows[0] ? JSON.parse(rows[0].value) : {};
         const merged = { ...existing };
