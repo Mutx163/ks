@@ -256,7 +256,7 @@ app.post('/api/bind', async (req, res) => {
 
         const now = new Date().toISOString();
         await pool.execute(
-            'INSERT INTO devices (device_id, user_id, bound_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), bound_at = VALUES(bound_at)',
+            'INSERT INTO devices (device_id, user_id, bound_at) VALUES (?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET user_id = excluded.user_id, bound_at = excluded.bound_at',
             [deviceId, code, now]
         );
 
@@ -267,11 +267,11 @@ app.post('/api/bind', async (req, res) => {
                 await pool.execute(`
                     INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE
-                        answered = answered + VALUES(answered),
-                        correct = correct + VALUES(correct),
-                        duration = duration + VALUES(duration),
-                        updated_at = VALUES(updated_at)
+                    ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                        answered = stats.answered + excluded.answered,
+                        correct = stats.correct + excluded.correct,
+                        duration = stats.duration + excluded.duration,
+                        updated_at = excluded.updated_at
                 `, [code, stat.bankId, stat.bankName || '', stat.answered || 0, stat.correct || 0, stat.duration || 0, now]);
             }
         }
@@ -328,12 +328,12 @@ app.post('/api/sync', async (req, res) => {
         await pool.execute(`
             INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                answered = answered + VALUES(answered),
-                correct = correct + VALUES(correct),
-                duration = duration + VALUES(duration),
-                bank_name = VALUES(bank_name),
-                updated_at = VALUES(updated_at)
+            ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                answered = stats.answered + excluded.answered,
+                correct = stats.correct + excluded.correct,
+                duration = stats.duration + excluded.duration,
+                bank_name = excluded.bank_name,
+                updated_at = excluded.updated_at
         `, [userId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now]);
 
         res.json({ ok: true });
@@ -1315,7 +1315,7 @@ app.put('/api/admin/ai-config', async (req, res) => {
         merged.updatedAt = new Date().toISOString();
 
         await pool.execute(
-            "INSERT INTO app_config (`key`, `value`, `updated_at`) VALUES ('ai_config', ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = VALUES(`updated_at`)",
+            "INSERT INTO app_config (`key`, `value`, `updated_at`) VALUES ('ai_config', ?, ?) ON CONFLICT(`key`) DO UPDATE SET `value` = excluded.`value`, `updated_at` = excluded.`updated_at`",
             [JSON.stringify(merged), merged.updatedAt]
         );
 
@@ -1340,13 +1340,8 @@ app.post('/api/admin/import-bank', async (req, res) => {
         const modesJson = allowed_modes ? JSON.stringify(allowed_modes) : (existing[0]?.allowed_modes || '');
 
         await pool.execute(`
-            INSERT INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
+            INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                name = VALUES(name), description = VALUES(description), category = VALUES(category),
-                version = VALUES(version), question_count = VALUES(question_count),
-                questions_json = VALUES(questions_json), allowed_modes = VALUES(allowed_modes),
-                updated_at = VALUES(updated_at)
         `, [id, name, description || '', category || '', version, questions.length, JSON.stringify(questions), modesJson, now, now]);
 
         await pool.execute(
@@ -1378,13 +1373,8 @@ app.post('/api/admin/upload-bank', async (req, res) => {
         const category = bank.category || (Array.isArray(bank.categories) ? bank.categories.join(', ') : '');
 
         await pool.execute(`
-            INSERT INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
+            INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                name = VALUES(name), description = VALUES(description), category = VALUES(category),
-                version = VALUES(version), question_count = VALUES(question_count),
-                questions_json = VALUES(questions_json), allowed_modes = VALUES(allowed_modes),
-                updated_at = VALUES(updated_at)
         `, [id, bank.name, bank.description || '', category, version, bank.questions.length, JSON.stringify(bank.questions), modesJson, now, now]);
 
         await pool.execute(
@@ -1955,11 +1945,11 @@ app.post('/api/admin/adjust-stats', async (req, res) => {
         await pool.execute(`
             INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                answered = answered + VALUES(answered),
-                correct = correct + VALUES(correct),
-                duration = duration + VALUES(duration),
-                updated_at = VALUES(updated_at)
+            ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                answered = stats.answered + excluded.answered,
+                correct = stats.correct + excluded.correct,
+                duration = stats.duration + excluded.duration,
+                updated_at = excluded.updated_at
         `, [targetUserId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now]);
 
         await writeAdminOperationLog({ action: '调整用户数据', targetType: 'user', targetId: targetUserId, detail: JSON.stringify({ bankId, answered, correct, duration }), operator: admin.id });
