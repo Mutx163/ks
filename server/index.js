@@ -118,7 +118,14 @@ async function checkUserBanned(userId) {
 }
 
 // 验证管理员
-async function requireAdmin(deviceId, password) {
+async function requireAdmin(deviceId, password, req) {
+    // 支持从 header 或 query 读取凭据
+    if (!deviceId && req) {
+        deviceId = req.headers['x-admin-device-id'] || req.query?.deviceId || '';
+    }
+    if (!password && req) {
+        password = req.headers['x-admin-password'] || req.query?.password || '';
+    }
     if (!deviceId || !password) return null;
     if (sha256(password) !== ADMIN_PASSWORD_HASH) return null;
     const userId = await resolveUser(deviceId);
@@ -904,7 +911,7 @@ app.post('/api/logs', async (req, res) => {
 // 管理员：查看用户
 app.get('/api/admin/users', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [results] = await pool.execute(`
@@ -930,7 +937,7 @@ app.get('/api/admin/users', async (req, res) => {
 // 管理员：用户详情
 app.get('/api/admin/user-detail/:id', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const userId = req.params.id;
@@ -961,7 +968,7 @@ app.get('/api/admin/user-detail/:id', async (req, res) => {
 app.post('/api/admin/delete-user', async (req, res) => {
     try {
         const { deviceId, targetUserId, password } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (targetUserId === admin.id) return res.status(400).json({ error: '不能删除自己' });
 
@@ -991,7 +998,7 @@ app.post('/api/admin/delete-user', async (req, res) => {
 app.post('/api/admin/reset-stats', async (req, res) => {
     try {
         const { deviceId, targetUserId, password } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         await pool.execute('DELETE FROM stats WHERE user_id = ?', [targetUserId]);
@@ -1007,7 +1014,7 @@ app.post('/api/admin/reset-stats', async (req, res) => {
 app.post('/api/admin/update-user', async (req, res) => {
     try {
         const { deviceId, password, targetUserId, initials, isAdmin } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const updates = [];
@@ -1032,7 +1039,7 @@ app.post('/api/admin/ban-user', async (req, res) => {
     try {
         const { deviceId, password, targetUserId, banned, ban } = req.body;
         const isBanned = banned ?? ban;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (targetUserId === admin.id) return res.status(400).json({ error: '不能封禁自己' });
 
@@ -1050,7 +1057,7 @@ app.post('/api/admin/batch-ban', async (req, res) => {
     try {
         const { deviceId, password, userIds, banned, ban } = req.body;
         const isBanned = banned ?? ban;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!Array.isArray(userIds) || userIds.length === 0) return res.status(400).json({ error: '缺少 userIds' });
 
@@ -1074,7 +1081,7 @@ app.post('/api/admin/batch-ban', async (req, res) => {
 // 管理员：题库统计
 app.get('/api/admin/banks', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [results] = await pool.execute(`
@@ -1099,7 +1106,7 @@ app.get('/api/admin/banks', async (req, res) => {
 // 管理员：最近活跃
 app.get('/api/admin/activity', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [results] = await pool.execute(`
@@ -1121,7 +1128,7 @@ app.get('/api/admin/activity', async (req, res) => {
 // 管理员：系统概览
 app.get('/api/admin/overview', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const todayChina = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
@@ -1167,7 +1174,7 @@ app.get('/api/admin/overview', async (req, res) => {
 app.post('/api/admin/announce', async (req, res) => {
     try {
         const { deviceId, password, content } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!content || content.length > 500) return res.status(400).json({ error: '公告内容1-500字' });
 
@@ -1187,7 +1194,7 @@ app.post('/api/admin/announce', async (req, res) => {
 // 管理员：公告列表
 app.get('/api/admin/announcements', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [rows] = await pool.execute(
@@ -1205,7 +1212,7 @@ app.get('/api/admin/announcements', async (req, res) => {
 app.post('/api/admin/delete-announcement', async (req, res) => {
     try {
         const { deviceId, password, id } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!id) return res.status(400).json({ error: '缺少 id' });
 
@@ -1222,7 +1229,7 @@ app.post('/api/admin/delete-announcement', async (req, res) => {
 app.post('/api/admin/edit-announcement', async (req, res) => {
     try {
         const { deviceId, password, id, content } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!id || !content) return res.status(400).json({ error: '缺少参数' });
         if (content.length > 500) return res.status(400).json({ error: '公告不超过500字' });
@@ -1239,7 +1246,7 @@ app.post('/api/admin/edit-announcement', async (req, res) => {
 // 管理员：AI 配置
 app.get('/api/admin/ai-config', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [rows] = await pool.execute(
@@ -1272,7 +1279,7 @@ app.get('/api/admin/ai-config', async (req, res) => {
 app.put('/api/admin/ai-config', async (req, res) => {
     try {
         const { deviceId, password, config } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!config) return res.status(400).json({ error: '缺少 config' });
 
@@ -1312,7 +1319,7 @@ app.put('/api/admin/ai-config', async (req, res) => {
 app.post('/api/admin/import-bank', async (req, res) => {
     try {
         const { deviceId, password, id, name, description, category, questions, allowed_modes } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!id || !name || !questions) return res.status(400).json({ error: '缺少参数' });
 
@@ -1348,7 +1355,7 @@ app.post('/api/admin/import-bank', async (req, res) => {
 app.post('/api/admin/upload-bank', async (req, res) => {
     try {
         const { deviceId, password, bank, existingId } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!bank || !bank.id || !bank.name || !bank.questions) return res.status(400).json({ error: '题库格式错误' });
 
@@ -1385,7 +1392,7 @@ app.post('/api/admin/upload-bank', async (req, res) => {
 // 管理员：获取题库详情
 app.get('/api/admin/bank/:id', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [rows] = await pool.execute('SELECT * FROM banks WHERE id = ?', [req.params.id]);
@@ -1414,7 +1421,7 @@ app.get('/api/admin/bank/:id', async (req, res) => {
 // 管理员：题库修改历史
 app.get('/api/admin/bank/:id/history', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [rows] = await pool.execute(
@@ -1433,7 +1440,7 @@ app.get('/api/admin/bank/:id/history', async (req, res) => {
 app.put('/api/admin/bank/:id/settings', async (req, res) => {
     try {
         const { deviceId, password, allowed_modes, name, description, category } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const bankId = req.params.id;
@@ -1494,7 +1501,7 @@ app.put('/api/admin/bank/:id/settings', async (req, res) => {
 app.put('/api/admin/bank/:id/toggle', async (req, res) => {
     try {
         const { deviceId, password, enabled } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const bankId = req.params.id;
@@ -1503,6 +1510,9 @@ app.put('/api/admin/bank/:id/toggle', async (req, res) => {
 
         const now = new Date().toISOString();
         await pool.execute('UPDATE banks SET enabled = ?, updated_at = ? WHERE id = ?', [enabled ? 1 : 0, now, bankId]);
+        // 清除题库缓存
+        cache.invalidate('banks_list');
+        cache.invalidate('bank_' + bankId);
 
         await pool.execute(
             'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -1542,6 +1552,10 @@ app.delete('/api/admin/bank/:id', async (req, res) => {
             conn.release();
         }
 
+        // 清除题库缓存
+        cache.invalidate('banks_list');
+        cache.invalidate('bank_' + bankId);
+
         await writeAdminOperationLog({ action: '删除题库', targetType: 'bank', targetId: bankId, detail: rows[0].name, operator: admin.id });
         res.json({ ok: true, message: `题库 "${rows[0].name}" 已删除` });
     } catch (e) {
@@ -1554,7 +1568,7 @@ app.delete('/api/admin/bank/:id', async (req, res) => {
 app.post('/api/admin/bank/:id/import-questions', async (req, res) => {
     try {
         const { deviceId, password, questions: newQuestions } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!Array.isArray(newQuestions) || newQuestions.length === 0) return res.status(400).json({ error: '缺少题目' });
 
@@ -1614,7 +1628,7 @@ app.post('/api/admin/bank/:id/import-questions', async (req, res) => {
 app.post('/api/admin/bank/:id/question', async (req, res) => {
     try {
         const { deviceId, password, question } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!question || !question.question) return res.status(400).json({ error: '缺少题目内容' });
 
@@ -1651,7 +1665,7 @@ app.post('/api/admin/bank/:id/question', async (req, res) => {
 app.put('/api/admin/bank/:id/question/:qid', async (req, res) => {
     try {
         const { deviceId, password, question } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const bankId = req.params.id;
@@ -1689,7 +1703,7 @@ app.put('/api/admin/bank/:id/question/:qid', async (req, res) => {
 // 管理员：删除题目
 app.delete('/api/admin/bank/:id/question/:qid', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const bankId = req.params.id;
@@ -1727,7 +1741,7 @@ app.delete('/api/admin/bank/:id/question/:qid', async (req, res) => {
 // 管理员：操作日志
 app.get('/api/admin/operation-logs', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const page = Math.max(1, parseInt(req.query.page || '1'));
@@ -1762,7 +1776,7 @@ app.get('/api/admin/operation-logs', async (req, res) => {
 app.post('/api/admin/operation-logs', async (req, res) => {
     try {
         const { deviceId, password, action, targetType, targetId, detail, ok } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!action) return res.status(400).json({ error: '缺少 action' });
 
@@ -1785,7 +1799,7 @@ app.post('/api/admin/operation-logs', async (req, res) => {
 // 管理员：系统状态
 app.get('/api/admin/system-status', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const status = {};
@@ -1834,7 +1848,7 @@ app.get('/api/admin/system-status', async (req, res) => {
 app.post('/api/admin/change-sync-code', async (req, res) => {
     try {
         const { deviceId, password, targetUserId, newSyncCode } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!targetUserId || !newSyncCode) return res.status(400).json({ error: '缺少参数' });
 
@@ -1871,7 +1885,7 @@ app.post('/api/admin/change-sync-code', async (req, res) => {
 app.post('/api/admin/remove-device', async (req, res) => {
     try {
         const { deviceId, password, targetDeviceId } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!targetDeviceId) return res.status(400).json({ error: '缺少参数' });
 
@@ -1894,7 +1908,7 @@ app.post('/api/admin/remove-device', async (req, res) => {
 // 管理员：查看用户云端数据
 app.get('/api/admin/user-cloud-data/:id', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const [users] = await pool.execute(
@@ -1920,7 +1934,7 @@ app.get('/api/admin/user-cloud-data/:id', async (req, res) => {
 app.post('/api/admin/adjust-stats', async (req, res) => {
     try {
         const { deviceId, password, targetUserId, bankId, bankName, answered, correct, duration } = req.body;
-        const admin = await requireAdmin(deviceId, password);
+        const admin = await requireAdmin(deviceId, password, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
         if (!targetUserId || !bankId) return res.status(400).json({ error: '缺少参数' });
 
@@ -1946,7 +1960,7 @@ app.post('/api/admin/adjust-stats', async (req, res) => {
 // 管理员：前端日志
 app.get('/api/admin/logs', async (req, res) => {
     try {
-        const admin = await requireAdmin(req.query.deviceId, req.query.password);
+        const admin = await requireAdmin(null, null, req);
         if (!admin) return res.status(403).json({ error: '无权限' });
 
         const filterDeviceId = req.query.filterDeviceId || '';
