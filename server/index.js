@@ -461,9 +461,9 @@ app.get('/api/leaderboard', async (req, res) => {
         }
 
         const sortMap = {
-            'answered': 'total_answered DESC',
-            'accuracy': 'CASE WHEN total_answered > 0 THEN CAST(total_correct AS DECIMAL) / total_answered ELSE 0 END DESC',
-            'duration': 'total_duration DESC'
+            'answered': 'SUM(s.answered) DESC',
+            'accuracy': 'CASE WHEN SUM(s.answered) > 0 THEN CAST(SUM(s.correct) AS DECIMAL) / SUM(s.answered) ELSE 0 END DESC',
+            'duration': 'SUM(s.duration) DESC'
         };
         const orderBy = sortMap[sort] || sortMap['answered'];
 

@@ -22,7 +22,16 @@ export default defineConfig(({ mode }) => {
         build: {
             outDir,
             rollupOptions: {
-                input
+                input,
+                output: {
+                    // 将 vendor 模块单独打包
+                    manualChunks: {
+                        'vendor-prism': ['./js/vendor/prism.js'],
+                        'vendor-lucide': ['./js/vendor/lucide.js'],
+                        'vendor-katex': ['./js/vendor/katex.js'],
+                        'vendor-marked': ['./js/vendor/marked.js']
+                    }
+                }
             }
         },
         define: {

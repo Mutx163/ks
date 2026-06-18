@@ -2,6 +2,12 @@
  * 主应用模块
  */
 
+// 导入 vendor 模块（打包进构建）
+import './vendor/prism.js';
+import './vendor/lucide.js';
+import './vendor/katex.js';
+import './vendor/marked.js';
+
 import LogCollector from './logCollector.js';
 import Storage from './storage.js';
 import Utils from './utils.js';
