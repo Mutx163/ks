@@ -190,17 +190,39 @@ export function initUsers(Admin) {
     Admin.bulkBanUsers = async function (ban) {
         const ids = [...this.selectedUsers];
         if (!ids.length) return;
+        
+        this.logAction('批量操作开始', {
+            operation: ban ? '批量封禁' : '批量解封',
+            userCount: ids.length,
+            userIds: ids.slice(0, 5).join(', ') + (ids.length > 5 ? '...' : '')
+        });
+        
         const ok = await this.confirmDanger({
             title: ban ? '批量封禁' : '批量解封',
             message: `将${ban ? '封禁' : '解封'} ${ids.length} 个用户`,
             confirmText: ban ? '批量封禁' : '批量解封',
             danger: ban
         });
-        if (!ok) return;
+        
+        if (!ok) {
+            this.logAction('批量操作取消', { operation: ban ? '批量封禁' : '批量解封', userCount: ids.length });
+            return;
+        }
+        
         const r = await this.post('/api/admin/batch-ban', { userIds: ids, ban: ban ? 1 : 0 });
         if (r?.ok) {
+            this.logAction('批量操作成功', {
+                operation: ban ? '批量封禁' : '批量解封',
+                affectedCount: r.affected,
+                totalCount: ids.length,
+                response: r
+            });
             Utils.showToast(`已${ban ? '封禁' : '解封'} ${r.affected} 人`, 'success');
         } else {
+            this.logAction('批量操作失败', {
+                operation: ban ? '批量封禁' : '批量解封',
+                error: r?.error || '未知错误'
+            }, 'error');
             Utils.showToast(r?.error || '操作失败', 'error');
         }
         this.selectedUsers.clear();
@@ -365,17 +387,37 @@ export function initUsers(Admin) {
     };
 
     Admin.saveUser = async function (uid) {
+        const newInitials = document.getElementById('eu-initials').value.trim();
+        const newIsAdmin = parseInt(document.getElementById('eu-admin').value);
+        
+        this.logAction('保存用户信息开始', {
+            userId: uid,
+            newInitials,
+            newIsAdmin: !!newIsAdmin
+        });
+        
         const r = await this.post('/api/admin/update-user', {
             targetUserId: uid,
-            initials: document.getElementById('eu-initials').value.trim(),
-            isAdmin: parseInt(document.getElementById('eu-admin').value)
+            initials: newInitials,
+            isAdmin: newIsAdmin
         });
         if (r?.ok) {
+            this.logAction('保存用户信息成功', {
+                userId: uid,
+                updatedFields: { initials: newInitials, isAdmin: !!newIsAdmin },
+                response: r
+            });
             Utils.showToast('已保存', 'success');
             document.querySelector('.modal-mask')?.remove();
             await this.loadAll();
             this.showUserDetail(uid);
-        } else Utils.showToast(r?.error || '失败', 'error');
+        } else {
+            this.logAction('保存用户信息失败', {
+                userId: uid,
+                error: r?.error || '未知错误'
+            }, 'error');
+            Utils.showToast(r?.error || '失败', 'error');
+        }
     };
 
     Admin.changeSyncCode = function (uid, name) {
@@ -393,19 +435,37 @@ export function initUsers(Admin) {
     Admin.doChangeSyncCode = async function (oldUid) {
         const newCode = document.getElementById('new-sync-code').value.trim().toUpperCase();
         if (!newCode || newCode.length < 4) {
+            this.logAction('修改同步码失败', { reason: '同步码无效', oldUid, newCode: newCode.slice(0, 2) + '***' });
             Utils.showToast('请输入有效同步码', 'error');
             return;
         }
+        
+        this.logAction('修改同步码开始', {
+            oldUserId: oldUid,
+            newUserId: newCode.slice(0, 2) + '***'
+        });
+        
         const r = await this.post('/api/admin/change-sync-code', {
             oldUserId: oldUid,
             newUserId: newCode
         });
         if (r?.ok) {
+            this.logAction('修改同步码成功', {
+                oldUserId: oldUid,
+                newUserId: newCode.slice(0, 2) + '***',
+                response: r
+            });
             Utils.showToast('已修改', 'success');
             document.querySelector('.modal-mask')?.remove();
             await this.loadAll();
             this.renderUsers();
-        } else Utils.showToast(r?.error || '失败', 'error');
+        } else {
+            this.logAction('修改同步码失败', {
+                oldUserId: oldUid,
+                error: r?.error || '未知错误'
+            }, 'error');
+            Utils.showToast(r?.error || '失败', 'error');
+        }
     };
 
     Admin.adjustStats = function (uid, name) {
@@ -425,20 +485,45 @@ export function initUsers(Admin) {
     };
 
     Admin.doAdjustStats = async function (uid) {
+        const bankId = document.getElementById('adj-bank-id').value.trim();
+        const bankName = document.getElementById('adj-bank-name').value.trim();
+        const answered = parseInt(document.getElementById('adj-answered').value) || 0;
+        const correct = parseInt(document.getElementById('adj-correct').value) || 0;
+        const duration = parseInt(document.getElementById('adj-duration').value) || 0;
+        
+        this.logAction('调整用户数据开始', {
+            userId: uid,
+            bankId,
+            bankName,
+            adjustment: { answered, correct, duration }
+        });
+        
         const r = await this.post('/api/admin/adjust-stats', {
             targetUserId: uid,
-            bankId: document.getElementById('adj-bank-id').value.trim(),
-            bankName: document.getElementById('adj-bank-name').value.trim(),
-            answered: parseInt(document.getElementById('adj-answered').value) || 0,
-            correct: parseInt(document.getElementById('adj-correct').value) || 0,
-            duration: parseInt(document.getElementById('adj-duration').value) || 0
+            bankId,
+            bankName,
+            answered,
+            correct,
+            duration
         });
         if (r?.ok) {
+            this.logAction('调整用户数据成功', {
+                userId: uid,
+                bankId,
+                adjustment: { answered, correct, duration },
+                response: r
+            });
             Utils.showToast('已调整', 'success');
             document.querySelector('.modal-mask')?.remove();
             await this.loadAll();
             this.showUserDetail(uid);
-        } else Utils.showToast(r?.error || '失败', 'error');
+        } else {
+            this.logAction('调整用户数据失败', {
+                userId: uid,
+                error: r?.error || '未知错误'
+            }, 'error');
+            Utils.showToast(r?.error || '失败', 'error');
+        }
     };
 
     Admin.viewCloudData = async function (uid) {
@@ -468,6 +553,12 @@ export function initUsers(Admin) {
     };
 
     Admin.banUser = async function (uid, name, ban) {
+        this.logAction('用户状态切换开始', {
+            userId: uid,
+            userName: name,
+            targetState: ban ? '封禁' : '解封'
+        });
+        
         const ok = await this.confirmDanger({
             title: ban ? '封禁用户' : '解封用户',
             targetLabel: `${name} (${uid})`,
@@ -475,12 +566,30 @@ export function initUsers(Admin) {
             confirmText: ban ? '确认封禁' : '确认解封',
             danger: !!ban
         });
-        if (!ok) return;
+        
+        if (!ok) {
+            this.logAction('用户状态切换取消', { userId: uid, targetState: ban ? '封禁' : '解封' });
+            return;
+        }
+        
         const r = await this.post('/api/admin/ban-user', { targetUserId: uid, banned: !!ban });
         if (!r?.ok) {
+            this.logAction('用户状态切换失败', {
+                userId: uid,
+                userName: name,
+                targetState: ban ? '封禁' : '解封',
+                error: r?.error || '未知错误'
+            }, 'error');
             Utils.showToast(r?.error || '操作失败', 'error');
             return;
         }
+        
+        this.logAction('用户状态切换成功', {
+            userId: uid,
+            userName: name,
+            newState: ban ? '已封禁' : '已解封',
+            response: r
+        });
         Utils.showToast(ban ? '已封禁' : '已解封', 'success');
         await this.loadAll();
         if (document.getElementById('user-detail-root')) this.showUserDetail(uid);
@@ -488,6 +597,12 @@ export function initUsers(Admin) {
     };
 
     Admin.resetStats = async function (uid, name) {
+        this.logAction('重置用户数据开始', {
+            userId: uid,
+            userName: name,
+            warning: '此操作不可撤销'
+        });
+        
         const ok = await this.confirmDanger({
             title: '重置答题数据',
             targetLabel: `${name} (${uid})`,
@@ -495,16 +610,37 @@ export function initUsers(Admin) {
             requiredText: 'RESET',
             confirmText: '确认重置'
         });
-        if (!ok) return;
+        
+        if (!ok) {
+            this.logAction('重置用户数据取消', { userId: uid });
+            return;
+        }
+        
         const r = await this.post('/api/admin/reset-stats', { targetUserId: uid });
         if (r?.ok) {
+            this.logAction('重置用户数据成功', {
+                userId: uid,
+                userName: name,
+                response: r
+            });
             Utils.showToast('已重置', 'success');
             await this.loadAll();
             this.showUserDetail(uid);
+        } else {
+            this.logAction('重置用户数据失败', {
+                userId: uid,
+                error: r?.error || '未知错误'
+            }, 'error');
         }
     };
 
     Admin.delUser = async function (uid, name) {
+        this.logAction('删除用户开始', {
+            userId: uid,
+            userName: name,
+            warning: '此操作不可恢复'
+        });
+        
         const ok = await this.confirmDanger({
             title: '永久删除用户',
             targetLabel: `${name} (${uid})`,
@@ -512,27 +648,63 @@ export function initUsers(Admin) {
             requiredText: uid,
             confirmText: '永久删除'
         });
-        if (!ok) return;
+        
+        if (!ok) {
+            this.logAction('删除用户取消', { userId: uid });
+            return;
+        }
+        
         const r = await this.post('/api/admin/delete-user', { targetUserId: uid });
         if (r?.ok) {
+            this.logAction('删除成功', {
+                userId: uid,
+                userName: name,
+                response: r
+            });
             Utils.showToast('已删除', 'success');
             await this.loadAll();
             this.renderUsers();
+        } else {
+            this.logAction('删除用户失败', {
+                userId: uid,
+                error: r?.error || '未知错误'
+            }, 'error');
         }
     };
 
     Admin.removeDevice = async function (deviceId, uid) {
+        this.logAction('解绑设备开始', {
+            deviceId,
+            userId: uid
+        });
+        
         const ok = await this.confirmDanger({
             title: '解绑设备',
             targetLabel: deviceId,
             message: '解绑后该设备需要重新绑定同步码才能继续同步。',
             confirmText: '确认解绑'
         });
-        if (!ok) return;
+        
+        if (!ok) {
+            this.logAction('解绑设备取消', { deviceId, userId: uid });
+            return;
+        }
+        
         const r = await this.post('/api/admin/remove-device', { deviceId });
         if (r?.ok) {
+            this.logAction('解绑设备成功', {
+                deviceId,
+                userId: uid,
+                response: r
+            });
             Utils.showToast('已解绑', 'success');
             this.showUserDetail(uid);
+        } else {
+            this.logAction('解绑设备失败', {
+                deviceId,
+                userId: uid,
+                error: r?.error || '未知错误'
+            }, 'error');
         }
     };
 
