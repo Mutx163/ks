@@ -38,7 +38,7 @@ const BankLoader = {
      */
     async loadBank(bankId, expectedVersion = null) {
         const startTime = Date.now();
-        
+
         // 1. 尝试从 Storage 读取本地缓存
         const localBank = Storage.getBank(bankId);
         if (
@@ -57,7 +57,12 @@ const BankLoader = {
 
         try {
             // 2. 发起 ETag 条件请求（cacheBust: false 允许条件请求和浏览器 304）
-            const data = await API.requestWithRetry(`/api/bank/${bankId}`, { cacheBust: false }, 2, 1000);
+            const data = await API.requestWithRetry(
+                `/api/bank/${bankId}`,
+                { cacheBust: false },
+                2,
+                1000
+            );
 
             const elapsed = Date.now() - startTime;
 

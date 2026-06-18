@@ -17,7 +17,13 @@
 const LogCollector = {
     /** 获取 API 基础地址 */
     _getBaseUrl() {
-        return window.__API_BASE__ || localStorage.getItem('ks_api_base') || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : window.location.origin);
+        return (
+            window.__API_BASE__ ||
+            localStorage.getItem('ks_api_base') ||
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? ''
+                : window.location.origin)
+        );
     },
 
     /** 配置 */
@@ -245,7 +251,14 @@ const LogCollector = {
         const sendRemaining = () => {
             if (self._buffer.length > 0 && self.config.enabled) {
                 const logs = self._buffer.splice(0);
-                const baseUrl = self._getBaseUrl ? self._getBaseUrl() : (window.__API_BASE__ || localStorage.getItem('ks_api_base') || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : window.location.origin));
+                const baseUrl = self._getBaseUrl
+                    ? self._getBaseUrl()
+                    : window.__API_BASE__ ||
+                      localStorage.getItem('ks_api_base') ||
+                      (window.location.hostname === 'localhost' ||
+                      window.location.hostname === '127.0.0.1'
+                          ? ''
+                          : window.location.origin);
                 navigator.sendBeacon(
                     `${baseUrl}/api/logs`,
                     JSON.stringify({ logs, deviceId: self._deviceId })

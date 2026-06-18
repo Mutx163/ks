@@ -16,7 +16,12 @@ const API = {
     //   2. localStorage ks_api_base (用户/管理员设置)
     //   3. 本地开发时使用相对路径（由 Vite proxy 转发）
     //   4. 生产环境使用宝塔服务器
-    BASE_URL: window.__API_BASE__ || localStorage.getItem('ks_api_base') || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : window.location.origin),
+    BASE_URL:
+        window.__API_BASE__ ||
+        localStorage.getItem('ks_api_base') ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? ''
+            : window.location.origin),
 
     // localStorage 键名
     KEYS: {
@@ -419,17 +424,21 @@ const API = {
                     deviceId: this.getDeviceId(),
                     progress
                 })
-            }).then((data) => {
-                if (!data) {
-                    console.warn('[API] pushProgress 同步失败，响应为空，将在下次数据变动时重试');
-                } else if (data.disabled) {
-                    this._showBanNotice();
-                }
-                return data;
-            }).catch((err) => {
-                console.warn('[API] pushProgress 同步异常:', err.message);
-                return null;
-            });
+            })
+                .then((data) => {
+                    if (!data) {
+                        console.warn(
+                            '[API] pushProgress 同步失败，响应为空，将在下次数据变动时重试'
+                        );
+                    } else if (data.disabled) {
+                        this._showBanNotice();
+                    }
+                    return data;
+                })
+                .catch((err) => {
+                    console.warn('[API] pushProgress 同步异常:', err.message);
+                    return null;
+                });
         };
 
         if (immediate) {

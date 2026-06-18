@@ -348,7 +348,7 @@ const Utils = {
         // 2. 创建 Toast 容器
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        
+
         // 3. 自动映射不同类型对应的图标
         const iconMap = {
             success: 'check-circle',
@@ -357,17 +357,20 @@ const Utils = {
             info: 'info'
         };
         const defaultIcon = iconMap[type] || 'info';
-        
+
         // 4. 健壮的“双重图标判定”：判断调用者传入的 message 是否已经包含定制图标
-        const hasIcon = message.includes('data-lucide') || message.includes('<svg') || message.includes('class="icon"');
-        
+        const hasIcon =
+            message.includes('data-lucide') ||
+            message.includes('<svg') ||
+            message.includes('class="icon"');
+
         if (hasIcon) {
             toast.innerHTML = `<div class="toast-content">${message}</div>`;
         } else {
             const iconHtml = this.icon(defaultIcon, `toast-icon toast-icon-${type}`);
             toast.innerHTML = `${iconHtml}<div class="toast-content">${message}</div>`;
         }
-        
+
         // 5. 渲染进入 DOM 并渲染图标
         document.body.appendChild(toast);
         this.initIcons();
@@ -820,17 +823,20 @@ const Router = {
                 const now = Date.now();
                 // 如果30秒内刚同步过，跳过
                 if (now - lastSyncTime < SYNC_COOLDOWN) return;
-                
+
                 // 静默云同步（不显示加载状态）
+                /* global API, App */
                 if (typeof API !== 'undefined' && API.autoSync) {
                     lastSyncTime = now;
-                    API.autoSync().then(() => {
-                        // 同步完成后静默刷新数据和视图
-                        if (typeof App !== 'undefined') {
-                            if (App.loadData) App.loadData();
-                            if (App.render) App.render();
-                        }
-                    }).catch(() => {});
+                    API.autoSync()
+                        .then(() => {
+                            // 同步完成后静默刷新数据和视图
+                            if (typeof App !== 'undefined') {
+                                if (App.loadData) App.loadData();
+                                if (App.render) App.render();
+                            }
+                        })
+                        .catch(() => {});
                 }
             }
         });
@@ -896,13 +902,13 @@ window.addEventListener('storage', (e) => {
             const settings = JSON.parse(e.newValue || '{}');
             const theme = settings.theme || 'auto';
             const colorScheme = settings.colorScheme || 'parchment';
-            
+
             if (theme === 'auto') {
                 document.documentElement.removeAttribute('data-theme');
             } else {
                 document.documentElement.setAttribute('data-theme', theme);
             }
-            
+
             if (colorScheme === 'parchment') {
                 document.documentElement.removeAttribute('data-color');
             } else {

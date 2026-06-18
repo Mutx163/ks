@@ -190,7 +190,10 @@ const Core = {
             // 用活跃 session (草稿) 数据覆盖/合并
             state.answers = { ...state.answers, ...(session.answers || {}) };
             state.submitted = { ...state.submitted, ...(session.submitted || {}) };
-            state.showExplanation = { ...state.showExplanation, ...(session.showExplanation || {}) };
+            state.showExplanation = {
+                ...state.showExplanation,
+                ...(session.showExplanation || {})
+            };
         }
         state.questionTimes = session.questionTimes || {};
         state.optionOrderCache = session.optionOrderCache || {};

@@ -23,8 +23,12 @@
                     isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 }
                 const themeColor = isDark
-                    ? (colorScheme === 'white' ? '#1e293b' : '#2a251b')
-                    : (colorScheme === 'white' ? '#ffffff' : '#f9f6ec');
+                    ? colorScheme === 'white'
+                        ? '#1e293b'
+                        : '#2a251b'
+                    : colorScheme === 'white'
+                      ? '#ffffff'
+                      : '#f9f6ec';
                 const meta = document.getElementById('meta-theme-color');
                 if (meta) {
                     meta.setAttribute('content', themeColor);

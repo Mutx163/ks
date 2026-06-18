@@ -46,14 +46,14 @@ const Admin = {
         const safeDetail = this._sanitizeLogDetail(detail);
         const logger =
             level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
-        
+
         // 构建详细的日志前缀
         const prefix = `[Admin][${time}]`;
         const tabInfo = this.tab ? `[Tab:${this.tab}]` : '';
         const loginInfo = this._loginVerified ? '[已验证]' : '[未验证]';
-        
+
         logger(`${prefix}${tabInfo}${loginInfo} ${action}`, safeDetail);
-        
+
         // 错误级别时输出调用栈
         if (level === 'error') {
             console.trace('[Admin] 错误调用栈:');
@@ -165,7 +165,8 @@ const Admin = {
         this.logAction('初始化后台', {
             hasPassword: !!this.password,
             currentHash: location.hash,
-            localStorageKeys: Object.keys(localStorage).filter(k => k.startsWith('admin_')).length,
+            localStorageKeys: Object.keys(localStorage).filter((k) => k.startsWith('admin_'))
+                .length,
             browserInfo: {
                 userAgent: navigator.userAgent.slice(0, 100),
                 language: navigator.language,
@@ -174,7 +175,7 @@ const Admin = {
             },
             timestamp: new Date().toISOString()
         });
-        
+
         document.getElementById('btn-login').addEventListener('click', () => this.login());
         document.getElementById('admin-password').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') this.login();
@@ -206,16 +207,17 @@ const Admin = {
             currentTab: this.tab,
             timestamp: new Date().toISOString()
         });
-        
+
         try {
             const d = await this.get('/api/admin/users');
             const elapsedMs = Date.now() - startTime;
-            
+
             if (d?.ok) {
                 this.logAction('后台验证成功', {
                     userCount: d.users?.length || 0,
                     elapsedMs,
-                    elapsedFormatted: elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`,
+                    elapsedFormatted:
+                        elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`,
                     response: { ok: d.ok, userCount: d.users?.length }
                 });
                 console.log('[Admin] ✅ 后台验证成功');
@@ -223,22 +225,30 @@ const Admin = {
                 this._loginVerified = true;
                 this.handleRoute();
             } else {
-                this.logAction('后台验证失败', {
-                    reason: '密码已过期或无效',
-                    elapsedMs,
-                    response: d
-                }, 'warn');
+                this.logAction(
+                    '后台验证失败',
+                    {
+                        reason: '密码已过期或无效',
+                        elapsedMs,
+                        response: d
+                    },
+                    'warn'
+                );
                 console.warn('[Admin] ⚠️ 密码已过期，需要重新登录');
                 this.logout();
             }
         } catch (e) {
             const elapsedMs = Date.now() - startTime;
-            this.logAction('后台验证异常', {
-                error: e.message,
-                errorName: e.name,
-                elapsedMs,
-                reason: '网络错误，保留本地数据'
-            }, 'warn');
+            this.logAction(
+                '后台验证异常',
+                {
+                    error: e.message,
+                    errorName: e.name,
+                    elapsedMs,
+                    reason: '网络错误，保留本地数据'
+                },
+                'warn'
+            );
             console.warn('[Admin] ⚠️ 验证失败，保留本地数据:', e.message);
             // 网络错误不清除密码，使用缓存数据
         }
@@ -253,16 +263,16 @@ const Admin = {
             return;
         }
         const remember = document.getElementById('remember-me')?.checked || false;
-        
+
         this.logAction('后台登录尝试', {
             remember,
             passwordLength: pwd.length,
             timestamp: new Date().toISOString()
         });
-        
+
         const err = document.getElementById('login-error');
         err.style.display = 'none';
-        
+
         const startTime = Date.now();
         try {
             const d = await this.getWithAuth('/api/admin/users', pwd);
@@ -287,20 +297,28 @@ const Admin = {
                 });
                 this.showApp();
             } else {
-                this.logAction('后台登录失败', {
-                    error: (d && d.error) || '密码错误',
-                    elapsedMs: Date.now() - startTime,
-                    response: d
-                }, 'warn');
+                this.logAction(
+                    '后台登录失败',
+                    {
+                        error: (d && d.error) || '密码错误',
+                        elapsedMs: Date.now() - startTime,
+                        response: d
+                    },
+                    'warn'
+                );
                 err.textContent = (d && d.error) || '密码错误';
                 err.style.display = 'block';
             }
         } catch (e) {
-            this.logAction('后台登录异常', {
-                error: e.message,
-                errorName: e.name,
-                elapsedMs: Date.now() - startTime
-            }, 'error');
+            this.logAction(
+                '后台登录异常',
+                {
+                    error: e.message,
+                    errorName: e.name,
+                    elapsedMs: Date.now() - startTime
+                },
+                'error'
+            );
             err.textContent = '网络错误: ' + e.message;
             err.style.display = 'block';
         }
@@ -325,38 +343,47 @@ const Admin = {
             currentUserCount: this.users?.length || 0
         });
         console.log('[Admin] 🔐 验证登录状态...');
-        
+
         try {
             const d = await this.get('/api/admin/users');
             const elapsedMs = Date.now() - startTime;
-            
+
             if (!d?.ok) {
-                this.logAction('刷新用户数据失败', {
-                    reason: '登录验证失败',
-                    elapsedMs,
-                    response: d
-                }, 'warn');
+                this.logAction(
+                    '刷新用户数据失败',
+                    {
+                        reason: '登录验证失败',
+                        elapsedMs,
+                        response: d
+                    },
+                    'warn'
+                );
                 console.warn('[Admin] ❌ 登录验证失败');
                 localStorage.removeItem('admin_pwd');
                 sessionStorage.removeItem('admin_pwd');
                 return;
             }
-            
+
             this.logAction('刷新用户数据成功', {
                 userCount: d.users?.length || 0,
                 elapsedMs,
-                elapsedFormatted: elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`
+                elapsedFormatted:
+                    elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`
             });
             console.log('[Admin] ✅ 登录验证成功');
             this.users = d.users;
             this._loginVerified = true;
         } catch (e) {
             const elapsedMs = Date.now() - startTime;
-            this.logAction('刷新用户数据异常', {
-                error: e.message,
-                errorName: e.name,
-                elapsedMs
-            }, 'error');
+            this.logAction(
+                '刷新用户数据异常',
+                {
+                    error: e.message,
+                    errorName: e.name,
+                    elapsedMs
+                },
+                'error'
+            );
             console.error('[Admin] ❌ 登录验证异常:', e.message);
         }
     },
@@ -1006,7 +1033,7 @@ const Admin = {
 
             const elapsedMs = Date.now() - startedAt;
             const result = r.ok ? data : { ok: false, error: data?.error || `HTTP ${r.status}` };
-            
+
             // 详细的响应日志
             const logData = {
                 requestId,
@@ -1016,7 +1043,8 @@ const Admin = {
                 status: r.status,
                 statusText: r.statusText,
                 elapsedMs,
-                elapsedFormatted: elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`,
+                elapsedFormatted:
+                    elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(2)}s`,
                 response: result,
                 responseSize: text.length,
                 responseOk: r.ok,
@@ -1025,13 +1053,17 @@ const Admin = {
 
             // 慢请求警告 (>1000ms)
             if (elapsedMs > 1000) {
-                this.logAction('⚠️ 慢请求警告', {
-                    requestId,
-                    method,
-                    path,
-                    elapsedMs,
-                    threshold: '1000ms'
-                }, 'warn');
+                this.logAction(
+                    '⚠️ 慢请求警告',
+                    {
+                        requestId,
+                        method,
+                        path,
+                        elapsedMs,
+                        threshold: '1000ms'
+                    },
+                    'warn'
+                );
             }
 
             this.logAction(

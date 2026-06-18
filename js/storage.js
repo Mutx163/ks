@@ -206,7 +206,7 @@ const Storage = {
                     keysToRemove.push(key);
                 }
             }
-            keysToRemove.forEach(key => localStorage.removeItem(key));
+            keysToRemove.forEach((key) => localStorage.removeItem(key));
         } catch (e) {
             console.warn('[Storage] 清除缓存题库失败:', e.message);
         }

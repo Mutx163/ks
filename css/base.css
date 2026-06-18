@@ -144,8 +144,6 @@
     --type-code-bg: #1a1a2e;
 }
 
-
-
 /* 系统随动处理：如果未强行设定 data-theme，自动应用对应主题 */
 @media (prefers-color-scheme: light) {
     :root:not([data-theme='dark']) {
@@ -652,7 +650,9 @@ pre[class*='language-'] code[class*='language-'] {
     z-index: 10000;
     max-width: 90vw;
     animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
 }
 
 .toast-content {
@@ -1816,7 +1816,7 @@ body.layout-fullscreen {
 }
 
 /* 隐藏真实 input 但保持 Accessibility */
-.theme-picker-card input[type="radio"] {
+.theme-picker-card input[type='radio'] {
     position: absolute;
     opacity: 0;
     pointer-events: none;

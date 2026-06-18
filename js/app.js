@@ -1056,7 +1056,7 @@ const App = {
         // 记录打开时的初始状态
         const initialTheme = document.documentElement.getAttribute('data-theme') || 'auto';
         const initialColor = document.documentElement.getAttribute('data-color') || 'parchment';
-        
+
         const themes = [
             { value: 'auto', icon: 'monitor', label: '跟随系统' },
             { value: 'light', icon: 'sun', label: '浅色模式' },
@@ -1064,19 +1064,19 @@ const App = {
         ];
 
         const colors = [
-            { 
-                value: 'parchment', 
-                label: '暖色羊皮纸', 
-                primary: '#155e9c', 
-                bg: '#f1e9d2', 
-                fg: '#4a3e2a' 
+            {
+                value: 'parchment',
+                label: '暖色羊皮纸',
+                primary: '#155e9c',
+                bg: '#f1e9d2',
+                fg: '#4a3e2a'
             },
-            { 
-                value: 'white', 
-                label: '白色简洁', 
-                primary: '#2563eb', 
-                bg: '#ffffff', 
-                fg: '#0f172a' 
+            {
+                value: 'white',
+                label: '白色简洁',
+                primary: '#2563eb',
+                bg: '#ffffff',
+                fg: '#0f172a'
             }
         ];
 
@@ -1085,7 +1085,9 @@ const App = {
             <div class="theme-picker-section">
                 <span class="theme-picker-label">色彩风格</span>
                 <div class="theme-picker-grid-2">
-                    ${colors.map(c => `
+                    ${colors
+                        .map(
+                            (c) => `
                         <div class="theme-picker-card ${c.value === initialColor ? 'active' : ''}" data-type="color" data-value="${c.value}">
                             <div class="check-badge">✓</div>
                             <div class="color-preview-dots">
@@ -1096,20 +1098,26 @@ const App = {
                             <input type="radio" name="colorScheme" value="${c.value}" ${c.value === initialColor ? 'checked' : ''}>
                             <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">${c.label}</span>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
             <div class="theme-picker-section" style="border-top: 1px solid var(--border); padding-top: var(--space-3); margin-top: var(--space-3);">
                 <span class="theme-picker-label">亮度模式</span>
                 <div class="theme-picker-grid">
-                    ${themes.map(t => `
+                    ${themes
+                        .map(
+                            (t) => `
                         <div class="theme-picker-card ${t.value === initialTheme ? 'active' : ''}" data-type="theme" data-value="${t.value}">
                             <div class="check-badge">✓</div>
                             ${Utils.icon(t.icon, 'theme-picker-icon')}
                             <input type="radio" name="theme" value="${t.value}" ${t.value === initialTheme ? 'checked' : ''}>
                             <span style="font-size: 11px; white-space: nowrap; color: var(--text-secondary);">${t.label}</span>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
         `;
@@ -1141,18 +1149,24 @@ const App = {
                     class: 'btn-primary',
                     onClick: (overlay) => {
                         confirmed = true;
-                        
+
                         // 获取当前高亮的卡片选项
-                        const activeThemeCard = overlay.querySelector('.theme-picker-card[data-type="theme"].active');
-                        const activeColorCard = overlay.querySelector('.theme-picker-card[data-type="color"].active');
-                        
+                        const activeThemeCard = overlay.querySelector(
+                            '.theme-picker-card[data-type="theme"].active'
+                        );
+                        const activeColorCard = overlay.querySelector(
+                            '.theme-picker-card[data-type="color"].active'
+                        );
+
                         const theme = activeThemeCard ? activeThemeCard.dataset.value : 'auto';
-                        const colorScheme = activeColorCard ? activeColorCard.dataset.value : 'parchment';
+                        const colorScheme = activeColorCard
+                            ? activeColorCard.dataset.value
+                            : 'parchment';
 
                         // 持久化保存
                         Storage.updateSettings({ theme, colorScheme });
                         applyTempState(theme, colorScheme);
-                        
+
                         Utils.showToast('主题已更新', 'success');
                         overlay.remove();
                     }
@@ -1178,16 +1192,18 @@ const App = {
 
         // 动态绑定卡片点击与实时预览事件
         if (modal) {
-            modal.querySelectorAll('.theme-picker-card').forEach(card => {
+            modal.querySelectorAll('.theme-picker-card').forEach((card) => {
                 card.addEventListener('click', () => {
                     const type = card.dataset.type;
 
                     // 1. 清除当前类别中所有其他卡片的 active 状态，并取消 radio 选中
-                    modal.querySelectorAll(`.theme-picker-card[data-type="${type}"]`).forEach(c => {
-                        c.classList.remove('active');
-                        const radio = c.querySelector('input[type="radio"]');
-                        if (radio) radio.checked = false;
-                    });
+                    modal
+                        .querySelectorAll(`.theme-picker-card[data-type="${type}"]`)
+                        .forEach((c) => {
+                            c.classList.remove('active');
+                            const radio = c.querySelector('input[type="radio"]');
+                            if (radio) radio.checked = false;
+                        });
 
                     // 2. 激活当前点击的卡片并选中 radio
                     card.classList.add('active');
@@ -1195,10 +1211,16 @@ const App = {
                     if (currentRadio) currentRadio.checked = true;
 
                     // 3. 读取最新的选择状态
-                    const activeThemeCard = modal.querySelector('.theme-picker-card[data-type="theme"].active');
-                    const activeColorCard = modal.querySelector('.theme-picker-card[data-type="color"].active');
+                    const activeThemeCard = modal.querySelector(
+                        '.theme-picker-card[data-type="theme"].active'
+                    );
+                    const activeColorCard = modal.querySelector(
+                        '.theme-picker-card[data-type="color"].active'
+                    );
                     const activeTheme = activeThemeCard ? activeThemeCard.dataset.value : 'auto';
-                    const activeColor = activeColorCard ? activeColorCard.dataset.value : 'parchment';
+                    const activeColor = activeColorCard
+                        ? activeColorCard.dataset.value
+                        : 'parchment';
 
                     // 4. 即时生效（Live Preview）
                     applyTempState(activeTheme, activeColor);
@@ -1346,7 +1368,8 @@ const App = {
                         }
 
                         const newSwipe = modal.querySelector('#setting-swipe').checked;
-                        const newLogCollection = modal.querySelector('#setting-log-collection').checked;
+                        const newLogCollection =
+                            modal.querySelector('#setting-log-collection').checked;
                         LogCollector.setEnabled(newLogCollection);
 
                         Storage.updateSettings({
