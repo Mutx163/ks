@@ -1,6 +1,10 @@
 /**
  * 管理后台 - 主入口
  */
+
+// 导入 vendor 模块（打包进构建）
+import './vendor/lucide.js';
+
 import API from './api.js';
 import Utils from './utils.js';
 import Perf from './perf.js';

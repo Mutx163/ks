@@ -3,6 +3,13 @@
  * 组合 core / renderer / answers / nav 四个子模块，暴露统一的 Quiz 对象
  */
 
+// 导入 vendor 模块（打包进构建）
+import './vendor/prism.js';
+import './vendor/lucide.js';
+import './vendor/katex.js';
+import './vendor/marked.js';
+
+
 import Core from './quiz-core.js';
 import Renderer from './quiz-renderer.js';
 import Answers from './quiz-answers.js';
