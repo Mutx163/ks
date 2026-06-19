@@ -296,6 +296,10 @@
 }
 
 /* ===== 主内容 ===== */
+#home-view.is-preparing {
+    visibility: hidden;
+}
+
 .home-main {
     margin-top: 0;
     padding: 80px 0 var(--space-6);
@@ -855,6 +859,11 @@
     margin-bottom: var(--space-6);
 }
 
+#section-banks {
+    min-height: 520px;
+    contain: layout paint;
+}
+
 .section-header {
     display: flex;
     align-items: center;
@@ -873,6 +882,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
     gap: var(--space-4);
+    min-height: 430px;
+    align-content: start;
 }
 
 /* ---- 题库卡片（瘦身版） ---- */
@@ -1450,11 +1461,16 @@
 }
 
 /* 活跃用户列表样式 */
+#custom-stats-widget {
+    min-height: 230px;
+    contain: layout paint;
+}
+
 .recent-users-list {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    min-height: 50px;
+    min-height: 164px;
 }
 
 .recent-user-item {

@@ -58,21 +58,23 @@ const App = {
         Perf.mark('加载本地数据');
         this.loadData();
 
-        // 隐藏骨架屏，显示真实内容（最少显示 500ms）
-        const skeleton = document.getElementById('loading-skeleton');
-        const banksSection = document.getElementById('section-banks');
-        const showReal = () => {
-            if (skeleton) skeleton.classList.add('hidden');
-            if (banksSection) banksSection.style.display = '';
-        };
-        const elapsed = Date.now() - window._pageStartTime;
-        if (elapsed < 500) setTimeout(showReal, 500 - elapsed);
-        else showReal();
-
         Perf.mark('开始渲染');
         this.render();
         this.bindEvents();
         Perf.mark('渲染完成');
+
+        // 真实内容渲染完成后再隐藏骨架屏，避免空布局 → 实际内容的中间态造成 CLS。
+        const skeleton = document.getElementById('loading-skeleton');
+        const homeView = document.getElementById('home-view');
+        const banksSection = document.getElementById('section-banks');
+        const showReal = () => {
+            if (banksSection) banksSection.style.display = '';
+            if (homeView) homeView.classList.remove('is-preparing');
+            if (skeleton) skeleton.classList.add('hidden');
+        };
+        const elapsed = Date.now() - window._pageStartTime;
+        if (elapsed < 500) setTimeout(showReal, 500 - elapsed);
+        else showReal();
 
         // 首次访问：提示注册
         if (!API.isRegistered()) {
