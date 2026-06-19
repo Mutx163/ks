@@ -18,7 +18,9 @@ const BankLoader = {
 
             if (data?.ok && data.banks) {
                 const allBanks = data.banks;
-                return allBanks.filter((b) => b.enabled !== false);
+                return allBanks
+                    .filter((b) => b.enabled !== false)
+                    .map((b) => this.normalizeBankListItem(b));
             }
 
             console.warn('[BankLoader] API 返回异常:', data);
@@ -62,10 +64,10 @@ const BankLoader = {
     /**
      * 加载所有题库：只使用云端 API。
      */
-    async loadAllBanks() {
+    async loadAllBanks(preloadedList = null) {
         const startTime = Date.now();
 
-        const list = await this.loadBankList();
+        const list = Array.isArray(preloadedList) ? preloadedList : await this.loadBankList();
 
         if (!list.length) {
             console.warn('[BankLoader] 云端无可用题库');
@@ -97,12 +99,43 @@ const BankLoader = {
         return await this.loadBank(bankId);
     },
 
+    normalizeBankListItem(bank = {}) {
+        const questionCount = Number(bank.questionCount ?? bank.question_count ?? 0) || 0;
+        const category = bank.category || '';
+        return {
+            ...bank,
+            id: bank.id,
+            name: bank.name || bank.title || bank.id || '未命名题库',
+            description: bank.description || '',
+            category,
+            categories: Array.isArray(bank.categories)
+                ? bank.categories
+                : category
+                  ? [category]
+                  : [],
+            questionCount,
+            question_count: questionCount,
+            questions: [],
+            enabled: bank.enabled !== false,
+            allowed_modes: Array.isArray(bank.allowed_modes) ? bank.allowed_modes : null,
+            _metadataOnly: true
+        };
+    },
+
     normalizeBank(bank, fallbackId) {
         const normalized = { ...bank };
         normalized.id = normalized.id || fallbackId;
         normalized.name = normalized.name || normalized.title || normalized.id || '未命名题库';
+        normalized.description = normalized.description || '';
         normalized.questions = Array.isArray(normalized.questions) ? normalized.questions : [];
         normalized.questionCount = normalized.questions.length;
+        normalized.question_count = normalized.questionCount;
+        normalized.categories = Array.isArray(normalized.categories)
+            ? normalized.categories
+            : normalized.category
+              ? [normalized.category]
+              : [];
+        normalized._metadataOnly = false;
         if (normalized.enabled === undefined) normalized.enabled = true;
         return normalized;
     }

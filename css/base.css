@@ -1,15 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap');
-
+/* 首屏性能优化：使用系统中文字体，避免 Google Fonts 产生 20+ 个字体请求拖慢 LCP。 */
 /* ================= 设计令牌系统 ================= */
 /* ================= 默认主题：深色模式为主 (#0e1324) ================= */
 :root {
     /* 字体 */
     --font-serif:
-        'Noto Serif SC', Georgia, 'Nimbus Roman No9 L', 'Songti SC', 'Noto Serif CJK SC',
-        'Source Han Serif SC', 'Source Han Serif CN', STSong, 'AR PL New Sung', SimSun, serif;
+        Georgia, 'Songti SC', 'STSong', 'Source Han Serif SC', 'Noto Serif CJK SC', SimSun,
+        'Times New Roman', serif;
     --font-sans:
-        'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-        Arial, 'Microsoft YaHei', sans-serif;
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+        'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', sans-serif;
 
     /* ---- 语义色 - 亮色下调暗融入羊皮纸 ---- */
     --primary: #155e9c;

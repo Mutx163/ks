@@ -412,16 +412,39 @@
                 lucide.createIcons();
             }
         </script>
-        <!-- 51.la 统计（async，不阻塞） -->
-        <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js" async></script>
+        <!-- 51.la 统计：首屏完成后空闲加载，避免参与 LCP 关键路径 -->
         <script>
-            // 等 51.la 加载完再初始化
-            function initLA() {
-                if (typeof LA !== 'undefined') {
-                    LA.init({ id: 'LCw11fJOoJPF3gGU', ck: 'LCw11fJOoJPF3gGU', autoTrack: true });
+            (function () {
+                function loadAnalytics() {
+                    if (document.getElementById('LA_COLLECT')) return;
+                    var script = document.createElement('script');
+                    script.charset = 'UTF-8';
+                    script.id = 'LA_COLLECT';
+                    script.src = 'https://sdk.51.la/js-sdk-pro.min.js';
+                    script.async = true;
+                    script.addEventListener('load', function () {
+                        if (typeof LA !== 'undefined') {
+                            LA.init({
+                                id: 'LCw11fJOoJPF3gGU',
+                                ck: 'LCw11fJOoJPF3gGU',
+                                autoTrack: true
+                            });
+                        }
+                    });
+                    document.head.appendChild(script);
                 }
-            }
-            document.getElementById('LA_COLLECT').addEventListener('load', initLA);
+
+                function scheduleAnalytics() {
+                    if ('requestIdleCallback' in window) {
+                        requestIdleCallback(loadAnalytics, { timeout: 5000 });
+                    } else {
+                        setTimeout(loadAnalytics, 3000);
+                    }
+                }
+
+                if (document.readyState === 'complete') scheduleAnalytics();
+                else window.addEventListener('load', scheduleAnalytics, { once: true });
+            })();
         </script>
 
         <script type="module" src="js/debug.js"></script>

@@ -2,11 +2,8 @@
  * 主应用模块
  */
 
-// 导入 vendor 模块（打包进构建）
-import './vendor/prism.js';
+// 首页首屏只需要图标；Prism/KaTeX/Marked 留给题目页或 AI 解读按需加载。
 import './vendor/lucide.js';
-import './vendor/katex.js';
-import './vendor/marked.js';
 
 
 import LogCollector from './logCollector.js';
@@ -28,42 +25,35 @@ const App = {
         customStatsLoaded: false
     },
 
+    _fullBanksPromise: null,
+
     async init() {
         Perf.init('首页');
         window._pageStartTime = window._pageStartTime || Date.now();
-        AIExplain.init().catch((e) => console.warn('[App] AI 解读配置加载失败:', e.message));
+        // AI 解读配置首屏不需要，打开设置时再加载，避免和题库接口抢占首屏网络。
 
         // 初始化网络状态监听
         Utils.initNetworkMonitor();
 
-        // 加载题库（30秒超时，失败不影响页面显示）
-        Perf.mark('开始加载题库');
+        // 首屏只等待题库列表，题目详情后台补齐，避免 1+N 个题库详情请求阻塞 LCP。
+        Perf.mark('开始加载题库列表');
         let banksLoadFailed = false;
+        let bankList;
         try {
-            await Promise.race([
-                BankLoader.loadAllBanks(),
-                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 30000))
+            bankList = await Promise.race([
+                BankLoader.loadBankList(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
             ]);
-            Perf.mark('题库加载完成');
+            bankList.forEach((bank) => Storage.setBank(bank));
+            Perf.mark('题库列表加载完成');
         } catch (e) {
-            Perf.mark('题库加载失败');
+            Perf.mark('题库列表加载失败');
             banksLoadFailed = true;
-            console.warn('[App] 题库加载超时或失败:', e.message);
+            console.warn('[App] 题库列表加载超时或失败:', e.message);
         }
 
-        // 云同步（异步执行，不阻塞页面渲染）
-        Perf.mark('开始云同步');
-        API.autoSync()
-            .then((synced) => {
-                if (synced) {
-                    this.loadData();
-                    this.render();
-                }
-            })
-            .catch((e) => {
-                console.warn('[App] 云同步失败:', e.message);
-            });
-        Perf.mark('云同步已启动');
+        // 云同步和完整题库详情都不是首屏必需，首屏稳定后再后台执行。
+        Perf.mark('后台任务已安排');
 
         Perf.mark('加载本地数据');
         this.loadData();
@@ -109,6 +99,80 @@ const App = {
             bankCount: this.state.banks.length,
             isRegistered: API.isRegistered()
         });
+
+        this.schedulePostPaintTasks(bankList);
+    },
+
+    schedulePostPaintTasks(bankList = null) {
+        const run = () => {
+            if (Array.isArray(bankList) && bankList.length > 0) {
+                this.loadFullBanksInBackground(bankList);
+            }
+
+            API.autoSync()
+                .then((synced) => {
+                    if (synced) {
+                        this.loadData();
+                        this.render();
+                    }
+                })
+                .catch((e) => {
+                    console.warn('[App] 云同步失败:', e.message);
+                });
+        };
+
+        // 留出时间让 LCP/CLS 稳定，避免后台详情和同步重渲染抢首屏。
+        setTimeout(() => {
+            if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(run, { timeout: 4000 });
+            } else {
+                run();
+            }
+        }, 2500);
+    },
+
+    loadFullBanksInBackground(bankList = null) {
+        if (this._fullBanksPromise) return this._fullBanksPromise;
+
+        this._fullBanksPromise = BankLoader.loadAllBanks(bankList)
+            .then((banks) => {
+                if (banks.length > 0) {
+                    this.loadData();
+                    this.render();
+                }
+                return banks;
+            })
+            .catch((e) => {
+                console.warn('[App] 题库详情后台加载失败:', e.message);
+                return [];
+            })
+            .finally(() => {
+                this._fullBanksPromise = null;
+            });
+
+        return this._fullBanksPromise;
+    },
+
+    async ensureBankLoaded(bankId) {
+        const current = Storage.getBank(bankId);
+        if (current && !current._metadataOnly) return current;
+
+        if (this._fullBanksPromise) {
+            await this._fullBanksPromise;
+            const hydrated = Storage.getBank(bankId);
+            if (hydrated && !hydrated._metadataOnly) return hydrated;
+        }
+
+        Utils.showToast('正在加载题库详情...', 'info', 1200);
+        const loaded = await BankLoader.loadBank(bankId);
+        if (loaded) {
+            this.loadData();
+            this.render();
+            return loaded;
+        }
+
+        Utils.showToast('题库详情加载失败，请稍后重试', 'error');
+        return null;
     },
 
     loadData() {
@@ -506,7 +570,9 @@ const App = {
      * 获取题库的可用题型列表
      */
     getBankTypes(bank) {
-        if (!bank || !bank.questions) return [];
+        if (!bank || !Array.isArray(bank.questions) || bank.questions.length === 0) {
+            return ['all'];
+        }
         const typeSet = new Set();
         bank.questions.forEach((q) => {
             if (q.type) typeSet.add(q.type);
@@ -629,7 +695,9 @@ const App = {
                 return banks.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             case 'count':
                 return banks.sort(
-                    (a, b) => (b.questions?.length || 0) - (a.questions?.length || 0)
+                    (a, b) =>
+                        (b.questionCount || b.question_count || b.questions?.length || 0) -
+                        (a.questionCount || a.question_count || a.questions?.length || 0)
                 );
             case 'progress': {
                 // 预计算 progress，避免在比较函数中 O(n log n) 次重复调用
@@ -673,6 +741,7 @@ const App = {
                 const bookmarkCount = Storage.getBookmarkCount(bank.id);
 
                 const questions = bank.questions || [];
+                const totalQuestions = bank.questionCount || bank.question_count || questions.length;
                 const bankTypes = this.getBankTypes(bank);
 
                 const iconClass = bank.id.includes('c-language') ? 'c-lang' : 'default';
@@ -713,7 +782,7 @@ const App = {
 
                     <div class="bank-card-stats">
                         <div class="bank-card-stat">
-                            共 <span class="bank-card-stat-num">${questions.length}</span> 题
+                            共 <span class="bank-card-stat-num">${totalQuestions}</span> 题
                         </div>
                         <div class="bank-card-stat">
                             已答 <span class="bank-card-stat-num">${stats.answered}</span>
@@ -759,15 +828,21 @@ const App = {
     /**
      * 搜索题目（跨题库关键词搜索）
      */
-    searchQuestions() {
+    async searchQuestions() {
         const input = document.getElementById('search-input');
         const keyword = input ? input.value.trim() : '';
         if (!keyword) return;
 
+        if (this.state.banks.some((bank) => bank._metadataOnly)) {
+            Utils.showToast('正在加载题库详情用于搜索...', 'info', 1500);
+            await this.loadFullBanksInBackground(this.state.banks);
+            this.loadData();
+        }
+
         const results = [];
         const banks = this.state.banks;
         for (const bank of banks) {
-            if (!bank.questions) continue;
+            if (!Array.isArray(bank.questions) || bank.questions.length === 0) continue;
             const matched = bank.questions.filter((q) => {
                 const searchText = [
                     q.question,
@@ -845,8 +920,8 @@ const App = {
     /**
      * 开始模拟考试
      */
-    startExam(bankId) {
-        const bank = Storage.getBank(bankId);
+    async startExam(bankId) {
+        const bank = await this.ensureBankLoaded(bankId);
         if (!bank) return;
 
         const totalQuestions = bank.questions?.length || 0;
@@ -939,8 +1014,8 @@ const App = {
     /**
      * 导出题库
      */
-    exportBank(bankId) {
-        const bank = Storage.getBank(bankId);
+    async exportBank(bankId) {
+        const bank = await this.ensureBankLoaded(bankId);
         if (!bank) return;
         Tracker.exportBank(bankId, bank.name);
         Utils.downloadJSON(bank, `${bank.name}.json`);
