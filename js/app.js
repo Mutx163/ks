@@ -765,10 +765,12 @@ const App = {
                             .map((cat) => `<span class="tag">${Utils.escapeHtml(cat)}</span>`)
                             .join('')}
                         ${dueCount > 0 ? `<span class="tag tag-warning">${Utils.icon('brain')} ${dueCount} 待复习</span>` : ''}
-                        <span class="tag">${bankTypes
-                            .filter((t) => t !== 'all')
-                            .map((t) => this.getTypeLabel(t))
-                            .join(' · ')}</span>
+                        ${bankTypes.filter((t) => t !== 'all').length > 0
+                            ? `<span class="tag">${bankTypes
+                                .filter((t) => t !== 'all')
+                                .map((t) => this.getTypeLabel(t))
+                                .join(' · ')}</span>`
+                            : ''}
                     </div>
 
                     <div class="bank-card-progress">
@@ -795,7 +797,8 @@ const App = {
                     </div>
 
                     <!-- 题型筛选行（选择题型后，刷题按钮自动使用所选题型） -->
-                    <div class="bank-card-types">
+                    ${bankTypes.filter((t) => t !== 'all').length > 0
+                        ? `<div class="bank-card-types">
                         ${bankTypes
                             .map((type) => {
                                 const isActive =
@@ -805,7 +808,8 @@ const App = {
                             </button>`;
                             })
                             .join('')}
-                    </div>
+                    </div>`
+                        : ''}
 
                     <!-- 刷题模式按钮网格 -->
                     <div class="bank-card-modes">
