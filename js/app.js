@@ -25,8 +25,6 @@ const App = {
         customStatsLoaded: false
     },
 
-    _fullBanksPromise: null,
-
     async init() {
         Perf.init('首页');
         window._pageStartTime = window._pageStartTime || Date.now();
@@ -52,9 +50,24 @@ const App = {
             console.warn('[App] 题库列表加载超时或失败:', e.message);
         }
 
-        // 云同步和完整题库详情都不是首屏必需，首屏稳定后再后台执行。
-        Perf.mark('后台任务已安排');
+        // 题库列表到手后，立即并行加载完整题库详情，骨架屏继续保持可见。
+        Perf.mark('开始加载题库详情');
+        let fullBanksFailed = false;
+        if (bankList && bankList.length > 0) {
+            try {
+                await Promise.race([
+                    BankLoader.loadAllBanks(bankList),
+                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+                ]);
+                Perf.mark('题库详情加载完成');
+            } catch (e) {
+                Perf.mark('题库详情加载失败');
+                fullBanksFailed = true;
+                console.warn('[App] 题库详情加载超时或失败:', e.message);
+            }
+        }
 
+        // 此时完整数据已就绪（或超时退回到元数据），一次性渲染 + 隐藏骨架，无中间闪变。
         Perf.mark('加载本地数据');
         this.loadData();
 
@@ -63,7 +76,6 @@ const App = {
         this.bindEvents();
         Perf.mark('渲染完成');
 
-        // 真实内容渲染完成后再隐藏骨架屏，避免空布局 → 实际内容的中间态造成 CLS。
         const skeleton = document.getElementById('loading-skeleton');
         const homeView = document.getElementById('home-view');
         const banksSection = document.getElementById('section-banks');
@@ -102,29 +114,25 @@ const App = {
             isRegistered: API.isRegistered()
         });
 
-        this.schedulePostPaintTasks(bankList);
+        // 云同步不是首屏必需，首屏渲染稳定后再执行
+        this.scheduleCloudSync();
     },
 
-    schedulePostPaintTasks(bankList = null) {
-        const run = () => {
-            if (Array.isArray(bankList) && bankList.length > 0) {
-                this.loadFullBanksInBackground(bankList);
-            }
-
-            API.autoSync()
-                .then((synced) => {
-                    if (synced) {
-                        this.loadData();
-                        this.render();
-                    }
-                })
-                .catch((e) => {
-                    console.warn('[App] 云同步失败:', e.message);
-                });
-        };
-
-        // 留出时间让 LCP/CLS 稳定，避免后台详情和同步重渲染抢首屏。
+    scheduleCloudSync() {
+        // 云同步在首屏渲染稳定后开始，不抢 LCP/CLS。
         setTimeout(() => {
+            const run = () => {
+                API.autoSync()
+                    .then((synced) => {
+                        if (synced) {
+                            this.loadData();
+                            this.render();
+                        }
+                    })
+                    .catch((e) => {
+                        console.warn('[App] 云同步失败:', e.message);
+                    });
+            };
             if ('requestIdleCallback' in window) {
                 window.requestIdleCallback(run, { timeout: 4000 });
             } else {
@@ -133,37 +141,9 @@ const App = {
         }, 2500);
     },
 
-    loadFullBanksInBackground(bankList = null) {
-        if (this._fullBanksPromise) return this._fullBanksPromise;
-
-        this._fullBanksPromise = BankLoader.loadAllBanks(bankList)
-            .then((banks) => {
-                if (banks.length > 0) {
-                    this.loadData();
-                    this.render();
-                }
-                return banks;
-            })
-            .catch((e) => {
-                console.warn('[App] 题库详情后台加载失败:', e.message);
-                return [];
-            })
-            .finally(() => {
-                this._fullBanksPromise = null;
-            });
-
-        return this._fullBanksPromise;
-    },
-
     async ensureBankLoaded(bankId) {
         const current = Storage.getBank(bankId);
         if (current && !current._metadataOnly) return current;
-
-        if (this._fullBanksPromise) {
-            await this._fullBanksPromise;
-            const hydrated = Storage.getBank(bankId);
-            if (hydrated && !hydrated._metadataOnly) return hydrated;
-        }
 
         Utils.showToast('正在加载题库详情...', 'info', 1200);
         const loaded = await BankLoader.loadBank(bankId);
@@ -841,7 +821,7 @@ const App = {
 
         if (this.state.banks.some((bank) => bank._metadataOnly)) {
             Utils.showToast('正在加载题库详情用于搜索...', 'info', 1500);
-            await this.loadFullBanksInBackground(this.state.banks);
+            await BankLoader.loadAllBanks(this.state.banks);
             this.loadData();
         }
 
