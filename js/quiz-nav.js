@@ -381,22 +381,20 @@ const Nav = {
             answered: dAnswered,
             correct: dCorrect,
             duration: dDuration
-        })
-            .then((result) => {
-                if (result) {
-                    state._lastPushAnswered = nextPushAnswered;
-                    state._lastPushCorrect = nextPushCorrect;
-                    state._lastPushDuration = nextPushDuration;
-                } else {
-                    state._statsDirty = true;
-                }
-                return result;
-            })
-            .catch((err) => {
-                console.warn('[QuizNav] pushStats 错误:', err);
+        }).then((result) => {
+            if (result) {
+                state._lastPushAnswered = nextPushAnswered;
+                state._lastPushCorrect = nextPushCorrect;
+                state._lastPushDuration = nextPushDuration;
+            } else {
                 state._statsDirty = true;
-                return null;
-            });
+            }
+            return result;
+        }).catch((err) => {
+            console.warn('[QuizNav] pushStats 错误:', err);
+            state._statsDirty = true;
+            return null;
+        });
     },
 
     _flushStatsSync() {

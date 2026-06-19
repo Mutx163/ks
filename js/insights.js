@@ -1,6 +1,3 @@
-// 导入 vendor 模块（打包进构建）
-import './vendor/lucide.js';
-
 import Storage from './storage.js';
 import Utils from './utils.js';
 import BankLoader from './bankLoader.js';

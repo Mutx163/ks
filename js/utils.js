@@ -348,7 +348,7 @@ const Utils = {
         // 2. 创建 Toast 容器
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-
+        
         // 3. 自动映射不同类型对应的图标
         const iconMap = {
             success: 'check-circle',
@@ -357,20 +357,17 @@ const Utils = {
             info: 'info'
         };
         const defaultIcon = iconMap[type] || 'info';
-
+        
         // 4. 健壮的“双重图标判定”：判断调用者传入的 message 是否已经包含定制图标
-        const hasIcon =
-            message.includes('data-lucide') ||
-            message.includes('<svg') ||
-            message.includes('class="icon"');
-
+        const hasIcon = message.includes('data-lucide') || message.includes('<svg') || message.includes('class="icon"');
+        
         if (hasIcon) {
             toast.innerHTML = `<div class="toast-content">${message}</div>`;
         } else {
             const iconHtml = this.icon(defaultIcon, `toast-icon toast-icon-${type}`);
             toast.innerHTML = `${iconHtml}<div class="toast-content">${message}</div>`;
         }
-
+        
         // 5. 渲染进入 DOM 并渲染图标
         document.body.appendChild(toast);
         this.initIcons();
@@ -813,30 +810,24 @@ const Router = {
         window.addEventListener('hashchange', () => this.handleRouting());
         window.addEventListener('load', () => this.handleRouting());
 
-        // 记录上次同步时间，避免重复同步
-        let lastSyncTime = 0;
-        const SYNC_COOLDOWN = 30000; // 30秒冷却时间
-
-        // 设备锁屏/切后台唤醒：静默云同步并刷新数据
+        // 设备锁屏/切后台唤醒：自动重新云同步，并重绘当前活动视图
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                const now = Date.now();
-                // 如果30秒内刚同步过，跳过
-                if (now - lastSyncTime < SYNC_COOLDOWN) return;
-
-                // 静默云同步（不显示加载状态）
-                /* global API, App */
-                if (typeof API !== 'undefined' && API.autoSync) {
-                    lastSyncTime = now;
-                    API.autoSync()
+                console.log('[Router] 唤醒重连，重新静默云同步...');
+                if (window.API && typeof window.API.autoSync === 'function') {
+                    window.API.autoSync()
                         .then(() => {
-                            // 同步完成后静默刷新数据和视图
-                            if (typeof App !== 'undefined') {
-                                if (App.loadData) App.loadData();
-                                if (App.render) App.render();
+                            if (window.App && typeof window.App.loadData === 'function') {
+                                window.App.loadData();
                             }
+                            this.handleRouting();
                         })
-                        .catch(() => {});
+                        .catch((e) => {
+                            console.warn('[Router] 自动同步数据失败:', e.message);
+                            this.handleRouting();
+                        });
+                } else {
+                    this.handleRouting();
                 }
             }
         });
@@ -902,13 +893,13 @@ window.addEventListener('storage', (e) => {
             const settings = JSON.parse(e.newValue || '{}');
             const theme = settings.theme || 'auto';
             const colorScheme = settings.colorScheme || 'parchment';
-
+            
             if (theme === 'auto') {
                 document.documentElement.removeAttribute('data-theme');
             } else {
                 document.documentElement.setAttribute('data-theme', theme);
             }
-
+            
             if (colorScheme === 'parchment') {
                 document.documentElement.removeAttribute('data-color');
             } else {

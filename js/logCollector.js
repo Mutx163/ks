@@ -15,17 +15,6 @@
  */
 
 const LogCollector = {
-    /** 获取 API 基础地址 */
-    _getBaseUrl() {
-        return (
-            window.__API_BASE__ ||
-            localStorage.getItem('ks_api_base') ||
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-                ? ''
-                : window.location.origin)
-        );
-    },
-
     /** 配置 */
     config: {
         enabled: true, // 总开关（从 localStorage 读取）
@@ -251,16 +240,8 @@ const LogCollector = {
         const sendRemaining = () => {
             if (self._buffer.length > 0 && self.config.enabled) {
                 const logs = self._buffer.splice(0);
-                const baseUrl = self._getBaseUrl
-                    ? self._getBaseUrl()
-                    : window.__API_BASE__ ||
-                      localStorage.getItem('ks_api_base') ||
-                      (window.location.hostname === 'localhost' ||
-                      window.location.hostname === '127.0.0.1'
-                          ? ''
-                          : window.location.origin);
                 navigator.sendBeacon(
-                    `${baseUrl}/api/logs`,
+                    'https://ks-api.mutx.ccwu.cc/api/logs',
                     JSON.stringify({ logs, deviceId: self._deviceId })
                 );
             }
@@ -391,7 +372,7 @@ const LogCollector = {
 
         try {
             const payload = JSON.stringify({ logs: batch, deviceId: this._deviceId });
-            await fetch(`${this._getBaseUrl()}/api/logs`, {
+            await fetch('https://ks-api.mutx.ccwu.cc/api/logs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: payload,
@@ -433,7 +414,7 @@ const LogCollector = {
         };
 
         try {
-            await fetch(`${this._getBaseUrl()}/api/logs`, {
+            await fetch('https://ks-api.mutx.ccwu.cc/api/logs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ logs: [entry], deviceId: this._deviceId })

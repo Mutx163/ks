@@ -281,13 +281,13 @@ export default {
 
             // GET /api/banks（前端获取题库列表）
             if (method === 'GET' && path === '/api/banks') {
-                return await handleGetBanks(request, env, origin);
+                return await handleGetBanks(env, origin);
             }
 
             // GET /api/bank/:id（前端获取题库数据）
             if (method === 'GET' && path.startsWith('/api/bank/')) {
                 const bankId = path.split('/api/bank/')[1];
-                return await handleGetBank(bankId, request, env, origin);
+                return await handleGetBank(bankId, env, origin);
             }
 
             // POST /api/admin/adjust-stats
@@ -1284,47 +1284,22 @@ async function handleAdminUserCloudData(userId, url, env, origin) {
 // ==================== 题库管理 API ====================
 
 // 前端：获取题库列表（不含题目详情）
-async function handleGetBanks(request, env, origin) {
+async function handleGetBanks(env, origin) {
     const rows = await env.DB.prepare(
         'SELECT id, name, description, category, version, question_count, allowed_modes, enabled, updated_at FROM banks ORDER BY name'
     ).all();
-    
-    const rawBanks = rows.results || [];
-    
-    // 生成弱 ETag (拼接各行状态)
-    const etagData = rawBanks.map(b => `${b.id}:${b.version || 0}:${b.enabled}:${b.updated_at || ''}`).join('|');
-    let hash = 0;
-    for (let i = 0; i < etagData.length; i++) {
-        hash = (hash << 5) - hash + etagData.charCodeAt(i);
-        hash |= 0;
-    }
-    const etag = `W/"banks-${etagData.length}-${hash}"`;
-    
-    const clientEtag = request.headers.get('If-None-Match');
-    if (clientEtag === etag) {
-        const headers = { 
-            ...corsHeaders(origin),
-            'ETag': etag,
-            'Cache-Control': 'public, max-age=0, must-revalidate'
-        };
-        return new Response(null, { status: 304, headers });
-    }
-
     // 解析 allowed_modes JSON
-    const banks = rawBanks.map(b => ({
+    const banks = (rows.results || []).map(b => ({
         ...b,
         enabled: b.enabled !== 0, // 转为布尔值
         allowed_modes: b.allowed_modes ? JSON.parse(b.allowed_modes) : null
     }));
-
-    const res = json({ ok: true, banks }, 200, origin);
-    res.headers.set('ETag', etag);
-    res.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
-    return res;
+    // 题库启用/禁用需要立即生效，不能缓存列表响应
+    return json({ ok: true, banks }, 200, origin);
 }
 
 // 前端：获取题库完整数据（含题目）
-async function handleGetBank(bankId, request, env, origin) {
+async function handleGetBank(bankId, env, origin) {
     const bank = await env.DB.prepare(
         'SELECT * FROM banks WHERE id = ?'
     ).bind(bankId).first();
@@ -1333,26 +1308,10 @@ async function handleGetBank(bankId, request, env, origin) {
     if (bank.enabled === 0) return error('题库已禁用', 403, origin);
 
     let questions = [];
-    try { 
-        questions = JSON.parse(bank.questions_json || '[]'); 
-    } catch (e) {
-        console.error(`[Worker] 解析题库 ${bankId} 题目 JSON 失败:`, e.message);
-        return error('题库数据损坏，无法解析', 500, origin);
-    }
+    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
 
-    // 生成弱 ETag
-    const etag = `W/"bank-${bank.id}-${bank.version || 1}"`;
-    const clientEtag = request.headers.get('If-None-Match');
-    if (clientEtag === etag) {
-        const headers = { 
-            ...corsHeaders(origin),
-            'ETag': etag,
-            'Cache-Control': 'public, max-age=300'
-        };
-        return new Response(null, { status: 304, headers });
-    }
-
-    const res = json({
+    // 缓存 5 分钟（减少重复请求，更新延迟最多 5 分钟）
+    return json({
         ok: true,
         bank: {
             id: bank.id,
@@ -1364,9 +1323,6 @@ async function handleGetBank(bankId, request, env, origin) {
             questions
         }
     }, 200, origin, 300);
-
-    res.headers.set('ETag', etag);
-    return res;
 }
 
 // 管理员：导入/替换题库

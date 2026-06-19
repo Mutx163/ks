@@ -17,29 +17,12 @@ export default defineConfig(({ mode }) => {
     return {
         server: {
             port: 3000,
-            host: '0.0.0.0',
-            // 本地开发代理 API 请求到宝塔服务器
-            proxy: {
-                '/api': {
-                    target: 'http://8.135.36.100',
-                    changeOrigin: true,
-                    secure: false
-                }
-            }
+            host: '0.0.0.0'
         },
         build: {
             outDir,
             rollupOptions: {
-                input,
-                output: {
-                    // 将 vendor 模块单独打包
-                    manualChunks: {
-                        'vendor-prism': ['./js/vendor/prism.js'],
-                        'vendor-lucide': ['./js/vendor/lucide.js'],
-                        'vendor-katex': ['./js/vendor/katex.js'],
-                        'vendor-marked': ['./js/vendor/marked.js']
-                    }
-                }
+                input
             }
         },
         define: {

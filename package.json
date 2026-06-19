@@ -21,10 +21,6 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "@ff-labs/pi-fff": "^0.9.4",
-    "katex": "^0.16.9",
-    "lucide": "^0.344.0",
-    "marked": "^15.0.7",
-    "prismjs": "^1.29.0"
+    "@ff-labs/pi-fff": "^0.9.4"
   }
 }

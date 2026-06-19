@@ -35,7 +35,7 @@ export function initBanks(Admin) {
         const el = document.getElementById('sec-banks');
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
-            const d = await this.get('/api/banks?all=true');
+            const d = await this.get('/api/banks');
             if (!d?.ok) {
                 el.innerHTML = this.emptyState({
                     title: '题库加载失败',
@@ -342,35 +342,11 @@ export function initBanks(Admin) {
         const allowed = Array.from(cbs)
             .filter((cb) => cb.checked)
             .map((cb) => cb.dataset.mode);
-
-        this.logAction('保存做题模式开始', {
-            bankId,
-            selectedModes: allowed,
-            modeCount: allowed.length,
-            isAllModes: allowed.length === MODE_DEFS.length
-        });
-
         const r = await this.put(`/api/admin/bank/${bankId}/settings`, {
             allowed_modes: allowed.length === MODE_DEFS.length ? null : allowed
         });
-        if (r?.ok) {
-            this.logAction('保存做题模式成功', {
-                bankId,
-                savedModes: allowed.length === MODE_DEFS.length ? '全部模式' : allowed,
-                response: r
-            });
-            Utils.showToast('做题模式已保存', 'success');
-        } else {
-            this.logAction(
-                '保存做题模式失败',
-                {
-                    bankId,
-                    error: r?.error || '未知错误'
-                },
-                'error'
-            );
-            Utils.showToast(r?.error || '保存失败', 'error');
-        }
+        if (r?.ok) Utils.showToast('做题模式已保存', 'success');
+        else Utils.showToast(r?.error || '保存失败', 'error');
     };
 
     Admin._renderQuestionList = function (bankId, qs) {
@@ -431,67 +407,22 @@ export function initBanks(Admin) {
     Admin.doUploadBank = async function (existingId) {
         const file = document.getElementById('upload-bank-file').files[0];
         if (!file) {
-            this.logAction('题库上传失败', { reason: '未选择文件', existingId });
             Utils.showToast('请选择文件', 'error');
             return;
         }
-
-        this.logAction('题库上传开始', {
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-            existingId: existingId || null,
-            isReplace: !!existingId
-        });
-
         try {
             const text = await file.text();
             const json = JSON.parse(text);
-
-            this.logAction('题库JSON解析成功', {
-                bankId: json.id,
-                bankName: json.name,
-                questionCount: json.questions?.length || 0,
-                hasVersion: !!json.version,
-                hasCategory: !!json.category
-            });
-
             const r = await this.post('/api/admin/upload-bank', {
                 bank: json,
                 existingId: existingId || null
             });
             if (r?.ok) {
-                this.logAction('题库上传成功', {
-                    bankId: json.id,
-                    bankName: json.name,
-                    questionCount: json.questions?.length || 0,
-                    isReplace: !!existingId,
-                    response: r
-                });
                 Utils.showToast(existingId ? '替换成功' : '上传成功', 'success');
                 document.querySelector('.modal-mask')?.remove();
                 existingId ? this.showBankDetail(existingId) : this.renderBanks();
-            } else {
-                this.logAction(
-                    '题库上传失败',
-                    {
-                        bankId: json.id,
-                        error: r?.error || '未知错误'
-                    },
-                    'error'
-                );
-                Utils.showToast(r?.error || '失败', 'error');
-            }
-        } catch (e) {
-            this.logAction(
-                '题库上传异常',
-                {
-                    fileName: file.name,
-                    error: e.message,
-                    errorName: e.name
-                },
-                'error'
-            );
+            } else Utils.showToast(r?.error || '失败', 'error');
+        } catch {
             Utils.showToast('JSON格式错误', 'error');
         }
     };
@@ -513,48 +444,19 @@ export function initBanks(Admin) {
         const id = document.getElementById('new-bank-id').value.trim();
         const name = document.getElementById('new-bank-name').value.trim();
         const category = document.getElementById('new-bank-category').value.trim();
-
         if (!id || !name) {
-            this.logAction('题库创建失败', { reason: '缺少必填字段', id, name, category });
             Utils.showToast('请填写ID和名称', 'error');
             return;
         }
-
-        this.logAction('题库创建开始', { id, name, category: category || '未分类' });
-
         const r = await this.post('/api/admin/create-bank', { id, name, category });
         if (r?.ok) {
-            this.logAction('题库创建成功', {
-                bankId: id,
-                bankName: name,
-                category: category || '未分类',
-                response: r
-            });
             Utils.showToast('创建成功', 'success');
             document.querySelector('.modal-mask')?.remove();
             this.renderBanks();
-        } else {
-            this.logAction(
-                '题库创建失败',
-                {
-                    bankId: id,
-                    bankName: name,
-                    error: r?.error || '未知错误'
-                },
-                'error'
-            );
-            Utils.showToast(r?.error || '失败', 'error');
-        }
+        } else Utils.showToast(r?.error || '失败', 'error');
     };
 
     Admin.toggleBank = async function (bankId, enable, refresh = 'list') {
-        this.logAction('题库状态切换开始', {
-            bankId,
-            targetState: enable ? '启用' : '禁用',
-            refreshMode: refresh,
-            currentTab: this.tab
-        });
-
         const ok = await this.confirmDanger({
             title: enable ? '启用题库' : '禁用题库',
             targetLabel: bankId,
@@ -564,38 +466,16 @@ export function initBanks(Admin) {
             confirmText: enable ? '确认启用' : '确认禁用',
             danger: !enable
         });
-
-        if (!ok) {
-            this.logAction('题库状态切换取消', { bankId, targetState: enable ? '启用' : '禁用' });
-            return;
-        }
-
+        if (!ok) return;
         const r = await this.put(`/api/admin/bank/${bankId}/toggle`, { enabled: enable });
         if (r?.ok) {
-            this.logAction('题库状态切换成功', {
-                bankId,
-                newState: enable ? '已启用' : '已禁用',
-                refreshMode: refresh,
-                response: r
-            });
             Utils.showToast(
                 enable ? '题库已启用，前台刷新后立即可见' : '题库已禁用，前台刷新后立即隐藏',
                 'success'
             );
             if (refresh === 'detail') this.showBankDetail(bankId);
             else this.renderBanks();
-        } else {
-            this.logAction(
-                '题库状态切换失败',
-                {
-                    bankId,
-                    targetState: enable ? '启用' : '禁用',
-                    error: r?.error || '未知错误'
-                },
-                'error'
-            );
-            Utils.showToast(r?.error || '失败', 'error');
-        }
+        } else Utils.showToast(r?.error || '失败', 'error');
     };
 
     Admin.confirmDeleteBank = async function (bankId, name) {
@@ -610,32 +490,12 @@ export function initBanks(Admin) {
     };
 
     Admin.doDeleteBank = async function (bankId) {
-        this.logAction('题库删除开始', {
-            bankId,
-            currentTab: this.tab,
-            warning: '此操作不可恢复'
-        });
-
         const r = await this.delete(`/api/admin/bank/${bankId}`);
         if (r?.ok) {
-            this.logAction('题库删除成功', {
-                bankId,
-                response: r
-            });
             Utils.showToast('已删除', 'success');
             document.querySelector('.modal-mask')?.remove();
             this.renderBanks();
-        } else {
-            this.logAction(
-                '题库删除失败',
-                {
-                    bankId,
-                    error: r?.error || '未知错误'
-                },
-                'error'
-            );
-            Utils.showToast(r?.error || '失败', 'error');
-        }
+        } else Utils.showToast(r?.error || '失败', 'error');
     };
 
     Admin.clearLocalCache = async function () {
@@ -650,29 +510,13 @@ export function initBanks(Admin) {
     };
 
     Admin.doClearLocalCache = function () {
-        this.logAction('清除本地缓存开始', {
-            currentTab: this.tab,
-            storageKeys: Object.keys(localStorage).filter((k) => k.startsWith('quiz_')).length
-        });
-
         try {
             Storage.clearAll();
-            this.logAction('清除本地缓存成功', {
-                clearedKeys: Object.keys(localStorage).filter((k) => k.startsWith('quiz_')).length
-            });
             console.log('[Admin] ✅ 本地数据已清除');
             Utils.showToast('本地数据已清除，2秒后刷新页面', 'success');
             document.querySelector('.modal-mask')?.remove();
             setTimeout(() => location.reload(), 2000);
         } catch (e) {
-            this.logAction(
-                '清除本地缓存失败',
-                {
-                    error: e.message,
-                    errorName: e.name
-                },
-                'error'
-            );
             console.error('[Admin] 清除数据失败:', e);
             Utils.showToast('清除失败: ' + e.message, 'error');
         }
@@ -709,45 +553,20 @@ export function initBanks(Admin) {
         const name = document.getElementById('edit-bank-name').value.trim();
         const description = document.getElementById('edit-bank-desc').value.trim();
         const category = document.getElementById('edit-bank-category').value.trim();
-
         if (!name) {
-            this.logAction('题库信息更新失败', { bankId, reason: '名称为空' });
             Utils.showToast('题库名称不能为空', 'error');
             return;
         }
-
-        this.logAction('题库信息更新开始', {
-            bankId,
-            newName: name,
-            newDescription: description ? description.slice(0, 50) + '...' : '(空)',
-            newCategory: category || '未分类'
-        });
-
         const r = await this.put(`/api/admin/bank/${bankId}/settings`, {
             name,
             description,
             category
         });
         if (r?.ok) {
-            this.logAction('题库信息更新成功', {
-                bankId,
-                updatedFields: { name, category },
-                response: r
-            });
             Utils.showToast('题库信息已更新', 'success');
             document.querySelector('.modal-mask')?.remove();
             this.showBankDetail(bankId);
-        } else {
-            this.logAction(
-                '题库信息更新失败',
-                {
-                    bankId,
-                    error: r?.error || '未知错误'
-                },
-                'error'
-            );
-            Utils.showToast(r?.error || '更新失败', 'error');
-        }
+        } else Utils.showToast(r?.error || '更新失败', 'error');
     };
 
     Admin.viewBankHistory = async function (bankId) {
@@ -812,58 +631,16 @@ export function initBanks(Admin) {
     };
 
     Admin.doImportQuestions = async function (bankId) {
-        const jsonStr = document.getElementById('import-questions-json').value;
-
-        this.logAction('批量导入题目开始', {
-            bankId,
-            jsonLength: jsonStr.length
-        });
-
         try {
-            const questions = JSON.parse(jsonStr);
-            if (!Array.isArray(questions)) {
-                this.logAction('批量导入题目失败', { bankId, reason: '非数组格式' });
-                throw new Error('需要数组格式');
-            }
-
-            this.logAction('批量导入JSON解析成功', {
-                bankId,
-                questionCount: questions.length,
-                types: [...new Set(questions.map((q) => q.type || 'unknown'))]
-            });
-
+            const questions = JSON.parse(document.getElementById('import-questions-json').value);
+            if (!Array.isArray(questions)) throw new Error('需要数组格式');
             const r = await this.post(`/api/admin/bank/${bankId}/import-questions`, { questions });
             if (r?.ok) {
-                this.logAction('批量导入题目成功', {
-                    bankId,
-                    importedCount: r.added,
-                    totalCount: questions.length,
-                    response: r
-                });
                 Utils.showToast(`已导入 ${r.added} 题`, 'success');
                 document.querySelector('.modal-mask')?.remove();
                 this.showBankDetail(bankId);
-            } else {
-                this.logAction(
-                    '批量导入题目失败',
-                    {
-                        bankId,
-                        error: r?.error || '未知错误'
-                    },
-                    'error'
-                );
-                Utils.showToast(r?.error || '失败', 'error');
-            }
+            } else Utils.showToast(r?.error || '失败', 'error');
         } catch (e) {
-            this.logAction(
-                '批量导入题目异常',
-                {
-                    bankId,
-                    error: e.message,
-                    errorName: e.name
-                },
-                'error'
-            );
             Utils.showToast('JSON格式错误: ' + e.message, 'error');
         }
     };

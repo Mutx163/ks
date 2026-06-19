@@ -11,17 +11,7 @@
 import StorageMod from './storage.js';
 
 const API = {
-    // API 地址优先级：
-    //   1. window.__API_BASE__ (可在 HTML 中注入)
-    //   2. localStorage ks_api_base (用户/管理员设置)
-    //   3. 本地开发时使用相对路径（由 Vite proxy 转发）
-    //   4. 生产环境使用宝塔服务器
-    BASE_URL:
-        window.__API_BASE__ ||
-        localStorage.getItem('ks_api_base') ||
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? ''
-            : window.location.origin),
+    BASE_URL: 'https://ks-api.mutx.ccwu.cc',
 
     // localStorage 键名
     KEYS: {
@@ -92,17 +82,14 @@ const API = {
         const { cacheBust: _cacheBust, ...fetchOptions } = options;
         const method = fetchOptions.method || 'GET';
         try {
-            // 处理 BASE_URL 为空的情况（本地开发 Vite 代理）
-            const base = this.BASE_URL || window.location.origin;
-            const urlObj = new URL(path, base);
+            const urlObj = new URL(path, this.BASE_URL);
             if (method === 'GET' && options.cacheBust !== false) {
                 urlObj.searchParams.set('_ts', Date.now().toString());
             }
             const url = urlObj.toString();
 
-            const fetchCache = options.cacheBust === false ? 'default' : 'no-store';
             const res = await fetch(url, {
-                cache: fetchCache,
+                cache: 'no-store',
                 headers: { 'Content-Type': 'application/json' },
                 ...fetchOptions
             });
@@ -424,21 +411,12 @@ const API = {
                     deviceId: this.getDeviceId(),
                     progress
                 })
-            })
-                .then((data) => {
-                    if (!data) {
-                        console.warn(
-                            '[API] pushProgress 同步失败，响应为空，将在下次数据变动时重试'
-                        );
-                    } else if (data.disabled) {
-                        this._showBanNotice();
-                    }
-                    return data;
-                })
-                .catch((err) => {
-                    console.warn('[API] pushProgress 同步异常:', err.message);
-                    return null;
-                });
+            }).then((data) => {
+                if (data && data.disabled) {
+                    this._showBanNotice();
+                }
+                return data;
+            });
         };
 
         if (immediate) {
