@@ -9,6 +9,7 @@
  */
 
 import StorageMod from './storage.js';
+import SyncQueue from './syncQueue.js';
 
 const API = {
     BASE_URL: 'https://ks-api.mutx.ccwu.cc',
@@ -24,6 +25,8 @@ const API = {
     _syncTimer: null,
     _deviceId: null,
     _syncCode: null,
+    _flushQueuePromise: null,
+    _syncRecoveryInit: false,
 
     // ==================== 设备标识 ====================
 
@@ -73,6 +76,101 @@ const API = {
      */
     isRegistered() {
         return !!this.getSyncCode();
+    },
+
+    // ==================== 失败队列 & 网络恢复 ====================
+
+    /**
+     * 解析推送结果：ok / fail / disabled
+     */
+    _classifyPushResult(data) {
+        if (data && data.disabled) return 'disabled';
+        if (data !== null && data !== undefined) return 'ok';
+        return 'fail';
+    },
+
+    /**
+     * 发送队列中的单项同步
+     */
+    async _sendQueuedItem(type, payload) {
+        const deviceId = this.getDeviceId();
+        let path;
+        let body;
+
+        switch (type) {
+            case 'stats':
+                path = '/api/sync';
+                body = { deviceId, ...payload };
+                break;
+            case 'progress':
+                path = '/api/progress';
+                body = { deviceId, progress: payload };
+                break;
+            case 'settings':
+                path = '/api/settings';
+                body = { deviceId, settings: payload };
+                break;
+            case 'bookmarks':
+                path = '/api/bookmarks';
+                body = { deviceId, bookmarks: payload };
+                break;
+            default:
+                return 'fail';
+        }
+
+        const data = await this.request(path, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+        const result = this._classifyPushResult(data);
+        if (result === 'disabled') this._showBanNotice();
+        return result;
+    },
+
+    /**
+     * 重试 localStorage 中待同步的失败项
+     */
+    async flushSyncQueue() {
+        if (!this.isRegistered() || SyncQueue.isEmpty()) return { flushed: 0, failed: 0 };
+
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            return { flushed: 0, failed: 0, skipped: true };
+        }
+
+        if (this._flushQueuePromise) return this._flushQueuePromise;
+
+        this._flushQueuePromise = SyncQueue.flush((type, payload) =>
+            this._sendQueuedItem(type, payload)
+        ).finally(() => {
+            this._flushQueuePromise = null;
+        });
+
+        return this._flushQueuePromise;
+    },
+
+    /**
+     * 监听网络恢复 / 切回前台，自动重试失败队列
+     */
+    initSyncRecovery() {
+        if (this._syncRecoveryInit) return;
+        this._syncRecoveryInit = true;
+
+        window.addEventListener('network-restored', () => {
+            console.log('[API] 网络恢复，重试同步队列...');
+            this.flushSyncQueue().catch((e) => {
+                console.warn('[API] 队列重试失败:', e.message);
+            });
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible') return;
+            if (!SyncQueue.isEmpty()) {
+                console.log('[API] 页面可见，重试同步队列...');
+                this.flushSyncQueue().catch((e) => {
+                    console.warn('[API] 队列重试失败:', e.message);
+                });
+            }
+        });
     },
 
     // ==================== 网络请求 ====================
@@ -255,6 +353,9 @@ const API = {
         console.log('[API] 📤 推送本地数据到云端...');
         await this.pushAll();
 
+        console.log('[API] 🔄 重试失败同步队列...');
+        await this.flushSyncQueue();
+
         const elapsed = Date.now() - startTime;
         console.log(`[API] ========== 自动同步完成 (${elapsed}ms) ==========`);
         return true;
@@ -323,10 +424,13 @@ const API = {
             this._mergeProgress(data.progress);
         }
 
-        // 合并收藏
+        // 合并收藏（取并集，按 bankId 合并收藏题 ID 数组）
         if (data.bookmarks && Object.keys(data.bookmarks).length > 0) {
             const localBookmarks = Storage.getBookmarks();
-            const merged = { ...localBookmarks, ...data.bookmarks };
+            const merged = { ...localBookmarks };
+            for (const [bankId, cloudIds] of Object.entries(data.bookmarks)) {
+                merged[bankId] = [...new Set([...(merged[bankId] || []), ...cloudIds])];
+            }
             Storage.set(Storage.KEYS.BOOKMARKS, merged);
             console.log('[API] 📁 收藏数据已合并');
         }
@@ -344,17 +448,12 @@ const API = {
         const Storage = StorageMod;
         if (!Storage) return;
 
-        // 推送设置
-        console.log('[API] 📤 推送设置...');
-        this.pushSettings(Storage.getSettings());
-
-        // 推送进度
-        console.log('[API] 📤 推送进度...');
-        this.pushProgress(Storage.getProgress());
-
-        // 推送收藏
-        console.log('[API] 📤 推送收藏...');
-        this.pushBookmarks(Storage.getBookmarks());
+        const promises = [
+            this.pushSettings(Storage.getSettings()),
+            this.pushProgress(Storage.getProgress(), true),
+            this.pushBookmarks(Storage.getBookmarks())
+        ];
+        await Promise.allSettled(promises);
         console.log('[API] ✅ 本地数据推送完成');
     },
 
@@ -362,36 +461,50 @@ const API = {
      * 推送收藏到云端
      */
     pushBookmarks(bookmarks) {
-        if (!this.isRegistered() || !bookmarks) return;
-        this.request('/api/bookmarks', {
+        if (!this.isRegistered() || !bookmarks) return Promise.resolve(null);
+        return this.request('/api/bookmarks', {
             method: 'POST',
             body: JSON.stringify({
                 deviceId: this.getDeviceId(),
                 bookmarks
             })
-        }).then((data) => {
-            if (data && data.disabled) {
-                this._showBanNotice();
-            }
-        });
+        })
+            .then((data) => {
+                const result = this._classifyPushResult(data);
+                if (result === 'disabled') this._showBanNotice();
+                else if (result === 'fail') SyncQueue.enqueueSnapshot('bookmarks', bookmarks);
+                return data;
+            })
+            .catch((err) => {
+                console.warn('[API] pushBookmarks 错误:', err.message);
+                SyncQueue.enqueueSnapshot('bookmarks', bookmarks);
+                return null;
+            });
     },
 
     /**
      * 推送设置到云端
      */
     pushSettings(settings) {
-        if (!this.isRegistered() || !settings) return;
-        this.request('/api/settings', {
+        if (!this.isRegistered() || !settings) return Promise.resolve(null);
+        return this.request('/api/settings', {
             method: 'POST',
             body: JSON.stringify({
                 deviceId: this.getDeviceId(),
                 settings
             })
-        }).then((data) => {
-            if (data && data.disabled) {
-                this._showBanNotice();
-            }
-        });
+        })
+            .then((data) => {
+                const result = this._classifyPushResult(data);
+                if (result === 'disabled') this._showBanNotice();
+                else if (result === 'fail') SyncQueue.enqueueSnapshot('settings', settings);
+                return data;
+            })
+            .catch((err) => {
+                console.warn('[API] pushSettings 错误:', err.message);
+                SyncQueue.enqueueSnapshot('settings', settings);
+                return null;
+            });
     },
 
     /**
@@ -411,12 +524,18 @@ const API = {
                     deviceId: this.getDeviceId(),
                     progress
                 })
-            }).then((data) => {
-                if (data && data.disabled) {
-                    this._showBanNotice();
-                }
-                return data;
-            });
+            })
+                .then((data) => {
+                    const result = this._classifyPushResult(data);
+                    if (result === 'disabled') this._showBanNotice();
+                    else if (result === 'fail') SyncQueue.enqueueSnapshot('progress', progress);
+                    return data;
+                })
+                .catch((err) => {
+                    console.warn('[API] pushProgress 错误:', err.message);
+                    SyncQueue.enqueueSnapshot('progress', progress);
+                    return null;
+                });
         };
 
         if (immediate) {
@@ -445,14 +564,14 @@ const API = {
             })
         })
             .then((data) => {
-                // 检查是否被封禁
-                if (data && data.disabled) {
-                    this._showBanNotice();
-                }
+                const result = this._classifyPushResult(data);
+                if (result === 'disabled') this._showBanNotice();
+                else if (result === 'fail') SyncQueue.enqueueStats(stats);
                 return data;
             })
             .catch((e) => {
                 console.warn('[API] pushStats 失败:', e.message);
+                SyncQueue.enqueueStats(stats);
                 return null;
             });
     },
@@ -921,6 +1040,8 @@ const API = {
         }
     }
 };
+
+API.initSyncRecovery();
 
 window.API = API;
 export default API;

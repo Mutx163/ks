@@ -5,6 +5,7 @@
 import Storage from './storage.js';
 import Utils from './utils.js';
 import API from './api.js';
+import SyncQueue from './syncQueue.js';
 import Tracker from './tracker.js';
 import AIEngines from './aiEngines.js';
 import AIExplain from './aiExplain.js';
@@ -141,15 +142,18 @@ const Nav = {
         const dC = correctCount - (state._lastPushCorrect || 0);
         const dD = duration - (state._lastPushDuration || 0);
         if (dA > 0 || dC > 0 || dD > 0) {
-            state._lastPushAnswered = submittedIds.length;
-            state._lastPushCorrect = correctCount;
-            state._lastPushDuration = duration;
             API.pushStats({
                 bankId: state.bankId,
                 bankName: state.bank.name,
                 answered: dA,
                 correct: dC,
                 duration: dD
+            }).then(() => {
+                state._lastPushAnswered = submittedIds.length;
+                state._lastPushCorrect = correctCount;
+                state._lastPushDuration = duration;
+            }).catch(() => {
+                state._statsDirty = true;
             });
         }
 
@@ -207,15 +211,18 @@ const Nav = {
         const dDuration = duration - (state._lastPushDuration || 0);
 
         if (dAnswered > 0 || dCorrect > 0 || dDuration > 0) {
-            state._lastPushAnswered = submittedIds.length;
-            state._lastPushCorrect = correctCount;
-            state._lastPushDuration = duration;
             API.pushStats({
                 bankId: state.bankId,
                 bankName: state.bank.name,
                 answered: dAnswered,
                 correct: dCorrect,
                 duration: dDuration
+            }).then(() => {
+                state._lastPushAnswered = submittedIds.length;
+                state._lastPushCorrect = correctCount;
+                state._lastPushDuration = duration;
+            }).catch(() => {
+                state._statsDirty = true;
             });
         }
 
@@ -418,40 +425,52 @@ const Nav = {
             return;
         }
 
-        state._lastPushAnswered = submittedIds.length;
-        state._lastPushCorrect = correctCount;
-        state._lastPushDuration = duration;
-
         state._statsDirty = false;
         if (state._statsTimer) {
             clearTimeout(state._statsTimer);
             state._statsTimer = null;
         }
 
-        if (navigator.sendBeacon && API.isRegistered()) {
-            const data = JSON.stringify({
-                deviceId: API.getDeviceId(),
-                bankId: state.bankId,
-                bankName: state.bank?.name || '',
-                answered: dAnswered,
-                correct: dCorrect,
-                duration: dDuration
-            });
-            try {
-                navigator.sendBeacon(API.BASE_URL + '/api/sync', data);
-                return;
-            } catch (e) {
-                console.warn('[Quiz] sendBeacon 失败:', e.message);
-            }
-        }
-
-        API.pushStats({
+        const statsPayload = {
             bankId: state.bankId,
             bankName: state.bank?.name || '',
             answered: dAnswered,
             correct: dCorrect,
             duration: dDuration
-        });
+        };
+
+        const markStatsSent = () => {
+            state._lastPushAnswered = submittedIds.length;
+            state._lastPushCorrect = correctCount;
+            state._lastPushDuration = duration;
+        };
+
+        if (navigator.sendBeacon && API.isRegistered()) {
+            try {
+                const queued = navigator.sendBeacon(
+                    API.BASE_URL + '/api/sync',
+                    JSON.stringify({ deviceId: API.getDeviceId(), ...statsPayload })
+                );
+                if (queued) {
+                    markStatsSent();
+                    return;
+                }
+                console.warn('[Quiz] sendBeacon 未入队，写入失败队列');
+            } catch (e) {
+                console.warn('[Quiz] sendBeacon 失败:', e.message);
+            }
+            SyncQueue.enqueueStats(statsPayload);
+            markStatsSent();
+            return;
+        }
+
+        API.pushStats(statsPayload)
+            .then(() => {
+                markStatsSent();
+            })
+            .catch(() => {
+                state._statsDirty = true;
+            });
     },
 
     async showSettings() {
