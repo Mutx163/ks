@@ -14,7 +14,7 @@ const BankLoader = {
      */
     async loadBankList() {
         try {
-            const data = await API.requestWithRetry('/api/banks', {}, 2, 1000);
+            const data = await API.requestWithRetry('/api/banks', { cacheBust: false }, 2, 1000);
 
             if (data?.ok && data.banks) {
                 const allBanks = data.banks;
@@ -38,7 +38,12 @@ const BankLoader = {
         const startTime = Date.now();
 
         try {
-            const data = await API.requestWithRetry(`/api/bank/${bankId}`, {}, 2, 1000);
+            const data = await API.requestWithRetry(
+                `/api/bank/${encodeURIComponent(bankId)}`,
+                { cacheBust: false },
+                2,
+                1000
+            );
 
             const elapsed = Date.now() - startTime;
 
@@ -127,7 +132,10 @@ const BankLoader = {
         normalized.id = normalized.id || fallbackId;
         normalized.name = normalized.name || normalized.title || normalized.id || '未命名题库';
         normalized.description = normalized.description || '';
-        normalized.questions = Array.isArray(normalized.questions) ? normalized.questions : [];
+        const rawQuestions = Array.isArray(normalized.questions) ? normalized.questions : [];
+        // 逐题归一化：题型别名、答案类型、缺失字段都在这里收敛，
+        // 避免渲染器/判分器各自兼容一套（multi 别名曾导致整题不渲染）
+        normalized.questions = rawQuestions.map((q) => this.normalizeQuestion(q));
         normalized.questionCount = normalized.questions.length;
         normalized.question_count = normalized.questionCount;
         normalized.categories = Array.isArray(normalized.categories)
@@ -138,6 +146,46 @@ const BankLoader = {
         normalized._metadataOnly = false;
         if (normalized.enabled === undefined) normalized.enabled = true;
         return normalized;
+    },
+
+    normalizeQuestion(question) {
+        if (!question || typeof question !== 'object') return question;
+        const TYPE_ALIASES = {
+            multi: 'multiple',
+            单选题: 'single',
+            多选题: 'multiple',
+            判断题: 'judge',
+            填空题: 'fill',
+            简答题: 'essay',
+            编程题: 'code'
+        };
+        const q = { ...question };
+        q.type = TYPE_ALIASES[q.type] || q.type || 'single';
+
+        // 代码块等正文若不是字符串，后续 Markdown 解析会直接抛错
+        if (typeof q.question !== 'string') q.question = String(q.question ?? '');
+        if (q.explanation !== undefined && typeof q.explanation !== 'string') {
+            q.explanation = String(q.explanation ?? '');
+        }
+
+        if (q.type === 'judge') {
+            const v = q.answer;
+            q.answer =
+                v === true || v === 'true' || v === '对' || v === '正确' || v === 'A' || v === 1;
+        } else if (q.type === 'single' && typeof q.answer === 'string') {
+            q.answer = q.answer.trim().toUpperCase();
+        } else if (q.type === 'multiple' && typeof q.answer === 'string') {
+            // "A,B" / "AB" 都归一成数组
+            q.answer = q.answer
+                .split(/[,，\s]+/)
+                .filter(Boolean)
+                .map((s) => s.trim().toUpperCase());
+        } else if (q.type === 'fill' && typeof q.answer === 'string') {
+            q.answer = [q.answer];
+        }
+
+        if (q.options !== undefined && !Array.isArray(q.options)) q.options = [];
+        return q;
     }
 };
 

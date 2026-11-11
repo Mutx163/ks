@@ -163,50 +163,46 @@ const Utils = {
 
         let html = text;
         const placeholders = [];
+        // 占位符带随机前缀：用户正文里的相同字面量不会命中
+        const token = `%%PH${Math.random().toString(36).slice(2, 10)}_`;
+        const put = (fragment) => {
+            const id = placeholders.length;
+            placeholders.push(fragment);
+            return `${token}${id}%%`;
+        };
 
         // 提取代码块 (```...```) 并用占位符替换
-        html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        html = html.replace(/```(\w*)[ \t]*\r?\n?([\s\S]*?)```/g, (match, lang, code) => {
             const language = lang || 'plaintext';
-            const escapedCode = this.escapeHtml(code.trim());
-            const id = placeholders.length;
-            placeholders.push(
-                `<pre><code class="language-${language}">${escapedCode}</code></pre>`
+            return put(
+                `<pre><code class="language-${language}">${this.escapeHtml(code.trim())}</code></pre>`
             );
-            return `%%PH${id}%%`;
         });
 
         // 提取行内代码 (`...`)
         html = html.replace(/`([^`]+)`/g, (match, code) => {
-            const id = placeholders.length;
-            placeholders.push(`<code>${this.escapeHtml(code)}</code>`);
-            return `%%PH${id}%%`;
+            return put(`<code>${this.escapeHtml(code)}</code>`);
         });
 
         // 提取数学公式块 ($$...$$)
         html = html.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
-            const id = placeholders.length;
-            placeholders.push(
+            return put(
                 `<div class="math-block" data-formula="${this.escapeHtml(formula.trim())}"></div>`
             );
-            return `%%PH${id}%%`;
         });
 
         // 提取行内数学公式 ($...$)
         html = html.replace(/\$([^$\n]+?)\$/g, (match, formula) => {
-            const id = placeholders.length;
-            placeholders.push(
+            return put(
                 `<span class="math-inline" data-formula="${this.escapeHtml(formula.trim())}"></span>`
             );
-            return `%%PH${id}%%`;
         });
 
         // 提取图片 (![alt](url))
         html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
-            const id = placeholders.length;
-            placeholders.push(
+            return put(
                 `<div class="img-loading-wrap"><div class="img-loading-icon"></div><img src="${this.escapeHtml(url.trim())}" alt="${this.escapeHtml(alt)}" class="markdown-image" loading="lazy" onload="this.parentElement.classList.add('img-loaded')" onerror="this.parentElement.classList.add('img-loaded')"></div>`
             );
-            return `%%PH${id}%%`;
         });
 
         // 转义普通文本中的 HTML
@@ -215,16 +211,16 @@ const Utils = {
         // 换行（先处理普通文本的换行，再还原占位符，避免代码块里的\n被转成<br>）
         html = html.replace(/\n/g, '<br>');
 
+        // 加粗必须在还原占位符之前处理，
+        // 否则代码块/行内代码/公式属性里的 * 会被误当作 Markdown 强调标记。
+        // 不处理单星斜体：题库中的 * 绝大多数是 C 语言乘号（如 *(s-a)*），
+        // 全局替换会把代码改写成 <em> 并丢掉星号。
+        html = html.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+
         // 还原占位符
-        html = html.replace(/%%PH(\d+)%%/g, (match, id) => {
-            return placeholders[parseInt(id)];
+        html = html.replace(new RegExp(`${token}(\\d+)%%`, 'g'), (match, id) => {
+            return placeholders[parseInt(id)] ?? match;
         });
-
-        // 加粗 (**...**) — 需要在转义后匹配
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        // 斜体 (*...*)
-        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
         return html;
     },
@@ -233,9 +229,117 @@ const Utils = {
      * HTML转义
      */
     escapeHtml(text) {
-        if (!text) return '';
+        if (text === null || text === undefined) return '';
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        // 注意不要用 `if (!text)`：数字 0 / 布尔 false 会被清成空串
         return String(text).replace(/[&<>"']/g, (c) => map[c]);
+    },
+
+    /**
+     * 净化 HTML：仅保留白名单标签与属性，用于渲染 AI / Markdown 输出。
+     * 不引入 DOMPurify（避免新依赖），但足以阻断 <script>、事件属性
+     * 与 javascript: 协议这些在本项目里真实可用的注入路径。
+     */
+    sanitizeHtml(html) {
+        if (!html) return '';
+        const doc = new window.DOMParser().parseFromString(String(html), 'text/html');
+        const TEXT_NODE = window.Node.TEXT_NODE;
+        const ELEMENT_NODE = window.Node.ELEMENT_NODE;
+        const ALLOWED = new Set([
+            'P',
+            'BR',
+            'HR',
+            'STRONG',
+            'B',
+            'EM',
+            'I',
+            'U',
+            'S',
+            'DEL',
+            'UL',
+            'OL',
+            'LI',
+            'BLOCKQUOTE',
+            'CODE',
+            'PRE',
+            'H1',
+            'H2',
+            'H3',
+            'H4',
+            'H5',
+            'H6',
+            'TABLE',
+            'THEAD',
+            'TBODY',
+            'TR',
+            'TH',
+            'TD',
+            'A',
+            'IMG',
+            'SPAN',
+            'DIV',
+            'SUP',
+            'SUB',
+            'DETAILS',
+            'SUMMARY'
+        ]);
+        const ALLOWED_ATTR = new Set([
+            'href',
+            'src',
+            'alt',
+            'title',
+            'class',
+            'colspan',
+            'rowspan',
+            'data-formula'
+        ]);
+        const walk = (node) => {
+            for (const child of Array.from(node.childNodes)) {
+                if (child.nodeType === TEXT_NODE) continue;
+                if (child.nodeType !== ELEMENT_NODE) {
+                    child.remove();
+                    continue;
+                }
+                const tag = child.tagName;
+                if (!ALLOWED.has(tag)) {
+                    // 危险容器整体丢弃（含 script/style/iframe/object）
+                    if (
+                        ['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META'].includes(
+                            tag
+                        )
+                    ) {
+                        child.remove();
+                    } else {
+                        // 其他未知标签降级为文本内容
+                        const text = doc.createTextNode(child.textContent || '');
+                        child.replaceWith(text);
+                    }
+                    continue;
+                }
+                for (const attr of Array.from(child.attributes)) {
+                    const name = attr.name.toLowerCase();
+                    const value = attr.value.trim();
+                    const isUrl = name === 'href' || name === 'src';
+                    if (!ALLOWED_ATTR.has(name)) {
+                        child.removeAttribute(attr.name);
+                        continue;
+                    }
+                    if (isUrl && /^\s*(javascript|data|vbscript):/i.test(value)) {
+                        // 允许 data:image/* 的图片，其余协议一律剥离
+                        if (!(name === 'src' && /^data:image\//i.test(value))) {
+                            child.removeAttribute(attr.name);
+                        }
+                    }
+                }
+                if (tag === 'A') {
+                    child.setAttribute('rel', 'noopener noreferrer');
+                    child.setAttribute('target', '_blank');
+                }
+                walk(child);
+            }
+        };
+        walk(doc.body);
+        return doc.body.innerHTML;
     },
 
     /**
@@ -338,7 +442,7 @@ const Utils = {
     /**
      * 显示Toast提示
      */
-    showToast(message, type = 'info', duration = 3000) {
+    showToast(message, type = 'info', duration = 3000, options = {}) {
         // 1. 移除现有的toast
         const existingToast = document.querySelector('.toast');
         if (existingToast) {
@@ -348,7 +452,10 @@ const Utils = {
         // 2. 创建 Toast 容器
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        
+        // 屏幕阅读器需要主动播报判分/提交等关键反馈
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+
         // 3. 自动映射不同类型对应的图标
         const iconMap = {
             success: 'check-circle',
@@ -357,17 +464,20 @@ const Utils = {
             info: 'info'
         };
         const defaultIcon = iconMap[type] || 'info';
-        
+
         // 4. 健壮的“双重图标判定”：判断调用者传入的 message 是否已经包含定制图标
-        const hasIcon = message.includes('data-lucide') || message.includes('<svg') || message.includes('class="icon"');
-        
+        const raw = String(message ?? '');
+        const hasIcon =
+            raw.includes('data-lucide') || raw.includes('<svg') || raw.includes('class="icon"');
+
+        const displayMessage = options.unsafe ? raw : this.escapeHtml(raw);
         if (hasIcon) {
-            toast.innerHTML = `<div class="toast-content">${message}</div>`;
+            toast.innerHTML = `<div class="toast-content">${displayMessage}</div>`;
         } else {
             const iconHtml = this.icon(defaultIcon, `toast-icon toast-icon-${type}`);
-            toast.innerHTML = `${iconHtml}<div class="toast-content">${message}</div>`;
+            toast.innerHTML = `${iconHtml}<div class="toast-content">${displayMessage}</div>`;
         }
-        
+
         // 5. 渲染进入 DOM 并渲染图标
         document.body.appendChild(toast);
         this.initIcons();
@@ -375,7 +485,7 @@ const Utils = {
         // 6. 自动移除定时器与平滑切出过渡
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateX(-50%) translateY(-20px)';
+            toast.style.transform = 'translateX(-50%) translateY(12px)';
             setTimeout(() => toast.remove(), 250);
         }, duration);
     },
@@ -659,23 +769,28 @@ const Utils = {
     showNetworkError(message, onRetry) {
         const toast = document.createElement('div');
         toast.className = 'toast toast-error toast-network';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
         toast.innerHTML = `
             <div class="toast-content">
                 <span>${this.escapeHtml(message)}</span>
-                ${onRetry ? '<button class="btn btn-sm btn-retry" onclick="this.closest(\'.toast\').remove()">重试</button>' : ''}
+                ${onRetry ? '<button class="btn btn-sm btn-retry">重试</button>' : ''}
             </div>
         `;
 
         if (onRetry) {
+            // 先移除提示再回调，避免重试后旧提示还留在屏幕上
             toast.querySelector('.btn-retry')?.addEventListener('click', () => {
+                toast.remove();
                 onRetry();
             });
         }
 
         document.body.appendChild(toast);
-        setTimeout(() => toast.classList.add('show'), 10);
+        // 入场动画由 CSS 的 toastIn 关键帧完成，无需 .show 类（该类并无对应样式）
         setTimeout(() => {
-            toast.classList.remove('show');
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(12px)';
             setTimeout(() => toast.remove(), 300);
         }, 8000);
     },
@@ -738,15 +853,19 @@ const Utils = {
         const tabbarHTML = `
             <nav class="global-tabbar">
                 <a href="#/home" class="tabbar-item ${hash.includes('home') ? 'active' : ''}">
+                    <i data-lucide="home" class="icon"></i>
                     <span class="label">首页</span>
                 </a>
                 <a href="#/leaderboard" class="tabbar-item ${hash.includes('leaderboard') ? 'active' : ''}">
+                    <i data-lucide="trophy" class="icon"></i>
                     <span class="label">排行</span>
                 </a>
                 <a href="#/analysis" class="tabbar-item ${hash.includes('analysis') ? 'active' : ''}">
+                    <i data-lucide="target" class="icon"></i>
                     <span class="label">分析</span>
                 </a>
                 <a href="#/trend" class="tabbar-item ${hash.includes('trend') ? 'active' : ''}">
+                    <i data-lucide="activity" class="icon"></i>
                     <span class="label">趋势</span>
                 </a>
             </nav>
@@ -893,13 +1012,13 @@ window.addEventListener('storage', (e) => {
             const settings = JSON.parse(e.newValue || '{}');
             const theme = settings.theme || 'auto';
             const colorScheme = settings.colorScheme || 'parchment';
-            
+
             if (theme === 'auto') {
                 document.documentElement.removeAttribute('data-theme');
             } else {
                 document.documentElement.setAttribute('data-theme', theme);
             }
-            
+
             if (colorScheme === 'parchment') {
                 document.documentElement.removeAttribute('data-color');
             } else {

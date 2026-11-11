@@ -59,11 +59,17 @@ const Renderer = {
     },
 
     updateProgress() {
-        const current = state.currentIndex + 1;
         const total = state.questions.length;
+        const progressText = document.getElementById('quiz-progress-text');
+        // total 为 0 时 current/total 是 Infinity，不能写进样式或文本
+        if (!total) {
+            if (progressText) progressText.textContent = '0 / 0';
+            return;
+        }
+        const current = Math.min(state.currentIndex + 1, total);
+        // 进度条元素在 quiz.html 中并不存在（只有文字），保留兼容但不强依赖
         const progressFill = document.getElementById('quiz-progress-fill');
         if (progressFill) progressFill.style.width = Math.round((current / total) * 100) + '%';
-        const progressText = document.getElementById('quiz-progress-text');
         if (progressText) progressText.textContent = `${current} / ${total}`;
     },
 
@@ -128,7 +134,7 @@ const Renderer = {
                 <div class="question-header">
                     <div class="question-meta">
                         <span class="question-number">第 ${state.currentIndex + 1} 题</span>
-                        <span class="question-type ${question.type}">${Utils.getTypeName(question.type)}</span>
+                        <span class="question-type ${Utils.escapeHtml(question.type)}">${Utils.escapeHtml(Utils.getTypeName(question.type))}</span>
                         <span class="question-timer" id="question-timer">${Quiz.getQuestionTimeDisplay()}</span>
                         ${
                             question.difficulty
@@ -146,8 +152,8 @@ const Renderer = {
                     </div>
                     <div class="question-actions">
                         ${question.category ? `<span class="question-category">${Utils.escapeHtml(question.category)}</span>` : ''}
-                        ${canUseAI ? `<button class="btn-ai" onclick="Quiz.openAIAnalysis(${question.id})" title="AI解析" aria-label="AI解析">${Utils.icon('sparkles')} AI</button>` : ''}
-                        ${!isReviewMode ? `<button class="btn-bookmark ${Storage.isBookmarked(state.bankId, question.id) ? 'active' : ''}" onclick="Quiz.toggleBookmark(${question.id})" title="收藏" aria-label="收藏此题">${Storage.isBookmarked(state.bankId, question.id) ? Utils.icon('star', 'filled') : Utils.icon('star')}</button>` : ''}
+                        ${canUseAI ? `<button class="btn-ai" onclick="Quiz.openAIAnalysis('${Utils.jsSafe(question.id)}')" title="AI解析" aria-label="AI解析">${Utils.icon('sparkles')} AI</button>` : ''}
+                        ${!isReviewMode ? `<button class="btn-bookmark ${Storage.isBookmarked(state.bankId, question.id) ? 'active' : ''}" onclick="Quiz.toggleBookmark('${Utils.jsSafe(question.id)}')" title="收藏" aria-label="收藏此题">${Storage.isBookmarked(state.bankId, question.id) ? Utils.icon('star', 'filled') : Utils.icon('star')}</button>` : ''}
                     </div>
                 </div>
 
@@ -271,7 +277,7 @@ const Renderer = {
                     })
                     .join('')}
             </div>
-            ${!isSubmitted ? '<div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">💡 多选题，可选择多个选项</div>' : ''}
+            ${!isSubmitted ? '<div class="question-hint">多选题，可选择多个选项</div>' : ''}
         `;
     },
 
@@ -291,15 +297,28 @@ const Renderer = {
     },
 
     renderFillInput(question, isSubmitted, userAnswer) {
-        const answers = userAnswer || [];
-        const correctAnswers = question.answer || [];
+        const answers = Array.isArray(userAnswer) ? userAnswer : userAnswer ? [userAnswer] : [];
+        // 兼容后台编辑器把数组答案 join 成字符串的历史数据
+        const rawAnswer = question.answer;
+        const answerList = Array.isArray(rawAnswer)
+            ? rawAnswer
+            : rawAnswer
+              ? [String(rawAnswer)]
+              : [];
+        // accept 是「每空可接受的多个等价答案」：空数以它为准，
+        // 否则同一空的多个同义写法会被当成多个空
+        const slots =
+            Array.isArray(question.accept) && question.accept.length ? question.accept : answerList;
         return `
             <div class="fill-inputs">
-                ${correctAnswers
-                    .map((correct, index) => {
+                ${slots
+                    .map((slot, index) => {
+                        const group = Array.isArray(slot) ? slot : [slot];
                         let inputClass = 'fill-input';
                         if (isSubmitted) {
-                            const isCorrect = Quiz.checkFillAnswer(answers[index], correct);
+                            const isCorrect = group.some((c) =>
+                                Quiz.checkFillAnswer(answers[index], c)
+                            );
                             inputClass += isCorrect ? ' correct' : ' wrong';
                         }
                         return `
@@ -307,7 +326,7 @@ const Renderer = {
                             <span class="fill-input-label">空${index + 1}</span>
                             <input type="text" class="${inputClass}" 
                                    data-index="${index}" 
-                                   value="${answers[index] || ''}" 
+                                   value="${Utils.escapeHtml(answers[index] || '')}" 
                                    ${isSubmitted ? 'readonly' : ''}
                                    placeholder="请输入答案"
                                    aria-label="填空 ${index + 1}">
@@ -316,7 +335,7 @@ const Renderer = {
                     })
                     .join('')}
             </div>
-            ${!isSubmitted ? '<div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">💡 填空题，输入后按 Enter 跳到下一空</div>' : ''}
+            ${!isSubmitted ? '<div class="question-hint">填空题，输入后按 Enter 跳到下一空</div>' : ''}
         `;
     },
 
@@ -329,7 +348,7 @@ const Renderer = {
                      role="textbox" aria-multiline="true" aria-label="代码编辑器"
                      data-placeholder="请输入代码...">${Utils.escapeHtml(text)}</div>
             </div>
-            ${!isSubmitted ? '<div style="margin-top:12px;font-size:13px;color:var(--text-secondary)">💡 编程题，请编写代码</div>' : ''}
+            ${!isSubmitted ? '<div class="question-hint">编程题，请编写代码</div>' : ''}
         `;
     },
 
@@ -354,8 +373,8 @@ const Renderer = {
             return `
                 <div style="margin-top:var(--space-4)">
                     <div style="margin-bottom:12px">
-                        <button class="btn btn-success btn-sm" onclick="Quiz.selfMarkEssay(${question.id}, true)">${Utils.icon('check-circle')} 我答对了</button>
-                        <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="Quiz.selfMarkEssay(${question.id}, false)">${Utils.icon('x-circle')} 我答错了</button>
+                        <button class="btn btn-success btn-sm" onclick="Quiz.selfMarkEssay('${Utils.jsSafe(question.id)}', true)">${Utils.icon('check-circle')} 我答对了</button>
+                        <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="Quiz.selfMarkEssay('${Utils.jsSafe(question.id)}', false)">${Utils.icon('x-circle')} 我答错了</button>
                     </div>
                 </div>
             `;
@@ -363,10 +382,10 @@ const Renderer = {
 
         return `
             <div style="margin-top:var(--space-4);text-align:center">
-                <button class="btn btn-primary" style="padding:10px 32px;font-size:15px" onclick="Quiz.submitEssay(${question.id})">
-                    📖 一键查看答案
+                <button class="btn btn-primary" onclick="Quiz.submitEssay('${Utils.jsSafe(question.id)}')">
+                    ${Utils.icon('book-open')} 查看参考答案
                 </button>
-                <div style="margin-top:6px;font-size:12px;color:var(--text-tertiary)">点击按钮查看参考答案与解析</div>
+                <div class="question-hint" style="margin-top:6px">点击按钮查看参考答案与解析</div>
             </div>
         `;
     },
@@ -475,7 +494,7 @@ const Renderer = {
             }
             case 'code': {
                 answerBody = `
-                    <pre class="code-answer-wrapper"><code class="language-${question.codeLanguage || 'c'}">${Utils.escapeHtml(question.answer || '')}</code></pre>
+                    <pre class="code-answer-wrapper"><code class="language-${Utils.escapeHtml(question.codeLanguage || 'c')}">${Utils.escapeHtml(question.answer || '')}</code></pre>
                 `;
                 break;
             }
@@ -508,7 +527,7 @@ const Renderer = {
             ? `
             <div class="code-reference-wrapper">
                 <strong>参考代码：</strong>
-                <pre><code class="language-${question.codeLanguage || 'c'}">${Utils.escapeHtml(question.code)}</code></pre>
+                <pre><code class="language-${Utils.escapeHtml(question.codeLanguage || 'c')}">${Utils.escapeHtml(question.code)}</code></pre>
             </div>
             `
             : '';
@@ -518,8 +537,8 @@ const Renderer = {
                 showResultBanner
                     ? `
             <div class="result-banner ${isCorrect ? 'correct' : 'wrong'}">
-                <span class="result-banner-icon">${isCorrect ? '🎉' : '😔'}</span>
-                <span class="result-banner-text">${isCorrect ? '回答正确！' : '回答错误'}</span>
+                <span class="result-banner-icon">${Utils.icon(isCorrect ? 'check-circle' : 'x-circle')}</span>
+                <span class="result-banner-text">${isCorrect ? '回答正确' : '回答错误'}</span>
             </div>
             `
                     : ''
@@ -569,7 +588,7 @@ const Renderer = {
 
         if (state.isReviewMode) {
             setSubmitHidden(true);
-            setHint('📖 背题模式 - 直接查看答案和解析');
+            setHint('背题模式 · 直接查看答案和解析');
         } else if (isSubmitted) {
             setSubmitHidden(true);
             setHint(Quiz.getSubmittedHint(question));
@@ -624,12 +643,22 @@ const Renderer = {
     },
 
     showFinishModal(isTimeout = false) {
+        // 弹窗可重复调用（超时 + 手动），先移除旧的，避免同 id 叠加
+        document.getElementById('finish-modal')?.remove();
+        if (state._finishEscHandler) {
+            document.removeEventListener('keydown', state._finishEscHandler);
+            state._finishEscHandler = null;
+        }
+
         const total = state.questions.length;
-        const answered = Object.keys(state.submitted).length;
-        const unanswered = total - answered;
+        // 只统计仍在当前题库里的已答，否则「未答」会算成负数
+        const submittedIds = Object.keys(state.submitted).filter((qId) =>
+            state.questions.some((q) => q.id == qId)
+        );
+        const answered = submittedIds.length;
+        const unanswered = Math.max(0, total - answered);
 
         let correctCount = 0;
-        const submittedIds = Object.keys(state.submitted);
         submittedIds.forEach((qId) => {
             const q = state.questions.find((q) => q.id == qId);
             if (q && Quiz.checkAnswer(q)) correctCount++;
@@ -706,6 +735,9 @@ const Renderer = {
     },
 
     confirmFinish() {
+        // 幂等：超时弹窗与手动「完成」可能同时触发
+        if (state.isFinished) return;
+
         this.closeFinishModal();
 
         if (state.examTimer) {
@@ -713,6 +745,10 @@ const Renderer = {
             state.examTimer = null;
         }
         if (state.autoSaveInterval) clearInterval(state.autoSaveInterval);
+        if (state.timerInterval) {
+            clearInterval(state.timerInterval);
+            state.timerInterval = null;
+        }
 
         Quiz.recordQuestionTime();
         Storage.clearSession(state.bankId, state.mode);
@@ -727,10 +763,15 @@ const Renderer = {
     },
 
     showResultModal() {
-        const { duration, correctCount, wrongCount, submittedCount } = state._resultStats || {};
+        const {
+            duration,
+            correctCount,
+            wrongCount,
+            accuracy: computedAccuracy
+        } = state._resultStats || {};
         const minutes = Math.floor((duration || 0) / 60);
         const seconds = (duration || 0) % 60;
-        const accuracy = submittedCount > 0 ? Math.round((correctCount / submittedCount) * 100) : 0;
+        const accuracy = computedAccuracy ?? 0;
         const isExam = state.mode === 'exam';
         const passed = isExam ? accuracy >= state.examPassRate : null;
         const iconClass = isExam && !passed ? 'warning' : 'success';

@@ -22,6 +22,11 @@ const Nav = {
     _navigateTo(index) {
         if (state.isNavigating) return;
         if (index < 0 || index >= state.questions.length) return;
+        // 手动切题必须取消待执行的自动跳题，否则会被再推一题
+        if (state._autoNextTimer) {
+            clearTimeout(state._autoNextTimer);
+            state._autoNextTimer = null;
+        }
         state.isNavigating = true;
         Quiz.recordQuestionTime();
         state.currentIndex = index;
@@ -66,14 +71,20 @@ const Nav = {
 
     _calculateStats() {
         const duration = Math.round((Date.now() - state.startTime) / 1000);
-        const submittedIds = Object.keys(state.submitted);
+        // 只统计当前题库里仍存在的题目：
+        // 跨模式恢复的已答、题库更新后残留的旧 id 都不应计入分母
+        const submittedIds = Object.keys(state.submitted).filter((qId) =>
+            state.questions.some((q) => q.id == qId)
+        );
         const correctCount = submittedIds.filter((qId) => {
             const q = state.questions.find((q) => q.id == qId);
             return q && Quiz.checkAnswer(q);
         }).length;
-        const accuracy =
-            submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0;
         const isExam = state.mode === 'exam';
+        // 考试的正确率必须以总题数为分母：只答 1 题全对不能算 100%
+        const accuracyDenominator = isExam ? state.questions.length : submittedIds.length;
+        const accuracy =
+            accuracyDenominator > 0 ? Math.round((correctCount / accuracyDenominator) * 100) : 0;
 
         const heatmapData = submittedIds.map((qId) => {
             const q = state.questions.find((q) => q.id == qId);
@@ -87,15 +98,19 @@ const Nav = {
             };
         });
 
+        const total = state.questions.length;
         return {
             duration,
             submittedIds,
             correctCount,
-            wrongCount: submittedIds.length - correctCount,
+            // 考试把未答算作错，普通模式只算已答中的错
+            wrongCount: isExam
+                ? Math.max(0, total - correctCount)
+                : submittedIds.length - correctCount,
             accuracy,
             isExam,
             heatmapData,
-            total: state.questions.length
+            total
         };
     },
 
@@ -138,9 +153,10 @@ const Nav = {
         }
         state._statsDirty = false;
 
-        const dA = submittedIds.length - (state._lastPushAnswered || 0);
-        const dC = correctCount - (state._lastPushCorrect || 0);
-        const dD = duration - (state._lastPushDuration || 0);
+        const cursor = this._getStatsCursor();
+        const dA = submittedIds.length - cursor.answered;
+        const dC = correctCount - cursor.correct;
+        const dD = Math.max(0, duration - cursor.duration);
         if (dA > 0 || dC > 0 || dD > 0) {
             API.pushStats({
                 bankId: state.bankId,
@@ -148,13 +164,14 @@ const Nav = {
                 answered: dA,
                 correct: dC,
                 duration: dD
-            }).then(() => {
-                state._lastPushAnswered = submittedIds.length;
-                state._lastPushCorrect = correctCount;
-                state._lastPushDuration = duration;
-            }).catch(() => {
-                state._statsDirty = true;
-            });
+            })
+                .then((result) => {
+                    if (result) this._setStatsCursor(submittedIds.length, correctCount, duration);
+                    else state._statsDirty = true;
+                })
+                .catch(() => {
+                    state._statsDirty = true;
+                });
         }
 
         state._resultStats = stats;
@@ -206,24 +223,26 @@ const Nav = {
         }
         state._statsDirty = false;
 
-        const dAnswered = submittedIds.length - (state._lastPushAnswered || 0);
-        const dCorrect = correctCount - (state._lastPushCorrect || 0);
-        const dDuration = duration - (state._lastPushDuration || 0);
+        const cursor = this._getStatsCursor();
+        const dA = submittedIds.length - cursor.answered;
+        const dC = correctCount - cursor.correct;
+        const dD = Math.max(0, duration - cursor.duration);
 
-        if (dAnswered > 0 || dCorrect > 0 || dDuration > 0) {
+        if (dA > 0 || dC > 0 || dD > 0) {
             API.pushStats({
                 bankId: state.bankId,
                 bankName: state.bank.name,
-                answered: dAnswered,
-                correct: dCorrect,
-                duration: dDuration
-            }).then(() => {
-                state._lastPushAnswered = submittedIds.length;
-                state._lastPushCorrect = correctCount;
-                state._lastPushDuration = duration;
-            }).catch(() => {
-                state._statsDirty = true;
-            });
+                answered: dA,
+                correct: dC,
+                duration: dD
+            })
+                .then((result) => {
+                    if (result) this._setStatsCursor(submittedIds.length, correctCount, duration);
+                    else state._statsDirty = true;
+                })
+                .catch(() => {
+                    state._statsDirty = true;
+                });
         }
 
         const container = document.getElementById('question-container');
@@ -291,7 +310,13 @@ const Nav = {
         state.optionOrderCache = {};
         state.isFinished = false;
         state.startTime = Date.now();
+        state.questionStartTime = Date.now();
         state.examTimeRemaining = 0;
+        state.examStartTime = null;
+        // 新一局的统计基线必须归零，否则增量会算成负数或不再上报
+        state._lastPushAnswered = 0;
+        state._lastPushCorrect = 0;
+        state._lastPushDuration = 0;
 
         if (
             state.mode === 'exam' ||
@@ -321,6 +346,13 @@ const Nav = {
         const container = document.getElementById('question-container');
         if (!container) return;
 
+        // 必须先关掉结果弹窗：它是全屏遮罩，且会让全局键盘处理直接 return
+        document.getElementById('finish-modal')?.remove();
+        if (state._finishEscHandler) {
+            document.removeEventListener('keydown', state._finishEscHandler);
+            state._finishEscHandler = null;
+        }
+
         state.isReviewMode = true;
         state.currentIndex = 0;
         state.isFinished = false;
@@ -347,7 +379,36 @@ const Nav = {
         window.location.href = 'index.html';
     },
 
+    // 统计游标持久化在 progress 里（按题库），不随 session 清空而归零
+    _getStatsCursor() {
+        if (!state.bankId) return { answered: 0, correct: 0, duration: 0 };
+        // 优先用持久化游标；首次部署时回退到 state（session）里的旧值，
+        // 避免升级瞬间把历史作答当成新增量重推一遍。
+        const stored = Storage.getStatsCursor(state.bankId);
+        if (stored.answered || stored.correct || stored.duration) return stored;
+        return {
+            answered: state._lastPushAnswered || 0,
+            correct: state._lastPushCorrect || 0,
+            duration: state._lastPushDuration || 0
+        };
+    },
+
+    _setStatsCursor(answered, correct, duration) {
+        state._lastPushAnswered = answered;
+        state._lastPushCorrect = correct;
+        state._lastPushDuration = duration;
+        if (state.bankId) {
+            Storage.setStatsCursor(state.bankId, { answered, correct, duration });
+        }
+    },
+
+    // 背题/复习模式不计入答题量：它们把所有题都标成已答且正确
+    _shouldTrackStats() {
+        return state.mode !== 'review' && state.mode !== 'spaced';
+    },
+
     _markStatsDirty() {
+        if (!this._shouldTrackStats()) return;
         state._statsDirty = true;
         if (state._statsTimer) return;
         state._statsTimer = setTimeout(() => {
@@ -372,11 +433,16 @@ const Nav = {
         }).length;
         const duration = state.startTime ? Math.round((Date.now() - state.startTime) / 1000) : 0;
 
-        const dAnswered = submittedIds.length - (state._lastPushAnswered || 0);
-        const dCorrect = correctCount - (state._lastPushCorrect || 0);
-        const dDuration = duration - (state._lastPushDuration || 0);
+        const cursor = this._getStatsCursor();
+        const dAnswered = submittedIds.length - cursor.answered;
+        const dCorrect = correctCount - cursor.correct;
+        // 时长可能因「重新开始」而回退，单独夹到非负，避免向服务端累减
+        const dDuration = Math.max(0, duration - cursor.duration);
 
-        if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) return Promise.resolve(null);
+        if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) {
+            state._statsDirty = false;
+            return Promise.resolve(null);
+        }
 
         const nextPushAnswered = submittedIds.length;
         const nextPushCorrect = correctCount;
@@ -388,20 +454,22 @@ const Nav = {
             answered: dAnswered,
             correct: dCorrect,
             duration: dDuration
-        }).then((result) => {
-            if (result) {
-                state._lastPushAnswered = nextPushAnswered;
-                state._lastPushCorrect = nextPushCorrect;
-                state._lastPushDuration = nextPushDuration;
-            } else {
+        })
+            .then((result) => {
+                if (result) {
+                    this._setStatsCursor(nextPushAnswered, nextPushCorrect, nextPushDuration);
+                    state._statsDirty = false;
+                } else {
+                    // 失败时不推进游标；但也不能就此重复入队，交给 SyncQueue 去重
+                    state._statsDirty = true;
+                }
+                return result;
+            })
+            .catch((err) => {
+                console.warn('[QuizNav] pushStats 错误:', err);
                 state._statsDirty = true;
-            }
-            return result;
-        }).catch((err) => {
-            console.warn('[QuizNav] pushStats 错误:', err);
-            state._statsDirty = true;
-            return null;
-        });
+                return null;
+            });
     },
 
     _flushStatsSync() {
@@ -416,9 +484,10 @@ const Nav = {
         }).length;
         const duration = state.startTime ? Math.round((Date.now() - state.startTime) / 1000) : 0;
 
-        const dAnswered = submittedIds.length - (state._lastPushAnswered || 0);
-        const dCorrect = correctCount - (state._lastPushCorrect || 0);
-        const dDuration = duration - (state._lastPushDuration || 0);
+        const cursor = this._getStatsCursor();
+        const dAnswered = submittedIds.length - cursor.answered;
+        const dCorrect = correctCount - cursor.correct;
+        const dDuration = Math.max(0, duration - cursor.duration);
 
         if (dAnswered <= 0 && dCorrect <= 0 && dDuration <= 0) {
             state._statsDirty = false;
@@ -440,9 +509,7 @@ const Nav = {
         };
 
         const markStatsSent = () => {
-            state._lastPushAnswered = submittedIds.length;
-            state._lastPushCorrect = correctCount;
-            state._lastPushDuration = duration;
+            this._setStatsCursor(submittedIds.length, correctCount, duration);
         };
 
         if (navigator.sendBeacon && API.isRegistered()) {

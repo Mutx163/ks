@@ -35,13 +35,13 @@
     gap: var(--space-2);
     margin-bottom: var(--space-5);
     background: var(--bg-hover);
-    border-radius: 24px;
+    border-radius: var(--radius-pill);
     padding: 4px;
 }
 .lb-tab {
     flex: 1;
     padding: 10px 16px;
-    border-radius: 20px;
+    border-radius: var(--radius-pill);
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -62,49 +62,57 @@
 }
 
 /* ---- 当前用户粘性卡片 ---- */
-.lb-me {
+/* 同时匹配 .lb-me 与 #lb-me：JS 只在容器上写 innerHTML，类名未必落到元素上 */
+.lb-me,
+#lb-me {
     position: sticky;
-    top: 0;
+    /* 吸顶时避开固定顶栏 */
+    top: calc(var(--header-h) + var(--space-3));
     z-index: 10;
-    background: linear-gradient(
-        135deg,
-        var(--primary-light) 0%,
-        color-mix(in srgb, var(--primary-light) 70%, white) 100%
-    );
+    background: var(--bg-card);
     border: 1px solid var(--primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4) var(--space-5);
-    margin-bottom: var(--space-5);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
     display: flex;
     align-items: center;
-    gap: var(--space-4);
-    box-shadow: 0 2px 12px rgba(25, 118, 210, 0.12);
-    transition: box-shadow 0.3s ease;
+    gap: var(--space-3);
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 0.25s ease;
 }
-.lb-me:hover {
-    box-shadow: 0 4px 20px rgba(25, 118, 210, 0.18);
+.lb-me:hover,
+#lb-me:hover {
+    box-shadow: var(--shadow-lg);
 }
-.lb-me-rank {
-    font-size: 28px;
+.lb-me-rank,
+#lb-me .lb-me-rank {
+    font-size: var(--font-size-2xl);
     font-weight: 800;
     color: var(--primary);
-    min-width: 56px;
+    min-width: 52px;
     text-align: center;
     font-variant-numeric: tabular-nums;
+    line-height: 1.1;
 }
 .lb-me-info {
     flex: 1;
+    min-width: 0;
 }
 .lb-me-name {
-    font-weight: 700;
-    font-size: var(--font-size-xl);
+    font-weight: 600;
+    font-size: var(--font-size-base);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
 }
 .lb-me-stats {
     display: flex;
-    gap: var(--space-4);
-    margin-top: var(--space-1);
+    gap: var(--space-3);
+    margin-top: 2px;
     color: var(--text-secondary);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     flex-wrap: wrap;
 }
 .lb-me-stat {
@@ -115,11 +123,10 @@
 .lb-me-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 10px;
-    border-radius: 12px;
-    background: var(--primary);
-    color: #fff;
+    padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    background: var(--primary-light);
+    color: var(--primary);
     font-size: 11px;
     font-weight: 600;
 }
@@ -173,18 +180,20 @@
     background: var(--primary);
 }
 
-/* Top 3 行特殊样式 */
+/* Top 3 行：只加左侧强调边，不再整行染色 */
+.lb-row.top-1,
+.lb-row.top-2,
+.lb-row.top-3 {
+    background: var(--bg-card);
+}
 .lb-row.top-1 {
-    border-color: #f59e0b;
-    background: linear-gradient(135deg, #fffbeb 0%, var(--bg-card) 100%);
+    border-color: color-mix(in srgb, #b45309 45%, var(--border));
 }
 .lb-row.top-2 {
-    border-color: #cbd5e1;
-    background: linear-gradient(135deg, #f8fafc 0%, var(--bg-card) 100%);
+    border-color: color-mix(in srgb, #64748b 45%, var(--border));
 }
 .lb-row.top-3 {
-    border-color: #d4a574;
-    background: linear-gradient(135deg, #fff7ed 0%, var(--bg-card) 100%);
+    border-color: color-mix(in srgb, #b06a2c 45%, var(--border));
 }
 
 @keyframes rowSlideIn {
@@ -198,63 +207,40 @@
     }
 }
 
+/* 名次徽章：默认低对比底色 + 次级文字色，11 名以后不再出现白字压米底 */
 .lb-rank {
     font-weight: 700;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     min-width: 28px;
     height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    color: #fff;
+    color: var(--text-secondary);
     background: var(--bg-hover);
     border-radius: 50%;
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
 }
+/* 前三名：深底 + 白字，全部 ≥4.5 */
 .lb-rank.top-1 {
-    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    background: #9a3412;
+    color: #ffffff;
 }
 .lb-rank.top-2 {
-    background: linear-gradient(135deg, #94a3b8, #cbd5e1);
+    background: #475569;
+    color: #ffffff;
 }
 .lb-rank.top-3 {
-    background: linear-gradient(135deg, #cd7f32, #d4a574);
-}
-
-.lb-rank.rank-4 {
-    background: #e0e0e0;
-    color: var(--text-secondary);
-}
-.lb-rank.rank-5 {
-    background: #e0e0e0;
-    color: var(--text-secondary);
-}
-.lb-rank.rank-6 {
-    background: #e8e8e8;
-    color: var(--text-tertiary);
-}
-.lb-rank.rank-7 {
-    background: #e8e8e8;
-    color: var(--text-tertiary);
-}
-.lb-rank.rank-8 {
-    background: #eee;
-    color: var(--text-tertiary);
-}
-.lb-rank.rank-9 {
-    background: #eee;
-    color: var(--text-tertiary);
-}
-.lb-rank.rank-10 {
-    background: #f0f0f0;
-    color: var(--text-tertiary);
+    background: #8a4f21;
+    color: #ffffff;
 }
 
 .lb-rank-num {
     font-size: 11px;
     font-weight: 700;
+    color: inherit;
 }
 
 .lb-avatar {
@@ -267,7 +253,7 @@
     font-weight: 700;
     font-size: var(--font-size-sm);
     flex-shrink: 0;
-    color: #fff;
+    color: var(--on-primary);
     background: var(--primary);
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
@@ -315,7 +301,7 @@
 /* ---- 空状态 / 加载 ---- */
 .lb-empty {
     text-align: center;
-    padding: var(--space-10) var(--space-4);
+    padding: var(--space-7) var(--space-4);
     color: var(--text-tertiary);
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -333,7 +319,7 @@
 }
 .lb-loading {
     text-align: center;
-    padding: var(--space-10);
+    padding: var(--space-7);
     color: var(--text-secondary);
 }
 .lb-loading-spinner {
@@ -361,93 +347,11 @@
 }
 
 /* ---- 暗色模式适配 ---- */
-@media (prefers-color-scheme: dark) {
-    .lb-rank.rank-4 {
-        background: #444;
-        color: var(--text-secondary);
-    }
-    .lb-rank.rank-5 {
-        background: #444;
-        color: var(--text-secondary);
-    }
-    .lb-rank.rank-6 {
-        background: #3a3a3a;
-        color: var(--text-tertiary);
-    }
-    .lb-rank.rank-7 {
-        background: #3a3a3a;
-        color: var(--text-tertiary);
-    }
-    .lb-rank.rank-8 {
-        background: #333;
-        color: var(--text-tertiary);
-    }
-    .lb-rank.rank-9 {
-        background: #333;
-        color: var(--text-tertiary);
-    }
-    .lb-rank.rank-10 {
-        background: #2e2e2e;
-        color: var(--text-tertiary);
-    }
-    .lb-me {
-        background: linear-gradient(135deg, var(--primary-light) 0%, rgba(25, 118, 210, 0.08) 100%);
-    }
-    .lb-row.top-1 {
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, var(--bg-card) 100%);
-    }
-    .lb-row.top-2 {
-        background: linear-gradient(135deg, rgba(148, 163, 184, 0.08) 0%, var(--bg-card) 100%);
-    }
-    .lb-row.top-3 {
-        background: linear-gradient(135deg, rgba(205, 127, 50, 0.08) 0%, var(--bg-card) 100%);
-    }
-}
-[data-theme='dark'] .lb-rank.rank-4 {
-    background: #444;
-    color: var(--text-secondary);
-}
-[data-theme='dark'] .lb-rank.rank-5 {
-    background: #444;
-    color: var(--text-secondary);
-}
-[data-theme='dark'] .lb-rank.rank-6 {
-    background: #3a3a3a;
-    color: var(--text-tertiary);
-}
-[data-theme='dark'] .lb-rank.rank-7 {
-    background: #3a3a3a;
-    color: var(--text-tertiary);
-}
-[data-theme='dark'] .lb-rank.rank-8 {
-    background: #333;
-    color: var(--text-tertiary);
-}
-[data-theme='dark'] .lb-rank.rank-9 {
-    background: #333;
-    color: var(--text-tertiary);
-}
-[data-theme='dark'] .lb-rank.rank-10 {
-    background: #2e2e2e;
-    color: var(--text-tertiary);
-}
-[data-theme='dark'] .lb-me {
-    background: linear-gradient(135deg, var(--primary-light) 0%, rgba(25, 118, 210, 0.08) 100%);
-}
-[data-theme='dark'] .lb-row.top-1 {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, var(--bg-card) 100%);
-}
-[data-theme='dark'] .lb-row.top-2 {
-    background: linear-gradient(135deg, rgba(148, 163, 184, 0.08) 0%, var(--bg-card) 100%);
-}
-[data-theme='dark'] .lb-row.top-3 {
-    background: linear-gradient(135deg, rgba(205, 127, 50, 0.08) 0%, var(--bg-card) 100%);
-}
-
 /* ---- 响应式 ---- */
 @media (max-width: 768px) {
     .lb-container {
-        padding-top: calc(60px + var(--space-4)) !important;
+        /* 移动端没有固定顶栏，不需要为它留出 60px */
+        padding-top: var(--space-4) !important;
     }
 }
 

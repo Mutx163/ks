@@ -70,13 +70,16 @@ const Answers = {
         }
 
         if (question.type === 'fill') {
+            // 输入立刻写 state（切题不丢），只把落盘与重渲染做防抖
+            const persistDebounced = Utils.debounce(() => {
+                Quiz.saveSession();
+                Quiz.renderFooter();
+            }, INPUT_SAVE_DEBOUNCE_MS);
             card.querySelectorAll('.fill-input').forEach((input) => {
-                input.addEventListener(
-                    'input',
-                    Utils.debounce(() => {
-                        this.updateFillAnswer(question.id);
-                    }, INPUT_SAVE_DEBOUNCE_MS)
-                );
+                input.addEventListener('input', () => {
+                    this.updateFillAnswer(question.id, { persist: false });
+                    persistDebounced();
+                });
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
@@ -149,7 +152,7 @@ const Answers = {
         Quiz.renderFooter();
     },
 
-    updateFillAnswer(questionId) {
+    updateFillAnswer(questionId, { persist = true } = {}) {
         const card = this.getQuestionCard();
         const inputs = card ? card.querySelectorAll('.fill-input') : [];
         const answers = [];
@@ -157,6 +160,7 @@ const Answers = {
             answers.push(input.value.trim());
         });
         state.answers[questionId] = answers;
+        if (!persist) return;
         Quiz.saveSession();
         Quiz.renderFooter();
     },
@@ -248,12 +252,18 @@ const Answers = {
                     LIGHTNING_NEXT_DELAY_MS
                 );
             }
-            setTimeout(() => Quiz.nextQuestion(), LIGHTNING_NEXT_DELAY_MS);
+            state._autoNextTimer = setTimeout(() => {
+                state._autoNextTimer = null;
+                Quiz.nextQuestion();
+            }, LIGHTNING_NEXT_DELAY_MS);
             return;
         }
 
         if (isAutoNext && isCorrect) {
-            setTimeout(() => Quiz.nextQuestion(), 500);
+            state._autoNextTimer = setTimeout(() => {
+                state._autoNextTimer = null;
+                Quiz.nextQuestion();
+            }, 500);
             return;
         }
 
@@ -294,12 +304,29 @@ const Answers = {
             }
             case 'judge':
                 return userAnswer === question.answer;
-            case 'fill':
-                return (question.answer || []).every((correct, index) =>
-                    this.checkFillAnswer(userAnswer?.[index], correct)
+            case 'fill': {
+                // 兼容字符串答案（后台编辑器保存的历史数据）
+                const correctList = Array.isArray(question.answer)
+                    ? question.answer
+                    : question.answer
+                      ? [String(question.answer)]
+                      : [];
+                // accept 为「每空可接受的多个等价答案」，优先使用
+                const accept = Array.isArray(question.accept) ? question.accept : null;
+                return (accept && accept.length ? accept : correctList).every(
+                    (correctOrGroup, index) => {
+                        const userVal = userAnswer?.[index];
+                        const group = Array.isArray(correctOrGroup)
+                            ? correctOrGroup
+                            : [correctOrGroup];
+                        return group.some((c) => this.checkFillAnswer(userVal, c));
+                    }
                 );
+            }
             case 'code':
-                return true;
+                // 编程题按标准答案比对（去空白后完全一致），
+                // 不再无条件返回 true —— 那会让所有编程题都算对，污染正确率
+                return this.checkCodeAnswer(userAnswer, question);
             case 'essay':
             case '简答题': {
                 const eAns = state.answers[question.id];
@@ -311,8 +338,31 @@ const Answers = {
     },
 
     checkFillAnswer(userAnswer, correctAnswer) {
-        if (!userAnswer || !correctAnswer) return false;
-        return userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+        if (userAnswer === null || userAnswer === undefined || !correctAnswer) return false;
+        const normalize = (s) =>
+            String(s)
+                .normalize('NFKC') // 全角/半角统一
+                .replace(/\s+/g, '') // 去掉所有空白
+                .toLowerCase();
+        const user = normalize(userAnswer);
+        if (!user) return false;
+        // 答案里用 | 分隔多个可接受写法
+        return String(correctAnswer)
+            .split('|')
+            .some((part) => normalize(part) === user);
+    },
+
+    /**
+     * 编程题判分：不自动评判代码正确性，但也不应无条件算对。
+     * 有标准答案时按「去空白后完全一致」处理；没有标准答案时不计对。
+     */
+    checkCodeAnswer(userAnswer, question) {
+        const user = typeof userAnswer === 'string' ? userAnswer : userAnswer?.text || '';
+        const expected = question.answer;
+        if (!expected || typeof expected !== 'string') return false;
+        const squash = (s) => String(s).replace(/\s+/g, '');
+        if (!squash(user)) return false;
+        return squash(user) === squash(expected);
     },
 
     _cleanMarkdown(text) {

@@ -186,10 +186,17 @@ const API = {
             }
             const url = urlObj.toString();
 
+            // 只有带 body 的请求才需要 Content-Type；
+            // GET 带上它会触发不必要的 CORS 预检（每个 GET 多一个 RTT）
+            const headers = { ...(fetchOptions.headers || {}) };
+            if (method !== 'GET' && method !== 'HEAD' && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
+
             const res = await fetch(url, {
                 cache: 'no-store',
-                headers: { 'Content-Type': 'application/json' },
-                ...fetchOptions
+                ...fetchOptions,
+                headers
             });
 
             const elapsed = Date.now() - startTime;
@@ -287,13 +294,23 @@ const API = {
      * 绑定到已有同步码（多设备同步）
      */
     async bindDevice(syncCode) {
-        // 收集本地待合并数据
-        const localStats = this._collectLocalStats();
+        const target = syncCode.trim().toUpperCase();
+        const current = this.getSyncCode();
+        // 换绑到别人（或另一个）账号时，本机数据属于旧账号。
+        // 必须先清空本地与失败队列，否则会把旧账号的作答、收藏、
+        // 甚至已排队的增量一起并进新账号。
+        const isSwitch = !!current && current !== target;
+        if (isSwitch) {
+            this._purgeLocalUserData();
+        }
+
+        // 收集本地待合并数据：仅首次绑定（此前没有账号）才合并
+        const localStats = current ? [] : this._collectLocalStats();
         const data = await this.request('/api/bind', {
             method: 'POST',
             body: JSON.stringify({
                 deviceId: this.getDeviceId(),
-                syncCode: syncCode.trim().toUpperCase(),
+                syncCode: target,
                 localStats
             })
         });
@@ -305,6 +322,24 @@ const API = {
             await this.pullCloudData();
         }
         return data;
+    },
+
+    /**
+     * 清空属于上一个账号的本地数据与待发送队列。
+     * 只在「切换到另一个同步码」时调用。
+     */
+    _purgeLocalUserData() {
+        try {
+            StorageMod.clearAll();
+        } catch (e) {
+            console.warn('[API] 清空本地数据失败:', e.message);
+        }
+        try {
+            SyncQueue.clear();
+        } catch (e) {
+            console.warn('[API] 清空同步队列失败:', e.message);
+        }
+        this._syncCode = null;
     },
 
     /**
@@ -542,11 +577,17 @@ const API = {
             return pushTask();
         }
 
-        return new Promise((resolve) => {
-            this._syncTimer = setTimeout(() => {
-                pushTask().then(resolve);
-            }, 5000);
-        });
+        // 复用同一个 pending Promise：每次 saveSession 都清掉旧定时器，
+        // 若每次都新建 Promise，之前返回的那些将永远不会 resolve
+        if (!this._pendingProgressPromise) {
+            this._pendingProgressPromise = new Promise((resolve) => {
+                this._syncTimer = setTimeout(() => {
+                    this._pendingProgressPromise = null;
+                    pushTask().then(resolve);
+                }, 5000);
+            });
+        }
+        return this._pendingProgressPromise;
     },
 
     /**
@@ -555,7 +596,8 @@ const API = {
      * @returns {Promise|null} 请求结果，异常时不会抛出（内部 catch）
      */
     pushStats(stats) {
-        if (!this.isRegistered()) return null;
+        // 必须始终返回 Promise：调用方会直接 .then，返回 null 会抛 TypeError
+        if (!this.isRegistered()) return Promise.resolve(null);
         return this.request('/api/sync', {
             method: 'POST',
             body: JSON.stringify({
@@ -566,13 +608,17 @@ const API = {
             .then((data) => {
                 const result = this._classifyPushResult(data);
                 if (result === 'disabled') this._showBanNotice();
-                else if (result === 'fail') SyncQueue.enqueueStats(stats);
+                if (result === 'fail') {
+                    // 已转交给失败队列，调用方应推进游标，否则会重复入队
+                    SyncQueue.enqueueStats(stats);
+                    return { queued: true };
+                }
                 return data;
             })
             .catch((e) => {
                 console.warn('[API] pushStats 失败:', e.message);
                 SyncQueue.enqueueStats(stats);
-                return null;
+                return { queued: true };
             });
     },
 
@@ -592,13 +638,16 @@ const API = {
         `;
         notice.innerHTML = `
             <div style="
-                background: #fff; border-radius: 16px; padding: 32px;
+                background: var(--bg-card); border: 1px solid var(--border);
+                border-radius: var(--radius-lg); padding: 32px;
                 max-width: 360px; text-align: center;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                box-shadow: var(--shadow-lg); color: var(--text);
             ">
-                <div style="font-size: 64px; margin-bottom: 20px;">🚫</div>
-                <h3 style="font-size: 20px; margin-bottom: 12px; color: #1f2937;">账号已被封禁</h3>
-                <p style="font-size: 15px; color: #6b7280; line-height: 1.6;">
+                <div style="color: var(--danger); margin-bottom: var(--space-4);">
+                    <i data-lucide="shield-off" style="width:44px;height:44px;"></i>
+                </div>
+                <h3 style="font-size: var(--font-size-lg); margin-bottom: var(--space-3); color: var(--text);">账号已被封禁</h3>
+                <p style="font-size: var(--font-size-sm); color: var(--text-secondary); line-height: 1.6;">
                     您的账号已被管理员封禁<br>
                     无法使用刷题功能<br><br>
                     <strong>如有疑问，请联系管理员</strong>
@@ -606,6 +655,9 @@ const API = {
             </div>
         `;
         document.body.appendChild(notice);
+        if (window.Utils && typeof window.Utils.initIcons === 'function') {
+            window.Utils.initIcons();
+        }
 
         // 阻止页面滚动
         document.body.style.overflow = 'hidden';
@@ -767,43 +819,35 @@ const API = {
 
             const renderContent = () => {
                 return `
-                    <div style="display: flex; gap: 0; margin-bottom: 20px; background: var(--bg-hover); border-radius: 10px; padding: 4px;">
-                        <button id="tab-register" style="flex:1; padding: 10px; border: none; background: #fff; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.2s;">✨ 新用户注册</button>
-                        <button id="tab-bind" style="flex:1; padding: 10px; border: none; background: transparent; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">🔗 绑定同步码</button>
+                    <div class="reg-tabs" role="tablist">
+                        <button type="button" id="tab-register" class="reg-tab active" role="tab" aria-selected="true">新用户注册</button>
+                        <button type="button" id="tab-bind" class="reg-tab" role="tab" aria-selected="false">绑定同步码</button>
                     </div>
-                    
-                    <div id="register-form">
-                        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; text-align: center;">
-                            输入姓名首字母，即可开始刷题！
-                        </p>
-                        <input type="text" id="reg-initials"
-                            placeholder="输入你的代号"
+
+                    <div id="register-form" role="tabpanel">
+                        <p class="reg-desc">输入姓名首字母，即可开始刷题！</p>
+                        <input type="text" id="reg-initials" class="reg-input"
+                            placeholder="代号"
                             maxlength="4"
-                            style="text-transform: uppercase; text-align: center; font-size: 24px; letter-spacing: 8px; width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--bg);"
-                            autocomplete="off">
-                        <p style="color: var(--text-tertiary); font-size: 22px; margin-top: 8px; text-align: center;">
-                            1-4个字母，随意组合
-                        </p>
+                            autocomplete="off"
+                            aria-label="输入1-4个字母的代号">
+                        <p class="reg-hint">1-4 个字母，任意组合</p>
                     </div>
-                    
-                    <div id="bind-form" style="display: none;">
-                        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px; text-align: center;">
-                            在其他设备已有账号？输入同步码继续
-                        </p>
-                        <input type="text" id="reg-sync-code"
-                            placeholder="输入6位同步码"
+
+                    <div id="bind-form" style="display: none" role="tabpanel">
+                        <p class="reg-desc">在其他设备已有账号？输入同步码继续</p>
+                        <input type="text" id="reg-sync-code" class="reg-input"
+                            placeholder="同步码"
                             maxlength="6"
-                            style="text-transform: uppercase; text-align: center; font-size: 24px; letter-spacing: 6px; width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 12px; background: var(--bg);"
-                            autocomplete="off">
-                        <p style="color: var(--text-tertiary); font-size: 12px; margin-top: 8px; text-align: center;">
-                            同步码可在已登录设备的"我的"页面查看
-                        </p>
+                            autocomplete="off"
+                            aria-label="输入6位同步码">
+                        <p class="reg-hint">同步码可在已登录设备的「我的」页面查看</p>
                     </div>
                 `;
             };
 
             const modal = Utils.showModal({
-                title: '🏆 欢迎使用城科卷王',
+                title: '欢迎使用城科卷王',
                 closable: false,
                 content: renderContent(),
                 buttons: [
@@ -877,30 +921,25 @@ const API = {
             const bindForm = modal.querySelector('#bind-form');
 
             if (tabRegister && tabBind && registerForm && bindForm) {
+                const switchTab = (activeTab, inactiveTab) => {
+                    activeTab.classList.add('active');
+                    inactiveTab.classList.remove('active');
+                    activeTab.setAttribute('aria-selected', 'true');
+                    inactiveTab.setAttribute('aria-selected', 'false');
+                };
+
                 tabRegister.addEventListener('click', () => {
                     registerForm.style.display = 'block';
                     bindForm.style.display = 'none';
-                    tabRegister.style.background = '#fff';
-                    tabRegister.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                    tabRegister.style.fontWeight = '600';
-                    tabRegister.style.color = '';
-                    tabBind.style.background = 'transparent';
-                    tabBind.style.boxShadow = 'none';
-                    tabBind.style.fontWeight = '500';
-                    tabBind.style.color = 'var(--text-secondary)';
+                    switchTab(tabRegister, tabBind);
+                    setTimeout(() => document.getElementById('reg-initials')?.focus(), 50);
                 });
 
                 tabBind.addEventListener('click', () => {
                     registerForm.style.display = 'none';
                     bindForm.style.display = 'block';
-                    tabBind.style.background = '#fff';
-                    tabBind.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                    tabBind.style.fontWeight = '600';
-                    tabBind.style.color = '';
-                    tabRegister.style.background = 'transparent';
-                    tabRegister.style.boxShadow = 'none';
-                    tabRegister.style.fontWeight = '500';
-                    tabRegister.style.color = 'var(--text-secondary)';
+                    switchTab(tabBind, tabRegister);
+                    setTimeout(() => document.getElementById('reg-sync-code')?.focus(), 50);
                 });
             }
 
@@ -932,9 +971,9 @@ const API = {
 
         const content = code
             ? `
-            <div style="text-align: center; margin-bottom: 16px;">
-                <p style="color: var(--text-secondary); margin-bottom: 8px;">${Utils.escapeHtml(initials)}，你的同步码：</p>
-                <div id="sync-code-display" style="font-size: 28px; font-weight: 700; letter-spacing: 6px; color: var(--primary); font-family: monospace; padding: 12px; background: var(--bg-hover); border-radius: var(--radius);">
+            <div style="text-align: center; margin-bottom: var(--space-4);">
+                <p style="color: var(--text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--space-2);">${Utils.escapeHtml(initials)}，你的同步码：</p>
+                <div id="sync-code-display" style="font-size: var(--font-size-2xl); font-weight: 700; letter-spacing: 6px; color: var(--primary); font-family: var(--font-mono); padding: var(--space-3); background: var(--bg-hover); border: 1px solid var(--border); border-radius: var(--radius);">
                     ${code}
                 </div>
             </div>
@@ -951,7 +990,7 @@ const API = {
                     <input type="text" id="rebind-code" placeholder="输入新的6位同步码" maxlength="6" style="text-transform: uppercase; flex: 1;">
                     <button class="btn btn-secondary btn-sm" onclick="API.rebindDevice()">绑定</button>
                 </div>
-                <p style="font-size: 11px; color: var(--text-tertiary); margin-top: 4px;">⚠️ 绑定后本设备数据将关联到新同步码</p>
+                <p style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: 4px;">绑定后本设备数据将关联到新同步码</p>
             </div>
         `
             : `
@@ -962,7 +1001,7 @@ const API = {
         `;
 
         Utils.showModal({
-            title: '⚙️ 账号管理',
+            title: '账号管理',
             content,
             buttons: [
                 ...(code

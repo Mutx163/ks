@@ -2,7 +2,7 @@
 <html lang="zh-CN">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <meta name="theme-color" id="meta-theme-color" content="#f9f6ec" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <script>
@@ -24,8 +24,12 @@
                     isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 }
                 const themeColor = isDark
-                    ? (colorScheme === 'white' ? '#1e293b' : '#2a251b')
-                    : (colorScheme === 'white' ? '#ffffff' : '#f9f6ec');
+                    ? colorScheme === 'white'
+                        ? '#1e293b'
+                        : '#2a251b'
+                    : colorScheme === 'white'
+                      ? '#ffffff'
+                      : '#f9f6ec';
                 const meta = document.getElementById('meta-theme-color');
                 if (meta) {
                     meta.setAttribute('content', themeColor);
@@ -202,17 +206,11 @@
                             >
                                 <div class="section-header">
                                     <h2 class="section-title">题库列表</h2>
-                                    <div style="display: flex; align-items: center; gap: 8px">
+                                    <div class="section-header-tools">
                                         <select
                                             id="bank-sort"
-                                            style="
-                                                padding: 4px 8px;
-                                                border: 1px solid var(--border);
-                                                border-radius: var(--radius);
-                                                font-size: 12px;
-                                                background: var(--bg-card);
-                                                color: var(--text);
-                                            "
+                                            class="sort-select"
+                                            aria-label="题库排序方式"
                                             onchange="App.sortBanks(this.value)"
                                         >
                                             <option value="recent">最近使用</option>
@@ -237,25 +235,8 @@
                                 <div class="home-insights-header">
                                     <div>
                                         <h2>学习数据</h2>
-                                        <p>趋势、分析和当前进度</p>
+                                        <p>学习进度概览</p>
                                     </div>
-                                    <a href="analysis.html">详情</a>
-                                </div>
-
-                                <!-- 趋势/分析入口 -->
-                                <div class="insight-entry" aria-label="学习数据入口">
-                                    <a class="insight-entry-btn" href="trend.html">
-                                        <span class="insight-entry-text">
-                                            <strong>趋势</strong>
-                                            <span>答题节奏</span>
-                                        </span>
-                                    </a>
-                                    <a class="insight-entry-btn" href="analysis.html">
-                                        <span class="insight-entry-text">
-                                            <strong>分析</strong>
-                                            <span>薄弱点</span>
-                                        </span>
-                                    </a>
                                 </div>
 
                                 <!-- 概览统计 -->
@@ -272,7 +253,7 @@
                             >
                                 <div class="home-insights-header">
                                     <div>
-                                        <h2 class="title-gradient">学习统计</h2>
+                                        <h2>学习统计</h2>
                                         <p>全站实时数据</p>
                                     </div>
                                 </div>
@@ -292,7 +273,7 @@
                                         </div>
                                     </div>
                                     <div class="recent-active-section">
-                                        <h3 class="recent-active-title">🔥 最近活跃人员</h3>
+                                        <h3 class="recent-active-title">最近活跃人员</h3>
                                         <div class="recent-users-list" id="recent-users-container">
                                             <div class="stats-loading">
                                                 <div class="stats-loading-spinner"></div>
@@ -312,7 +293,7 @@
         <div id="leaderboard-view" class="view-wrapper">
             <main class="lb-container">
                 <div class="lb-header">
-                    <h1>🏆 排行榜</h1>
+                    <h1>排行榜</h1>
                     <p id="lb-desc">全站学习数据排行</p>
                 </div>
                 <!-- 当前用户 -->
@@ -324,13 +305,13 @@
                         data-sort="answered"
                         onclick="LB.switchTab('answered')"
                     >
-                        📊 答题数
+                        <i data-lucide="list" class="icon"></i> 答题数
                     </button>
                     <button class="lb-tab" data-sort="accuracy" onclick="LB.switchTab('accuracy')">
-                        🎯 正确率
+                        <i data-lucide="target" class="icon"></i> 正确率
                     </button>
                     <button class="lb-tab" data-sort="duration" onclick="LB.switchTab('duration')">
-                        ⏱ 学习时长
+                        <i data-lucide="clock" class="icon"></i> 学习时长
                     </button>
                 </div>
                 <!-- 排行榜列表 -->

@@ -33,6 +33,10 @@ export function initBanks(Admin) {
     // ==================== 题库列表页 ====================
     Admin.renderBanks = async function () {
         const el = document.getElementById('sec-banks');
+        // 搜索框在本区块内，重建前记住焦点与光标，重建后恢复
+        const prevSearch = document.getElementById('bank-admin-search');
+        const searchHadFocus = prevSearch != null && document.activeElement === prevSearch;
+        const caretPos = prevSearch?.selectionStart ?? null;
         el.innerHTML = '<div class="loading">加载中...</div>';
         try {
             const d = await this.get('/api/banks');
@@ -134,6 +138,14 @@ export function initBanks(Admin) {
                         </table>
                     </div>
                 </div>`;
+            const nextSearch = document.getElementById('bank-admin-search');
+            if (nextSearch && searchHadFocus) {
+                nextSearch.focus();
+                if (caretPos != null) {
+                    const pos = Math.min(caretPos, nextSearch.value.length);
+                    nextSearch.setSelectionRange(pos, pos);
+                }
+            }
             Utils.initIcons?.();
         } catch (e) {
             el.innerHTML = this.emptyState({ title: '题库加载失败', desc: e.message });
@@ -358,17 +370,17 @@ export function initBanks(Admin) {
         return qs
             .map(
                 (q) => `
-            <div class="question-item management-row" data-qid="${q.id}" style="margin-bottom:8px" onclick="Admin.editQuestion('${Utils.jsSafe(bankId)}',${q.id})">
+            <div class="question-item management-row" data-qid="${Utils.escapeHtml(q.id)}" style="margin-bottom:8px" onclick="Admin.editQuestion('${Utils.jsSafe(bankId)}','${Utils.jsSafe(q.id)}')">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
                     <div style="flex:1;min-width:0">
-                        <span class="code">#${q.id}</span>
-                        <span class="tag-pill">${TYPE_LABELS[q.type] || q.type || '未知'}</span>
+                        <span class="code">#${Utils.escapeHtml(q.id)}</span>
+                        <span class="tag-pill">${Utils.escapeHtml(TYPE_LABELS[q.type] || q.type || '未知')}</span>
                         ${q.category ? `<span class="tag-pill">${Utils.escapeHtml(q.category)}</span>` : ''}
                         <div class="row-title" style="margin-top:8px">${Utils.escapeHtml((q.question || '').slice(0, 110))}${(q.question || '').length > 110 ? '...' : ''}</div>
                     </div>
                     <div class="toolbar-group" style="flex-shrink:0" onclick="event.stopPropagation()">
-                        <button class="abtn" onclick="Admin.editQuestion('${Utils.jsSafe(bankId)}',${q.id})">编辑</button>
-                        <button class="abtn danger" onclick="Admin.deleteQuestion('${Utils.jsSafe(bankId)}',${q.id})">删除</button>
+                        <button class="abtn" onclick="Admin.editQuestion('${Utils.jsSafe(bankId)}','${Utils.jsSafe(q.id)}')">编辑</button>
+                        <button class="abtn danger" onclick="Admin.deleteQuestion('${Utils.jsSafe(bankId)}','${Utils.jsSafe(q.id)}')">删除</button>
                     </div>
                 </div>
             </div>
@@ -446,6 +458,10 @@ export function initBanks(Admin) {
         const category = document.getElementById('new-bank-category').value.trim();
         if (!id || !name) {
             Utils.showToast('请填写ID和名称', 'error');
+            return;
+        }
+        if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(id)) {
+            Utils.showToast('ID 只能是小写字母、数字、下划线或连字符，2-64 位', 'error');
             return;
         }
         const r = await this.post('/api/admin/create-bank', { id, name, category });

@@ -13,7 +13,13 @@ export function initUsers(Admin) {
     // ==================== 用户列表页 ====================
     Admin.renderUsers = function () {
         const el = document.getElementById('sec-users');
-        const q = (document.getElementById('search-input')?.value || '').toUpperCase();
+        // 整个区块会被重建：先记住搜索框的焦点与光标，重建后恢复，
+        // 否则每输入一个字符就丢焦点，实际只能输入一个字
+        const prevSearch = document.getElementById('search-input');
+        const rawQuery = prevSearch?.value || '';
+        const searchHadFocus = prevSearch != null && document.activeElement === prevSearch;
+        const caretPos = prevSearch?.selectionStart ?? null;
+        const q = rawQuery.trim().toUpperCase();
         const status =
             document.getElementById('user-status-filter')?.value || this.userStatusFilter || 'all';
         this.userStatusFilter = status;
@@ -100,9 +106,17 @@ export function initUsers(Admin) {
             }
             ${this.pager({ page: this.userPage, pageSize: this.userPageSize, total: totalFiltered, onPage: 'Admin.setUserPage', onPageSize: 'Admin.setUserPageSize' })}
         `;
-        document
-            .getElementById('search-input')
-            ?.addEventListener('input', () => this.renderUsers());
+        const nextSearch = document.getElementById('search-input');
+        if (nextSearch) {
+            nextSearch.addEventListener('input', () => this.renderUsers());
+            if (searchHadFocus) {
+                nextSearch.focus();
+                if (caretPos != null) {
+                    const pos = Math.min(caretPos, nextSearch.value.length);
+                    nextSearch.setSelectionRange(pos, pos);
+                }
+            }
+        }
         Utils.initIcons?.();
     };
 
@@ -396,15 +410,20 @@ export function initUsers(Admin) {
             Utils.showToast('请输入有效同步码', 'error');
             return;
         }
+        // 后端字段名是 targetUserId / newSyncCode
         const r = await this.post('/api/admin/change-sync-code', {
-            oldUserId: oldUid,
-            newUserId: newCode
+            targetUserId: oldUid,
+            newSyncCode: newCode
         });
         if (r?.ok) {
             Utils.showToast('已修改', 'success');
             document.querySelector('.modal-mask')?.remove();
             await this.loadAll();
             this.renderUsers();
+            // 详情页仍指向旧 id，改完整理到新同步码
+            if (typeof this.showUserDetail === 'function') {
+                this.showUserDetail(r.newCode || newCode);
+            }
         } else Utils.showToast(r?.error || '失败', 'error');
     };
 
@@ -529,11 +548,73 @@ export function initUsers(Admin) {
             confirmText: '确认解绑'
         });
         if (!ok) return;
-        const r = await this.post('/api/admin/remove-device', { deviceId });
+        // 不能用 deviceId 作字段名：Admin.post 会把鉴权用的 deviceId 一起铺开，
+        // 同名业务字段会覆盖掉管理员自己的设备 ID，导致鉴权失败
+        const r = await this.post('/api/admin/remove-device', { targetDeviceId: deviceId });
         if (r?.ok) {
             Utils.showToast('已解绑', 'success');
             this.showUserDetail(uid);
+        } else {
+            Utils.showToast(r?.error || '解绑失败', 'error');
         }
+    };
+
+    // 导出用户 CSV（RFC4180 引号转义 + 防公式注入）
+    Admin.exportCSV = function () {
+        const list = Array.isArray(this.users) ? this.users : [];
+        if (!list.length) {
+            Utils.showToast('没有可导出的用户', 'error');
+            return;
+        }
+        const cell = (v) => {
+            let s = String(v ?? '');
+            // Excel 会把 = + - @ 开头的单元格当公式执行
+            if (/^[=+\-@]/.test(s)) s = `'${s}`;
+            return `"${s.replace(/"/g, '""')}"`;
+        };
+        const header = [
+            '同步码',
+            '姓名',
+            '管理员',
+            '封禁',
+            '设备数',
+            '答题数',
+            '正确数',
+            '正确率',
+            '时长(秒)',
+            '注册时间',
+            '最后同步'
+        ];
+        const rows = list.map((u) => {
+            const acc =
+                u.total_answered > 0 ? Math.round((u.total_correct / u.total_answered) * 100) : 0;
+            return [
+                u.id,
+                u.initials,
+                u.is_admin ? '是' : '否',
+                u.banned ? '是' : '否',
+                u.device_count,
+                u.total_answered,
+                u.total_correct,
+                `${acc}%`,
+                u.total_duration,
+                u.created_at,
+                u.last_sync_at
+            ]
+                .map(cell)
+                .join(',');
+        });
+        const csv = '﻿' + [header.map(cell).join(','), ...rows].join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `users-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        Utils.showToast(`已导出 ${list.length} 位用户`, 'success');
     };
 
     // 工具函数

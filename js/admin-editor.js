@@ -17,9 +17,10 @@ export function initEditor(Admin) {
     };
 
     Admin.editQuestion = async function (bankId, qid) {
-        const d = await this.get(`/api/admin/bank/${bankId}`);
+        const d = await this.get(`/api/admin/bank/${encodeURIComponent(bankId)}`);
         if (!d?.ok) return;
-        const q = (d.bank.questions || []).find((x) => x.id === qid);
+        // onclick 传来的是字符串，题目 id 可能是数字，用宽松比较避免找不到题
+        const q = (d.bank.questions || []).find((x) => String(x.id) === String(qid));
         if (!q) {
             Utils.showToast('题目不存在', 'error');
             return;
@@ -207,7 +208,7 @@ export function initEditor(Admin) {
             <span class="qe-info">${isNew ? '新题目' : 'ID: ' + q.id}</span>
             <div class="qe-actions">
                 <button class="ms" onclick="this.closest('.modal-mask').remove()">取消</button>
-                <button class="mp" onclick="${isNew ? `Admin.saveNewQuestion('${bankId}')` : `Admin.saveEditQuestion('${bankId}',${q.id})`}">${isNew ? '添加' : '保存'}</button>
+                <button class="mp" onclick="${isNew ? `Admin.saveNewQuestion('${Utils.jsSafe(bankId)}')` : `Admin.saveEditQuestion('${Utils.jsSafe(bankId)}','${Utils.jsSafe(q.id)}')`}">${isNew ? '添加' : '保存'}</button>
             </div>
         </div>`;
     };
@@ -568,7 +569,9 @@ export function initEditor(Admin) {
             btn.disabled = true;
             btn.textContent = '保存中...';
         }
-        const r = await this.post(`/api/admin/bank/${bankId}/question`, { question });
+        const r = await this.post(`/api/admin/bank/${encodeURIComponent(bankId)}/question`, {
+            question
+        });
         if (r?.ok) {
             Utils.showToast('已添加', 'success');
             document.querySelector('.modal-mask')?.remove();
@@ -591,7 +594,10 @@ export function initEditor(Admin) {
             btn.disabled = true;
             btn.textContent = '保存中...';
         }
-        const r = await this.put(`/api/admin/bank/${bankId}/question/${qid}`, { question });
+        const r = await this.put(
+            `/api/admin/bank/${encodeURIComponent(bankId)}/question/${encodeURIComponent(qid)}`,
+            { question }
+        );
         if (r?.ok) {
             Utils.showToast('已保存', 'success');
             document.querySelector('.modal-mask')?.remove();
@@ -654,7 +660,10 @@ export function initEditor(Admin) {
             confirmText: '确认删除'
         });
         if (!ok) return;
-        const r = await this.post(`/api/admin/bank/${bankId}/question/${qid}`, {});
+        // 后端该路由只注册了 DELETE，用 POST 会 404 且静默失败
+        const r = await this.delete(
+            `/api/admin/bank/${encodeURIComponent(bankId)}/question/${encodeURIComponent(qid)}`
+        );
         if (r?.ok) {
             Utils.showToast('已删除', 'success');
             // 从列表中移除该题目
@@ -666,6 +675,8 @@ export function initEditor(Admin) {
             } else {
                 this.viewBank(bankId);
             }
+        } else {
+            Utils.showToast(r?.error || '删除失败', 'error');
         }
     };
 

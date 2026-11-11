@@ -299,20 +299,28 @@ const AIExplain = {
 
         const type = question.type || 'single';
 
+        // 选项乱序/考试模式下 displayLetter 是重排后的字母，
+        // 而 answers 与 question.answer 存的是原始字母 originalLetter。
+        // 必须按 originalLetter 查找，否则会把答案指向错位的选项。
+        const findOption = (letter) =>
+            optList.find((o) => (o.originalLetter ?? o.displayLetter) === letter);
+
         // 格式化学生作答，附带选项内容
         if (userAnswer !== undefined && userAnswer !== null) {
             let answerDisplay;
 
             if (type === 'single' && typeof userAnswer === 'string' && /^[A-Z]$/.test(userAnswer)) {
-                const opt = optList.find((o) => o.displayLetter === userAnswer);
+                const opt = findOption(userAnswer);
                 answerDisplay = opt
-                    ? `${userAnswer}. ${this._stripLetterPrefix(opt.text)}`
+                    ? `${opt.displayLetter}. ${this._stripLetterPrefix(opt.text)}`
                     : userAnswer;
             } else if (type === 'multiple' && Array.isArray(userAnswer)) {
                 answerDisplay = userAnswer
                     .map((letter) => {
-                        const opt = optList.find((o) => o.displayLetter === letter);
-                        return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
+                        const opt = findOption(letter);
+                        return opt
+                            ? `${opt.displayLetter}. ${this._stripLetterPrefix(opt.text)}`
+                            : letter;
                     })
                     .join('、');
             } else if (type === 'judge') {
@@ -333,15 +341,17 @@ const AIExplain = {
                 typeof correctAnswer === 'string' &&
                 /^[A-Z]$/.test(correctAnswer)
             ) {
-                const opt = optList.find((o) => o.displayLetter === correctAnswer);
+                const opt = findOption(correctAnswer);
                 correctDisplay = opt
-                    ? `${correctAnswer}. ${this._stripLetterPrefix(opt.text)}`
+                    ? `${opt.displayLetter}. ${this._stripLetterPrefix(opt.text)}`
                     : correctAnswer;
             } else if (type === 'multiple' && Array.isArray(correctAnswer)) {
                 correctDisplay = correctAnswer
                     .map((letter) => {
-                        const opt = optList.find((o) => o.displayLetter === letter);
-                        return opt ? `${letter}. ${this._stripLetterPrefix(opt.text)}` : letter;
+                        const opt = findOption(letter);
+                        return opt
+                            ? `${opt.displayLetter}. ${this._stripLetterPrefix(opt.text)}`
+                            : letter;
                     })
                     .join('、');
             } else if (type === 'judge') {
@@ -395,7 +405,12 @@ const AIExplain = {
             html = this._fallbackMarkdown(text);
         }
 
-        // 3. 恢复并渲染数学公式
+        // 3. 先净化，再渲染公式。
+        // 顺序很重要：KaTeX 的输出含 MathML 与行内 style，
+        // 若先渲染公式再净化，白名单会把它们剥掉，公式就坏了。
+        html = Utils.sanitizeHtml(html);
+
+        // 4. 恢复并渲染数学公式
         html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (_, idx) => {
             const m = mathBlocks[Number(idx)];
             if (!m) return '';
@@ -403,8 +418,7 @@ const AIExplain = {
                 if (typeof katex !== 'undefined') {
                     return katex.renderToString(m.tex, {
                         displayMode: m.display,
-                        throwOnError: false,
-                        output: 'htmlAndMathml'
+                        throwOnError: false
                     });
                 }
             } catch {
@@ -413,7 +427,7 @@ const AIExplain = {
             return `<code class="math-fallback">${Utils.escapeHtml(m.tex)}</code>`;
         });
 
-        // 4. 写入 DOM
+        // 5. 写入 DOM
         target.innerHTML = html;
 
         // 5. 代码高亮（Prism.js）
@@ -539,6 +553,9 @@ const AIExplain = {
         if (config.mode !== 'inpage') return false;
 
         const qId = question.id;
+        // 缓存键必须带题库：各题库的题目 id 都从 1 开始，
+        // 只用 question.id 会让 B 题库第 1 题显示 A 题库第 1 题的解读
+        const cacheKey = `${bank?.id || bank?.bankId || 'unknown'}:${qId}`;
         const overlay = this._createModal(`第 ${qId || ''} 题`.trim());
         const cancel = overlay.querySelector('#ai-explain-cancel');
         const regenerateBtn = overlay.querySelector('#ai-explain-regenerate');
@@ -564,7 +581,7 @@ const AIExplain = {
                 regenerateBtn.textContent = '生成中...';
             }
 
-            this._cache.delete(qId);
+            this._cache.delete(cacheKey);
             this._doFetchExplanation({
                 overlay,
                 question,
@@ -574,13 +591,14 @@ const AIExplain = {
                 displayOptions,
                 controller: currentController,
                 qId,
+                cacheKey,
                 regenerateBtn
             });
         };
         regenerateBtn?.addEventListener('click', doFetch);
 
         // 有缓存则直接显示
-        const cached = this._cache.get(qId);
+        const cached = this._cache.get(cacheKey);
         if (cached) {
             this._renderCached(overlay, cached);
             return true;
@@ -599,6 +617,7 @@ const AIExplain = {
         displayOptions,
         controller,
         qId,
+        cacheKey,
         regenerateBtn
     }) {
         const output = overlay.querySelector('#ai-explain-output');
@@ -770,7 +789,16 @@ const AIExplain = {
             }
 
             // 缓存结果
-            this._cache.set(qId, { answer: answerText, think: thinkText, hadThink });
+            // 出错文本不能当解读缓存，否则下次打开直接展示错误
+            const isUpstreamError = /^\[AI 接口错误/.test(answerText || '');
+            if (answerText && !isUpstreamError) {
+                this._cache.set(cacheKey || qId, {
+                    answer: answerText,
+                    think: thinkText,
+                    hadThink
+                });
+            }
+            if (isUpstreamError) status.textContent = '请求失败';
 
             status.textContent = gotAny ? '完成' : '没有收到内容';
             cancel.textContent = '关闭';

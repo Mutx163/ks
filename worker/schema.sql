@@ -118,4 +118,5 @@ CREATE TABLE IF NOT EXISTS client_logs (
 CREATE INDEX IF NOT EXISTS idx_client_logs_device ON client_logs (device_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_client_logs_level ON client_logs (level, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_client_logs_created ON client_logs (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_client_logs_error_summary ON client_logs (level, message(50));
+-- 前缀索引用 substr 表达式（SQLite/D1 不支持 MySQL 的 message(50) 写法）
+CREATE INDEX IF NOT EXISTS idx_client_logs_error_summary ON client_logs (level, substr(message, 1, 50));

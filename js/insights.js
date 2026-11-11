@@ -381,7 +381,10 @@ const Insights = {
     },
 
     renderEmpty(text) {
-        return `<div class="empty-state">${Utils.escapeHtml(text)}</div>`;
+        return `<div class="empty-state">
+            <strong>${Utils.escapeHtml(text)}</strong>
+            <span>先去做几道题，这里就会有数据了</span>
+        </div>`;
     },
 
     getDailySeries(days) {

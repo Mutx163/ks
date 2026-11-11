@@ -32,9 +32,16 @@ const SyncQueue = {
 
     isEmpty() {
         const s = this._load();
-        return (
-            s.stats.length === 0 && !s.progress && !s.settings && !s.bookmarks
-        );
+        return s.stats.length === 0 && !s.progress && !s.settings && !s.bookmarks;
+    },
+
+    /** 清空队列（切换账号时使用，避免旧账号增量被推给新账号） */
+    clear() {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch (e) {
+            console.warn('[SyncQueue] 清空队列失败:', e.message);
+        }
     },
 
     pendingCount() {
@@ -83,12 +90,7 @@ const SyncQueue = {
      */
     async flush(send) {
         const state = this._load();
-        if (
-            state.stats.length === 0 &&
-            !state.progress &&
-            !state.settings &&
-            !state.bookmarks
-        ) {
+        if (state.stats.length === 0 && !state.progress && !state.settings && !state.bookmarks) {
             return { flushed: 0, failed: 0 };
         }
 

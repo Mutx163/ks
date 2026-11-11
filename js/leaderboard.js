@@ -23,7 +23,7 @@ const LB = {
             Perf.done({ registered: false });
             document.getElementById('lb-list').innerHTML = `
                 <div class="lb-empty">
-                    <div class="lb-empty-icon">🏆</div>
+                    <div class="lb-empty-icon">${Utils.icon('trophy', 'icon-xl')}</div>
                     <div class="lb-empty-title">注册后即可参与排行</div>
                     <p style="margin-bottom:var(--space-4);color:var(--text-secondary);">与全站同学一起比拼学习数据</p>
                     <button class="btn btn-primary" onclick="LB.promptRegister()">立即注册加入</button>
@@ -66,7 +66,7 @@ const LB = {
         if (!data || !data.ok) {
             listEl.innerHTML = `
                 <div class="lb-empty">
-                    <div class="lb-empty-icon">📡</div>
+                    <div class="lb-empty-icon">${Utils.icon('wifi-off', 'icon-xl')}</div>
                     <div class="lb-empty-title">加载失败</div>
                     <p style="color:var(--text-secondary);">请检查网络后重试</p>
                     <button class="btn btn-secondary" style="margin-top:var(--space-3);" onclick="LB.loadLeaderboard()">重新加载</button>
@@ -82,7 +82,7 @@ const LB = {
         if (leaderboard.length === 0) {
             listEl.innerHTML = `
                 <div class="lb-empty">
-                    <div class="lb-empty-icon">📭</div>
+                    <div class="lb-empty-icon">${Utils.icon('clipboard-list', 'icon-xl')}</div>
                     <div class="lb-empty-title">暂无数据</div>
                     <p style="color:var(--text-secondary);">成为第一个上榜的人吧！</p>
                 </div>
@@ -98,21 +98,24 @@ const LB = {
         };
         document.getElementById('lb-desc').textContent = descMap[this.currentSort] || '';
 
-        const myCode = API.getSyncCode();
-
-        // 全部渲染到一个列表，Top 3 通过 CSS 特殊样式区分
-        this.renderList(leaderboard, myCode);
+        // 服务端只下发 isMe 标记，不再公开 syncCode
+        this.renderList(leaderboard);
     },
 
     renderCurrentUser(user) {
         const meEl = document.getElementById('lb-me');
         if (!user || !meEl) {
-            if (meEl) meEl.style.display = 'none';
+            if (meEl) {
+                meEl.style.display = 'none';
+                meEl.classList.remove('lb-me');
+            }
             return;
         }
 
-        const rankDisplay = user.rank <= 3 ? ['🥇', '🥈', '🥉'][user.rank - 1] : `#${user.rank}`;
+        const rankDisplay = `#${user.rank}`;
 
+        // 样式全部挂在 .lb-me 上，容器本身只是 #lb-me，必须补上类名
+        meEl.classList.add('lb-me');
         meEl.style.display = 'flex';
         meEl.innerHTML = `
             <div class="lb-me-rank">${rankDisplay}</div>
@@ -122,15 +125,15 @@ const LB = {
                     <span class="lb-me-badge">我的排名</span>
                 </div>
                 <div class="lb-me-stats">
-                    <span class="lb-me-stat">📊 ${user.answered} 题</span>
-                    <span class="lb-me-stat">🎯 ${user.accuracy}% 正确率</span>
-                    <span class="lb-me-stat">⏱ ${this.formatDuration(user.duration)}</span>
+                    <span class="lb-me-stat">${Utils.icon('list', 'icon-sm')} ${user.answered} 题</span>
+                    <span class="lb-me-stat">${Utils.icon('target', 'icon-sm')} ${user.accuracy}% 正确率</span>
+                    <span class="lb-me-stat">${Utils.icon('clock', 'icon-sm')} ${this.formatDuration(user.duration)}</span>
                 </div>
             </div>
         `;
     },
 
-    renderList(users, myCode) {
+    renderList(users) {
         const listEl = document.getElementById('lb-list');
         if (users.length === 0) {
             listEl.innerHTML = '';
@@ -138,10 +141,13 @@ const LB = {
         }
 
         const maxVal = this.getRawValue(users[0]);
+        // 新 Worker 只下发 isMe；旧 Worker 仍下发 syncCode。
+        // 前端可能先于 Worker 部署，两种都要认。
+        const myCode = API.getSyncCode();
 
         listEl.innerHTML = users
             .map((row, index) => {
-                const isMe = row.syncCode === myCode;
+                const isMe = row.isMe === true || (!!myCode && row.syncCode === myCode);
                 const rank = row.rank;
                 const rawVal = this.getRawValue(row);
                 const barPct = maxVal > 0 ? Math.round((rawVal / maxVal) * 100) : 0;
@@ -151,13 +157,12 @@ const LB = {
                 if (rank <= 3) rankClass = `top-${rank}`;
                 else if (rank <= 10) rankClass = `rank-${rank}`;
 
-                const medalIcon = rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : '';
                 const rowClass = rank <= 3 ? `top-${rank}` : '';
 
                 return `
                 <div class="lb-row ${rowClass} ${isMe ? 'is-me' : ''}" style="animation: rowSlideIn 0.3s ease both; animation-delay: ${Math.min(index * 0.03, 0.5)}s;">
                     <div class="lb-rank ${rankClass}">
-                        ${medalIcon || `<span class="lb-rank-num">${rank}</span>`}
+                        <span class="lb-rank-num">${rank}</span>
                     </div>
                     <div class="lb-avatar">${row.initials?.charAt(0)?.toUpperCase() || '?'}</div>
                     <div class="lb-name">

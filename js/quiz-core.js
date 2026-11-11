@@ -29,12 +29,45 @@ const Core = {
         Perf.init('刷题页');
 
         const params = new URLSearchParams(window.location.search);
+
+        // 参数白名单：直接改 URL 不应能进入任意状态或算出非法统计
+        const VALID_MODES = [
+            'all',
+            'random',
+            'shuffle_options',
+            'wrong',
+            'review',
+            'spaced',
+            'bookmark',
+            'exam'
+        ];
+        const VALID_TYPES = [
+            'all',
+            'single',
+            'multiple',
+            'judge',
+            'fill',
+            'essay',
+            'code',
+            '简答题',
+            'multi'
+        ];
+
         state.bankId = params.get('bank');
-        state.mode = params.get('mode') || 'all';
-        state.filterType = params.get('type') || 'all';
-        state.examTimeLimit = parseInt(params.get('time')) || 0;
-        state.examPassRate = parseInt(params.get('pass')) || 60;
-        state.examCount = parseInt(params.get('count')) || 0;
+        const rawMode = params.get('mode') || 'all';
+        state.mode = VALID_MODES.includes(rawMode) ? rawMode : 'all';
+        const rawType = params.get('type') || 'all';
+        state.filterType = VALID_TYPES.includes(rawType) ? rawType : 'all';
+
+        const nonNegInt = (v, fallback = 0) => {
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) && n >= 0 ? n : fallback;
+        };
+        state.examTimeLimit = nonNegInt(params.get('time'), 0);
+        // pass=0 是合法值（0% 及格），不能被 || 60 吞掉
+        const rawPass = parseInt(params.get('pass'), 10);
+        state.examPassRate = Number.isFinite(rawPass) ? Math.min(100, Math.max(0, rawPass)) : 60;
+        state.examCount = nonNegInt(params.get('count'), 0);
 
         if (params.get('q')) {
             state.searchKeyword = params.get('q') || '';
@@ -58,7 +91,7 @@ const Core = {
         Perf.mark('开始加载题库');
         state.bank = Storage.getBank(state.bankId);
 
-        if (!state.bank || !Array.isArray(state.bank.questions)) {
+        if (!state.bank || !Array.isArray(state.bank.questions) || state.bank._metadataOnly) {
             await this.loadBankFromJson();
         }
 
@@ -90,18 +123,17 @@ const Core = {
             });
         }
 
-        if (state.mode === 'wrong' && state.questions.length === 0) {
-            redirectAfter('没有错题，真棒！', 'success');
+        // 所有模式共用的兜底：题目为空时不能进入渲染，
+        // 否则页面空白且进度会算出 1/0
+        if (state.questions.length === 0) {
+            if (state.mode === 'wrong') redirectAfter('没有错题，真棒！', 'success');
+            else if (state.mode === 'bookmark') redirectAfter('没有收藏的题目');
+            else redirectAfter('这个题库暂无符合条件的题目', 'error');
             return;
         }
 
         if (state.mode === 'spaced' && state.questions.length === 0) {
             redirectAfter('没有需要复习的题目');
-            return;
-        }
-
-        if (state.mode === 'bookmark' && state.questions.length === 0) {
-            redirectAfter('没有收藏的题目');
             return;
         }
 
@@ -190,7 +222,10 @@ const Core = {
             // 用活跃 session (草稿) 数据覆盖/合并
             state.answers = { ...state.answers, ...(session.answers || {}) };
             state.submitted = { ...state.submitted, ...(session.submitted || {}) };
-            state.showExplanation = { ...state.showExplanation, ...(session.showExplanation || {}) };
+            state.showExplanation = {
+                ...state.showExplanation,
+                ...(session.showExplanation || {})
+            };
         }
         state.questionTimes = session.questionTimes || {};
         state.optionOrderCache = session.optionOrderCache || {};
@@ -216,8 +251,14 @@ const Core = {
             }
         }
 
-        if (state.mode === 'exam' && session.examTimeRemaining > 0) {
-            state.examTimeRemaining = session.examTimeRemaining;
+        if (state.mode === 'exam') {
+            state._examSessionRestored = true;
+            if (session.examStartTime) {
+                const elapsed = Math.floor((Date.now() - session.examStartTime) / 1000);
+                state.examTimeRemaining = Math.max(0, state.examTimeLimit - elapsed);
+            } else if (session.examTimeRemaining > 0) {
+                state.examTimeRemaining = session.examTimeRemaining;
+            }
         }
 
         state._lastPushAnswered = session.lastPushAnswered || 0;
@@ -233,7 +274,10 @@ const Core = {
                 ? state.questions.map((q) => q.id)
                 : undefined;
 
-        const extra = state.mode === 'exam' ? { examTimeRemaining: state.examTimeRemaining } : {};
+        const extra =
+            state.mode === 'exam'
+                ? { examTimeRemaining: state.examTimeRemaining, examStartTime: state.examStartTime }
+                : {};
 
         Storage.saveSession(state.bankId, state.mode, {
             currentIndex: state.currentIndex,
@@ -407,11 +451,41 @@ const Core = {
     },
 
     startExamTimer() {
-        if (!state.examTimeRemaining || state.examTimeRemaining <= 0) {
+        // 0 表示不限时：不启动倒计时，避免首个 tick 就判定超时
+        if (!state.examTimeLimit || state.examTimeLimit <= 0) {
+            state.examTimeRemaining = 0;
+            this.updateExamTimerDisplay();
+            return;
+        }
+
+        const restored = state._examSessionRestored === true;
+        state._examSessionRestored = false;
+
+        // 恢复会话时 remaining 已由 examStartTime 推算，0 表示确实已超时，不能再补满
+        if (restored) {
+            if (state.examTimeRemaining <= 0) {
+                state.examTimeRemaining = 0;
+                this.updateExamTimerDisplay();
+                Utils.showToast('考试时间已到！', 'error');
+                Quiz.showFinishModal(true);
+                return;
+            }
+        } else if (!state.examTimeRemaining || state.examTimeRemaining <= 0) {
             state.examTimeRemaining = state.examTimeLimit;
         }
+
+        // 以 examStartTime 为唯一真值，后台标签页被节流也不会走慢
+        if (!state.examStartTime) {
+            state.examStartTime =
+                Date.now() - (state.examTimeLimit - state.examTimeRemaining) * 1000;
+        }
+
+        if (state.examTimer) clearInterval(state.examTimer);
         state.examTimer = setInterval(() => {
-            state.examTimeRemaining--;
+            state.examTimeRemaining = Math.max(
+                0,
+                state.examTimeLimit - Math.floor((Date.now() - state.examStartTime) / 1000)
+            );
             this.updateExamTimerDisplay();
             if (state.examTimeRemaining <= 0) {
                 clearInterval(state.examTimer);

@@ -12,9 +12,26 @@
  *   GET  /api/leaderboard   - 排行榜
  */
 
+// 允许的站点来源。回显任意 Origin 会让任意第三方站点的脚本
+// 也能带着管理头调用接口，虽然仍需密码，但没有理由默认全放开。
+const ALLOWED_ORIGINS = new Set([
+    'https://ks.mutx.ccwu.cc',
+    'https://ks-cjx.pages.dev',
+    'http://localhost:3000',
+    'http://localhost:3100',
+    'http://127.0.0.1:3000'
+]);
+
+function resolveOrigin(origin) {
+    if (!origin) return '*';
+    return ALLOWED_ORIGINS.has(origin) ? origin : ALLOWED_ORIGINS.values().next().value;
+}
+
 function corsHeaders(origin) {
     return {
-        'Access-Control-Allow-Origin': origin || '*',
+        'Access-Control-Allow-Origin': resolveOrigin(origin),
+        // 响应随 Origin 变化，共享缓存必须按 Origin 分键
+        Vary: 'Origin',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password, X-Admin-Device-Id',
         'Access-Control-Max-Age': '86400'
@@ -35,6 +52,16 @@ function json(data, status = 200, origin = '*', cacheMaxAge = 0) {
 
 function error(msg, status = 400, origin = '*') {
     return json({ error: msg }, status, origin);
+}
+
+// 题库字段里存的是 JSON 文本；损坏时必须降级而不是让整个接口 500
+function safeParseJson(text, fallback = null) {
+    if (!text) return fallback;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return fallback;
+    }
 }
 
 function streamText(stream, origin = '*') {
@@ -221,6 +248,11 @@ export default {
                 return await handleAdminUploadBank(request, env, origin);
             }
 
+            // POST /api/admin/create-bank（新建空题库）
+            if (method === 'POST' && path === '/api/admin/create-bank') {
+                return await handleAdminCreateBank(request, env, origin);
+            }
+
             // GET /api/admin/bank/:id/history（必须在 :id 前面）
             if (method === 'GET' && path.match(/\/api\/admin\/bank\/[^/]+\/history$/)) {
                 const bankId = path.split('/api/admin/bank/')[1].split('/')[0];
@@ -343,6 +375,11 @@ export default {
 
             return error('Not Found', 404, origin);
         } catch (e) {
+            // 请求体为空 / 非法 JSON 属于客户端错误，不应报 500
+            const msg = String(e && e.message);
+            if (e instanceof SyntaxError || /Unexpected token|JSON|not valid/i.test(msg)) {
+                return error('请求体不是合法 JSON', 400, origin);
+            }
             console.error('Worker error:', e);
             return error('Internal Server Error', 500, origin);
         }
@@ -352,20 +389,36 @@ export default {
 // ========== 生成同步码（6位大写字母+数字，排除易混淆字符） ==========
 function generateSyncCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 排除 I,O,0,1
+    // 同步码是账号的唯一凭证，必须用密码学安全随机数，
+    // Math.random 的输出可被预测，会把「猜同步码」变成可行攻击
+    const bytes = new Uint8Array(6);
+    crypto.getRandomValues(bytes);
     let code = '';
     for (let i = 0; i < 6; i++) {
-        code += chars[Math.floor(Math.random() * chars.length)];
+        code += chars[bytes[i] % chars.length];
     }
     return code;
 }
 
-
 // ========== 管理员操作日志 ==========
-async function writeAdminOperationLog(env, { action, targetType = '', targetId = '', detail = '', ok = true, operator = '' }) {
+async function writeAdminOperationLog(
+    env,
+    { action, targetType = '', targetId = '', detail = '', ok = true, operator = '' }
+) {
     try {
         await env.DB.prepare(
             'INSERT INTO admin_operation_logs (action, target_type, target_id, detail, ok, operator, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(action, targetType, targetId, detail, ok ? 1 : 0, operator, new Date().toISOString()).run();
+        )
+            .bind(
+                action,
+                targetType,
+                targetId,
+                detail,
+                ok ? 1 : 0,
+                operator,
+                new Date().toISOString()
+            )
+            .run();
     } catch (e) {
         console.error('writeAdminOperationLog failed:', e);
     }
@@ -378,7 +431,10 @@ async function handleAdminOperationLogs(url, env, origin) {
     if (!admin) return error('无权限', 403, origin);
 
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10)));
+    const pageSize = Math.min(
+        100,
+        Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10))
+    );
     const action = url.searchParams.get('action') || '';
     const targetType = url.searchParams.get('targetType') || '';
     const okFilter = url.searchParams.get('ok') || '';
@@ -386,22 +442,39 @@ async function handleAdminOperationLogs(url, env, origin) {
 
     let where = '1=1';
     const binds = [];
-    if (action) { where += ' AND action = ?'; binds.push(action); }
-    if (targetType) { where += ' AND target_type = ?'; binds.push(targetType); }
-    if (okFilter === '1') { where += ' AND ok = 1'; }
-    else if (okFilter === '0') { where += ' AND ok = 0'; }
+    if (action) {
+        where += ' AND action = ?';
+        binds.push(action);
+    }
+    if (targetType) {
+        where += ' AND target_type = ?';
+        binds.push(targetType);
+    }
+    if (okFilter === '1') {
+        where += ' AND ok = 1';
+    } else if (okFilter === '0') {
+        where += ' AND ok = 0';
+    }
 
-    const countRow = await env.DB.prepare(`SELECT COUNT(*) as cnt FROM admin_operation_logs WHERE ${where}`).bind(...binds).first();
+    const countRow = await env.DB.prepare(
+        `SELECT COUNT(*) as cnt FROM admin_operation_logs WHERE ${where}`
+    )
+        .bind(...binds)
+        .first();
     const total = countRow?.cnt || 0;
 
     const logsResult = await env.DB.prepare(
         `SELECT * FROM admin_operation_logs WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
-    ).bind(...binds, pageSize, offset).all();
+    )
+        .bind(...binds, pageSize, offset)
+        .all();
     const logs = logsResult?.results || [];
 
     // Get distinct actions for filter dropdown
-    const actionsResult = await env.DB.prepare('SELECT DISTINCT action FROM admin_operation_logs ORDER BY action').all();
-    const actions = (actionsResult?.results || []).map(r => r.action);
+    const actionsResult = await env.DB.prepare(
+        'SELECT DISTINCT action FROM admin_operation_logs ORDER BY action'
+    ).all();
+    const actions = (actionsResult?.results || []).map((r) => r.action);
 
     return json({ ok: true, logs, total, page, pageSize, actions }, 200, origin);
 }
@@ -418,7 +491,10 @@ async function handleAdminWriteOperationLog(request, env, origin) {
         action,
         targetType: targetType || '',
         targetId: targetId || '',
-        detail: typeof detail === 'string' ? detail.slice(0, 2000) : JSON.stringify(detail || '').slice(0, 2000),
+        detail:
+            typeof detail === 'string'
+                ? detail.slice(0, 2000)
+                : JSON.stringify(detail || '').slice(0, 2000),
         ok: ok !== false,
         operator: admin.id || admin.initials || ''
     });
@@ -444,7 +520,16 @@ async function handleAdminSystemStatus(url, env, origin) {
 
     // Table counts
     const tables = [];
-    for (const name of ['users', 'devices', 'stats', 'banks', 'announcements', 'bank_history', 'admin_operation_logs', 'app_config']) {
+    for (const name of [
+        'users',
+        'devices',
+        'stats',
+        'banks',
+        'announcements',
+        'bank_history',
+        'admin_operation_logs',
+        'app_config'
+    ]) {
         try {
             const row = await env.DB.prepare(`SELECT COUNT(*) as cnt FROM ${name}`).first();
             tables.push({ name, count: row?.cnt || 0 });
@@ -456,7 +541,9 @@ async function handleAdminSystemStatus(url, env, origin) {
 
     // Logs count
     try {
-        const logsRow = await env.DB.prepare('SELECT COUNT(*) as cnt FROM admin_operation_logs').first();
+        const logsRow = await env.DB.prepare(
+            'SELECT COUNT(*) as cnt FROM admin_operation_logs'
+        ).first();
         status.logs = { ok: true, count: logsRow?.cnt || 0 };
     } catch {
         status.logs = { ok: false };
@@ -464,10 +551,15 @@ async function handleAdminSystemStatus(url, env, origin) {
 
     // User/bank/announcement counts
     try {
-        status.userCount = (await env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first())?.cnt || 0;
-        status.bankCount = (await env.DB.prepare('SELECT COUNT(*) as cnt FROM banks').first())?.cnt || 0;
-        status.announcementCount = (await env.DB.prepare('SELECT COUNT(*) as cnt FROM announcements').first())?.cnt || 0;
-    } catch {}
+        status.userCount =
+            (await env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first())?.cnt || 0;
+        status.bankCount =
+            (await env.DB.prepare('SELECT COUNT(*) as cnt FROM banks').first())?.cnt || 0;
+        status.announcementCount =
+            (await env.DB.prepare('SELECT COUNT(*) as cnt FROM announcements').first())?.cnt || 0;
+    } catch {
+        /* 容错：解析失败时沿用默认值 */
+    }
 
     status.workerVersion = 'v2';
     status.serverTime = new Date().toISOString();
@@ -489,43 +581,53 @@ async function handleRegister(request, env, origin) {
     }
 
     // 检查设备是否已绑定
-    const existingDevice = await env.DB.prepare(
-        'SELECT user_id FROM devices WHERE device_id = ?'
-    ).bind(deviceId).first();
+    const existingDevice = await env.DB.prepare('SELECT user_id FROM devices WHERE device_id = ?')
+        .bind(deviceId)
+        .first();
 
     if (existingDevice) {
         // 已绑定：更新姓名首字母
-        await env.DB.prepare(
-            'UPDATE users SET initials = ? WHERE id = ?'
-        ).bind(initials.trim().toUpperCase(), existingDevice.user_id).run();
-        const user = await env.DB.prepare(
-            'SELECT id, initials FROM users WHERE id = ?'
-        ).bind(existingDevice.user_id).first();
-        return json({ ok: true, message: '已注册', syncCode: user.id, initials: user.initials }, 200, origin);
-    }
-
-    // 生成唯一同步码（最多尝试10次）
-    let syncCode;
-    for (let i = 0; i < 10; i++) {
-        syncCode = generateSyncCode();
-        const exists = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(syncCode).first();
-        if (!exists) break;
-        if (i === 9) return error('生成同步码失败，请重试', 500, origin);
+        await env.DB.prepare('UPDATE users SET initials = ? WHERE id = ?')
+            .bind(initials.trim().toUpperCase(), existingDevice.user_id)
+            .run();
+        const user = await env.DB.prepare('SELECT id, initials FROM users WHERE id = ?')
+            .bind(existingDevice.user_id)
+            .first();
+        return json(
+            { ok: true, message: '已注册', syncCode: user.id, initials: user.initials },
+            200,
+            origin
+        );
     }
 
     const now = new Date().toISOString();
+    const upperInitials = initials.trim().toUpperCase();
 
-    // 创建用户
-    await env.DB.prepare(
-        'INSERT INTO users (id, initials, created_at, created_device) VALUES (?, ?, ?, ?)'
-    ).bind(syncCode, initials.trim().toUpperCase(), now, deviceId).run();
+    // 生成唯一同步码：直接以 INSERT 的唯一约束判定冲突，
+    // 避免「先查后插」在并发下插入重复码；同时用 batch 保证
+    // users 与 devices 要么都成功、要么都不写（否则会留下无设备的孤儿账号）
+    let syncCode = null;
+    for (let i = 0; i < 10; i++) {
+        const candidate = generateSyncCode();
+        try {
+            await env.DB.batch([
+                env.DB.prepare(
+                    'INSERT INTO users (id, initials, created_at, created_device) VALUES (?, ?, ?, ?)'
+                ).bind(candidate, upperInitials, now, deviceId),
+                env.DB.prepare(
+                    'INSERT INTO devices (device_id, user_id, bound_at) VALUES (?, ?, ?)'
+                ).bind(deviceId, candidate, now)
+            ]);
+            syncCode = candidate;
+            break;
+        } catch (e) {
+            // 主键冲突 → 换一个码重试；其他错误直接抛出
+            if (!/UNIQUE|constraint/i.test(e.message || '')) throw e;
+        }
+    }
 
-    // 绑定设备
-    await env.DB.prepare(
-        'INSERT INTO devices (device_id, user_id, bound_at) VALUES (?, ?, ?)'
-    ).bind(deviceId, syncCode, now).run();
-
-    return json({ ok: true, syncCode, initials: initials.trim().toUpperCase() }, 201, origin);
+    if (!syncCode) return error('生成同步码失败，请重试', 500, origin);
+    return json({ ok: true, syncCode, initials: upperInitials }, 201, origin);
 }
 
 // ========== 绑定设备到已有同步码 ==========
@@ -540,44 +642,78 @@ async function handleBind(request, env, origin) {
     const code = syncCode.trim().toUpperCase();
 
     // 验证同步码存在
-    const user = await env.DB.prepare(
-        'SELECT id, initials FROM users WHERE id = ?'
-    ).bind(code).first();
+    const user = await env.DB.prepare('SELECT id, initials FROM users WHERE id = ?')
+        .bind(code)
+        .first();
 
     if (!user) {
         return error('同步码不存在，请检查后重试', 404, origin);
     }
 
     // 检查设备是否已绑定其他账号
-    const existing = await env.DB.prepare(
-        'SELECT user_id FROM devices WHERE device_id = ?'
-    ).bind(deviceId).first();
+    const existing = await env.DB.prepare('SELECT user_id FROM devices WHERE device_id = ?')
+        .bind(deviceId)
+        .first();
+
+    // 已经绑到同一个账号：幂等返回，绝不能再次累加 localStats
+    if (existing && existing.user_id === code) {
+        return json(
+            { ok: true, syncCode: code, initials: user.initials, alreadyBound: true },
+            200,
+            origin
+        );
+    }
 
     if (existing && existing.user_id !== code) {
-        // 解绑旧账号（不删除数据）
-        await env.DB.prepare('DELETE FROM devices WHERE device_id = ?').bind(deviceId).run();
+        // 解绑旧账号（不删除数据）。client_logs 有外键指向 devices，
+        // 不清掉的话删设备会失败，换绑也就无法完成。
+        await env.DB.batch([
+            env.DB.prepare('DELETE FROM client_logs WHERE device_id = ?').bind(deviceId),
+            env.DB.prepare('DELETE FROM devices WHERE device_id = ?').bind(deviceId)
+        ]);
     }
 
     // 绑定设备
     const now = new Date().toISOString();
     await env.DB.prepare(
         'INSERT OR REPLACE INTO devices (device_id, user_id, bound_at) VALUES (?, ?, ?)'
-    ).bind(deviceId, code, now).run();
+    )
+        .bind(deviceId, code, now)
+        .run();
 
-    // 合并本地答题数据到云端
-    if (localStats && Array.isArray(localStats)) {
-        for (const stat of localStats) {
-            if (!stat.bankId) continue;
-            await env.DB.prepare(`
-                INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(user_id, bank_id) DO UPDATE SET
-                    answered = stats.answered + excluded.answered,
-                    correct = stats.correct + excluded.correct,
-                    duration = stats.duration + excluded.duration,
-                    updated_at = excluded.updated_at
-            `).bind(code, stat.bankId, stat.bankName || '', stat.answered || 0, stat.correct || 0, stat.duration || 0, now).run();
+    // 合并本地答题数据到云端（仅首次绑定且数据合法时）
+    if (!existing && Array.isArray(localStats)) {
+        const stats = localStats.slice(0, 50);
+        const batch = [];
+        for (const stat of stats) {
+            if (!stat || typeof stat.bankId !== 'string' || !stat.bankId) continue;
+            const num = (v, max) => {
+                const n = Number(v);
+                return Number.isFinite(n) && n > 0 ? Math.min(Math.trunc(n), max) : 0;
+            };
+            batch.push(
+                env.DB.prepare(
+                    `
+                    INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                        answered = stats.answered + excluded.answered,
+                        correct = stats.correct + excluded.correct,
+                        duration = stats.duration + excluded.duration,
+                        updated_at = excluded.updated_at
+                `
+                ).bind(
+                    code,
+                    stat.bankId,
+                    String(stat.bankName || '').slice(0, 100),
+                    num(stat.answered, 100000),
+                    num(stat.correct, 100000),
+                    num(stat.duration, 10000000),
+                    now
+                )
+            );
         }
+        if (batch.length) await env.DB.batch(batch);
     }
 
     return json({ ok: true, syncCode: code, initials: user.initials }, 200, origin);
@@ -585,19 +721,23 @@ async function handleBind(request, env, origin) {
 
 // ========== 查询用户 ==========
 async function handleGetUser(did, env, origin) {
-    const device = await env.DB.prepare(
-        'SELECT user_id FROM devices WHERE device_id = ?'
-    ).bind(did).first();
+    const device = await env.DB.prepare('SELECT user_id FROM devices WHERE device_id = ?')
+        .bind(did)
+        .first();
 
     if (!device) {
         return json({ ok: false, registered: false }, 200, origin);
     }
 
-    const user = await env.DB.prepare(
-        'SELECT id, initials, created_at FROM users WHERE id = ?'
-    ).bind(device.user_id).first();
+    const user = await env.DB.prepare('SELECT id, initials, created_at FROM users WHERE id = ?')
+        .bind(device.user_id)
+        .first();
 
-    return json({ ok: true, registered: true, user: { syncCode: user.id, initials: user.initials } }, 200, origin);
+    return json(
+        { ok: true, registered: true, user: { syncCode: user.id, initials: user.initials } },
+        200,
+        origin
+    );
 }
 
 // ========== 同步答题数据 ==========
@@ -605,8 +745,25 @@ async function handleSync(request, env, origin) {
     const body = await request.json();
     const { deviceId, bankId, bankName, answered, correct, duration } = body;
 
-    if (!deviceId || !bankId) {
+    if (typeof deviceId !== 'string' || !deviceId || typeof bankId !== 'string' || !bankId) {
         return error('缺少必要参数', 400, origin);
+    }
+    if (bankId.length > 64) return error('bankId 过长', 400, origin);
+
+    // 数值必须是非负整数且有上限，否则排行榜可被一次请求刷到任意值
+    const toCount = (v, max) => {
+        const n = Number(v);
+        if (!Number.isFinite(n) || n < 0) return null;
+        return Math.min(Math.trunc(n), max);
+    };
+    const answeredDelta = toCount(answered ?? 0, 500);
+    const correctDelta = toCount(correct ?? 0, 500);
+    const durationDelta = toCount(duration ?? 0, 36000);
+    if (answeredDelta === null || correctDelta === null || durationDelta === null) {
+        return error('统计数据必须是非负数字', 400, origin);
+    }
+    if (correctDelta > answeredDelta) {
+        return error('正确数不能大于答题数', 400, origin);
     }
 
     const userId = await resolveUser(deviceId, env);
@@ -617,7 +774,8 @@ async function handleSync(request, env, origin) {
     if (isBanned) return error('账号已被封禁，无法同步数据', 403, origin);
 
     const now = new Date().toISOString();
-    await env.DB.prepare(`
+    await env.DB.prepare(
+        `
         INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id, bank_id) DO UPDATE SET
@@ -626,7 +784,18 @@ async function handleSync(request, env, origin) {
             duration = stats.duration + excluded.duration,
             bank_name = excluded.bank_name,
             updated_at = excluded.updated_at
-    `).bind(userId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now).run();
+    `
+    )
+        .bind(
+            userId,
+            bankId,
+            String(bankName || '').slice(0, 100),
+            answeredDelta,
+            correctDelta,
+            durationDelta,
+            now
+        )
+        .run();
 
     return json({ ok: true }, 200, origin);
 }
@@ -646,9 +815,9 @@ async function handleSyncSettings(request, env, origin) {
     if (isBanned) return error('账号已被封禁', 403, origin);
 
     const now = new Date().toISOString();
-    await env.DB.prepare(
-        'UPDATE users SET settings = ?, last_sync_at = ? WHERE id = ?'
-    ).bind(JSON.stringify(settings), now, userId).run();
+    await env.DB.prepare('UPDATE users SET settings = ?, last_sync_at = ? WHERE id = ?')
+        .bind(JSON.stringify(settings), now, userId)
+        .run();
 
     return json({ ok: true }, 200, origin);
 }
@@ -668,9 +837,9 @@ async function handleSyncProgress(request, env, origin) {
     if (isBanned) return error('账号已被封禁', 403, origin);
 
     const now = new Date().toISOString();
-    await env.DB.prepare(
-        'UPDATE users SET progress = ?, last_sync_at = ? WHERE id = ?'
-    ).bind(JSON.stringify(progress), now, userId).run();
+    await env.DB.prepare('UPDATE users SET progress = ?, last_sync_at = ? WHERE id = ?')
+        .bind(JSON.stringify(progress), now, userId)
+        .run();
 
     return json({ ok: true }, 200, origin);
 }
@@ -690,9 +859,9 @@ async function handleSyncBookmarks(request, env, origin) {
     if (isBanned) return error('账号已被封禁', 403, origin);
 
     const now = new Date().toISOString();
-    await env.DB.prepare(
-        'UPDATE users SET bookmarks = ?, last_sync_at = ? WHERE id = ?'
-    ).bind(JSON.stringify(bookmarks), now, userId).run();
+    await env.DB.prepare('UPDATE users SET bookmarks = ?, last_sync_at = ? WHERE id = ?')
+        .bind(JSON.stringify(bookmarks), now, userId)
+        .run();
 
     return json({ ok: true }, 200, origin);
 }
@@ -704,45 +873,68 @@ async function handleGetCloudData(did, env, origin) {
 
     const user = await env.DB.prepare(
         'SELECT initials, settings, progress, bookmarks, last_sync_at, banned FROM users WHERE id = ?'
-    ).bind(userId).first();
+    )
+        .bind(userId)
+        .first();
 
     if (!user) return json({ ok: false }, 200, origin);
 
     let settings = {};
     let progress = {};
     let bookmarks = {};
-    try { settings = JSON.parse(user.settings || '{}'); } catch {}
-    try { progress = JSON.parse(user.progress || '{}'); } catch {}
-    try { bookmarks = JSON.parse(user.bookmarks || '{}'); } catch {}
+    try {
+        settings = JSON.parse(user.settings || '{}');
+    } catch {
+        /* 容错：解析失败时沿用默认值 */
+    }
+    try {
+        progress = JSON.parse(user.progress || '{}');
+    } catch {
+        /* 容错：解析失败时沿用默认值 */
+    }
+    try {
+        bookmarks = JSON.parse(user.bookmarks || '{}');
+    } catch {
+        /* 容错：解析失败时沿用默认值 */
+    }
 
-    return json({
-        ok: true,
-        user: { 
-            initials: user.initials,
-            banned: user.banned || 0,
-            is_admin: user.is_admin || 0
+    return json(
+        {
+            ok: true,
+            user: {
+                initials: user.initials,
+                banned: user.banned || 0,
+                is_admin: user.is_admin || 0
+            },
+            settings,
+            progress,
+            bookmarks,
+            lastSyncAt: user.last_sync_at
         },
-        settings,
-        progress,
-        bookmarks,
-        lastSyncAt: user.last_sync_at
-    }, 200, origin);
+        200,
+        origin
+    );
 }
 
 // ========== 排行榜 ==========
 async function handleLeaderboard(url, env, origin) {
     const sort = url.searchParams.get('sort') || 'answered';
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100);
+    // parseInt('-1') 是 -1，而 SQLite 的 LIMIT -1 表示「不限制」——
+    // 必须夹在正区间，否则一次请求会导出全站用户
+    const rawLimit = parseInt(url.searchParams.get('limit') || '50', 10);
+    const limit = Math.max(1, Math.min(Number.isFinite(rawLimit) ? rawLimit : 50, 100));
     const deviceId = url.searchParams.get('deviceId') || '';
 
     const sortMap = {
-        'answered': 'total_answered DESC',
-        'accuracy': 'CASE WHEN total_answered > 0 THEN CAST(total_correct AS REAL) / total_answered ELSE 0 END DESC',
-        'duration': 'total_duration DESC'
+        answered: 'total_answered DESC',
+        accuracy:
+            'CASE WHEN total_answered > 0 THEN CAST(total_correct AS REAL) / total_answered ELSE 0 END DESC',
+        duration: 'total_duration DESC'
     };
     const orderBy = sortMap[sort] || sortMap['answered'];
 
-    const { results } = await env.DB.prepare(`
+    const { results } = await env.DB.prepare(
+        `
         SELECT 
             u.id as sync_code,
             u.initials,
@@ -756,17 +948,21 @@ async function handleLeaderboard(url, env, origin) {
         GROUP BY u.id
         ORDER BY ${orderBy}
         LIMIT ?
-    `).bind(limit).all();
+    `
+    )
+        .bind(limit)
+        .all();
 
+    // 不再下发 syncCode：它是账号绑定凭证，公开排行榜等于公开全部账号。
+    // 前端「是否我」改由 isMe 标记，服务端用请求里的 deviceId 判定。
     const leaderboard = results.map((row, index) => ({
         rank: index + 1,
-        syncCode: row.sync_code,
+        isMe: false,
         initials: row.initials,
         answered: row.total_answered,
         correct: row.total_correct,
-        accuracy: row.total_answered > 0
-            ? Math.round((row.total_correct / row.total_answered) * 100)
-            : 0,
+        accuracy:
+            row.total_answered > 0 ? Math.round((row.total_correct / row.total_answered) * 100) : 0,
         duration: row.total_duration,
         lastActive: row.last_active
     }));
@@ -776,24 +972,36 @@ async function handleLeaderboard(url, env, origin) {
     if (deviceId) {
         const userId = await resolveUser(deviceId, env);
         if (userId) {
-            const idx = leaderboard.findIndex(r => r.syncCode === userId);
+            // 响应里已剥掉 syncCode，只能按原始查询结果的行序下标定位自己
+            const idx = results.findIndex((r) => r.sync_code === userId);
             if (idx >= 0) {
-                currentUser = leaderboard[idx];
+                leaderboard[idx].isMe = true;
+                currentUser = { ...leaderboard[idx], syncCode: userId };
             } else {
-                const userStats = await env.DB.prepare(`
+                const userStats = await env.DB.prepare(
+                    `
                     SELECT SUM(answered) as ta, SUM(correct) as tc, SUM(duration) as td
                     FROM stats WHERE user_id = ?
-                `).bind(userId).first();
+                `
+                )
+                    .bind(userId)
+                    .first();
 
                 if (userStats && userStats.ta > 0) {
-                    const rankResult = await env.DB.prepare(`
+                    const rankResult = await env.DB.prepare(
+                        `
                         SELECT COUNT(*) + 1 as rank FROM (
                             SELECT SUM(answered) as total FROM stats GROUP BY user_id
                             HAVING total > ?
                         )
-                    `).bind(userStats.ta).first();
+                    `
+                    )
+                        .bind(userStats.ta)
+                        .first();
 
-                    const user = await env.DB.prepare('SELECT initials FROM users WHERE id = ?').bind(userId).first();
+                    const user = await env.DB.prepare('SELECT initials FROM users WHERE id = ?')
+                        .bind(userId)
+                        .first();
                     currentUser = {
                         rank: rankResult?.rank || '-',
                         syncCode: userId,
@@ -811,22 +1019,29 @@ async function handleLeaderboard(url, env, origin) {
     let statsData = null;
     if (url.searchParams.get('stats') === '1') {
         const todayChina = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
-        
-        const totalActiveResult = await env.DB.prepare(`
+
+        const totalActiveResult = await env.DB.prepare(
+            `
             SELECT COUNT(DISTINCT s.user_id) as cnt
             FROM stats s
             INNER JOIN users u ON s.user_id = u.id
             WHERE u.banned = 0 OR u.banned IS NULL
-        `).first();
+        `
+        ).first();
 
-        const todayActiveResult = await env.DB.prepare(`
+        const todayActiveResult = await env.DB.prepare(
+            `
             SELECT COUNT(DISTINCT s.user_id) as cnt
             FROM stats s
             INNER JOIN users u ON s.user_id = u.id
             WHERE (u.banned = 0 OR u.banned IS NULL) AND date(s.updated_at, '+8 hours') = ?
-        `).bind(todayChina).first();
+        `
+        )
+            .bind(todayChina)
+            .first();
 
-        const { results: recentResults } = await env.DB.prepare(`
+        const { results: recentResults } = await env.DB.prepare(
+            `
             SELECT u.initials, MAX(s.updated_at) as last_active
             FROM users u
             INNER JOIN stats s ON u.id = s.user_id
@@ -834,12 +1049,13 @@ async function handleLeaderboard(url, env, origin) {
             GROUP BY u.id
             ORDER BY last_active DESC
             LIMIT 5
-        `).all();
+        `
+        ).all();
 
         statsData = {
             totalActiveCount: totalActiveResult?.cnt || 0,
             todayActiveCount: todayActiveResult?.cnt || 0,
-            recentActiveUsers: (recentResults || []).map(row => ({
+            recentActiveUsers: (recentResults || []).map((row) => ({
                 initials: row.initials,
                 lastActive: row.last_active
             }))
@@ -851,38 +1067,84 @@ async function handleLeaderboard(url, env, origin) {
 
 // ========== 工具函数：设备ID → 用户ID ==========
 async function resolveUser(deviceId, env) {
-    const device = await env.DB.prepare(
-        'SELECT user_id FROM devices WHERE device_id = ?'
-    ).bind(deviceId).first();
+    const device = await env.DB.prepare('SELECT user_id FROM devices WHERE device_id = ?')
+        .bind(deviceId)
+        .first();
     return device?.user_id || null;
 }
 
 // 检查用户是否被封禁
 async function checkUserBanned(userId, env) {
-    const user = await env.DB.prepare(
-        'SELECT banned FROM users WHERE id = ?'
-    ).bind(userId).first();
+    const user = await env.DB.prepare('SELECT banned FROM users WHERE id = ?').bind(userId).first();
     return user?.banned === 1;
 }
 
-// 管理员密码（SHA-256 哈希）
-const ADMIN_PASSWORD_HASH = 'c014d32d3686385fd8287ed5c61374fae42ab80342105ece72930d5c8f9c6065';
+// 管理员密码哈希。
+// 优先读 Wrangler Secret ADMIN_PASSWORD_HASH（可用 `wrangler secret put` 轮换，无需发版）；
+// 回退到内置值只为兼容尚未配置 Secret 的既有部署。
+const LEGACY_ADMIN_PASSWORD_HASH =
+    'c014d32d3686385fd8287ed5c61374fae42ab80342105ece72930d5c8f9c6065';
 
 async function sha256(str) {
     const data = new TextEncoder().encode(str);
     const hash = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(new Uint8Array(hash))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+// 恒定时间比较，避免按字节提前返回带来的时序差异
+function timingSafeEqual(a, b) {
+    const x = String(a);
+    const y = String(b);
+    if (x.length !== y.length) return false;
+    let diff = 0;
+    for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
+    return diff === 0;
+}
+
+// 登录失败限速：同一设备连续失败后的冷却（内存态，单实例内有效）
+const LOGIN_FAILS = new Map();
+const LOGIN_MAX_FAILS = 8;
+const LOGIN_COOLDOWN_MS = 15 * 60 * 1000;
+
+function loginBlocked(deviceId) {
+    const rec = LOGIN_FAILS.get(deviceId);
+    if (!rec) return false;
+    if (Date.now() - rec.at > LOGIN_COOLDOWN_MS) {
+        LOGIN_FAILS.delete(deviceId);
+        return false;
+    }
+    return rec.count >= LOGIN_MAX_FAILS;
+}
+
+function recordLoginFail(deviceId) {
+    const rec = LOGIN_FAILS.get(deviceId);
+    if (!rec || Date.now() - rec.at > LOGIN_COOLDOWN_MS) {
+        LOGIN_FAILS.set(deviceId, { count: 1, at: Date.now() });
+    } else {
+        rec.count += 1;
+        rec.at = Date.now();
+    }
 }
 
 // ========== 工具函数：验证管理员 ==========
 async function requireAdmin(deviceId, password, env) {
     if (!deviceId || !password) return null;
-    if (await sha256(password) !== ADMIN_PASSWORD_HASH) return null;
+    if (loginBlocked(deviceId)) return null;
+
+    const expected = env?.ADMIN_PASSWORD_HASH || LEGACY_ADMIN_PASSWORD_HASH;
+    if (!timingSafeEqual(await sha256(password), expected)) {
+        recordLoginFail(deviceId);
+        return null;
+    }
+    LOGIN_FAILS.delete(deviceId);
+
     const userId = await resolveUser(deviceId, env);
     if (!userId) return null;
-    const user = await env.DB.prepare(
-        'SELECT id, initials, is_admin FROM users WHERE id = ?'
-    ).bind(userId).first();
+    const user = await env.DB.prepare('SELECT id, initials, is_admin FROM users WHERE id = ?')
+        .bind(userId)
+        .first();
     return user?.is_admin ? user : null;
 }
 
@@ -893,7 +1155,8 @@ async function handleAdminUsers(url, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const { results } = await env.DB.prepare(`
+    const { results } = await env.DB.prepare(
+        `
         SELECT 
             u.id, u.initials, u.created_at, u.is_admin, u.banned,
             (SELECT COUNT(*) FROM devices WHERE user_id = u.id) as device_count,
@@ -904,7 +1167,8 @@ async function handleAdminUsers(url, env, origin) {
         LEFT JOIN stats s ON u.id = s.user_id
         GROUP BY u.id
         ORDER BY u.created_at DESC
-    `).all();
+    `
+    ).all();
 
     return json({ ok: true, users: results }, 200, origin);
 }
@@ -914,16 +1178,22 @@ async function handleAdminUserDetail(userId, env, origin) {
     // 注意：此函数不验证密码，由调用方保证
     const user = await env.DB.prepare(
         'SELECT id, initials, created_at, is_admin, banned FROM users WHERE id = ?'
-    ).bind(userId).first();
+    )
+        .bind(userId)
+        .first();
     if (!user) return error('用户不存在', 404, origin);
 
     const devices = await env.DB.prepare(
         'SELECT device_id, bound_at FROM devices WHERE user_id = ?'
-    ).bind(userId).all();
+    )
+        .bind(userId)
+        .all();
 
     const stats = await env.DB.prepare(
         'SELECT bank_id, bank_name, answered, correct, duration, updated_at FROM stats WHERE user_id = ?'
-    ).bind(userId).all();
+    )
+        .bind(userId)
+        .all();
 
     return json({ ok: true, user, devices: devices.results, stats: stats.results }, 200, origin);
 }
@@ -934,15 +1204,30 @@ async function handleAdminDeleteUser(request, env, origin) {
     const { deviceId, targetUserId, password } = body;
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
+    if (!targetUserId) return error('缺少参数', 400, origin);
     if (targetUserId === admin.id) return error('不能删除自己', 400, origin);
 
-    await env.DB.batch([
-        env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId),
-        env.DB.prepare('DELETE FROM devices WHERE user_id = ?').bind(targetUserId),
-        env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetUserId)
-    ]);
+    try {
+        // 先删引用方：client_logs → devices → users，否则外键会阻断整批
+        await env.DB.batch([
+            env.DB.prepare(
+                'DELETE FROM client_logs WHERE device_id IN (SELECT device_id FROM devices WHERE user_id = ?)'
+            ).bind(targetUserId),
+            env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId),
+            env.DB.prepare('DELETE FROM devices WHERE user_id = ?').bind(targetUserId),
+            env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetUserId)
+        ]);
+    } catch (e) {
+        console.error('[Admin] 删除用户失败:', e.message);
+        return error('删除失败，请稍后重试', 500, origin);
+    }
 
-    await writeAdminOperationLog(env, { action: '删除用户', targetType: 'user', targetId: targetUserId, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '删除用户',
+        targetType: 'user',
+        targetId: targetUserId,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: '已删除' }, 200, origin);
 }
 
@@ -955,7 +1240,12 @@ async function handleAdminResetStats(request, env, origin) {
 
     await env.DB.prepare('DELETE FROM stats WHERE user_id = ?').bind(targetUserId).run();
 
-    await writeAdminOperationLog(env, { action: '重置用户数据', targetType: 'user', targetId: targetUserId, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '重置用户数据',
+        targetType: 'user',
+        targetId: targetUserId,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: '数据已重置' }, 200, origin);
 }
 
@@ -968,14 +1258,28 @@ async function handleAdminUpdateUser(request, env, origin) {
 
     const updates = [];
     const params = [];
-    if (initials) { updates.push('initials = ?'); params.push(initials.trim().toUpperCase()); }
-    if (isAdmin !== undefined) { updates.push('is_admin = ?'); params.push(isAdmin ? 1 : 0); }
+    if (initials) {
+        updates.push('initials = ?');
+        params.push(initials.trim().toUpperCase());
+    }
+    if (isAdmin !== undefined) {
+        updates.push('is_admin = ?');
+        params.push(isAdmin ? 1 : 0);
+    }
     if (updates.length === 0) return error('无更新内容', 400, origin);
 
     params.push(targetUserId);
-    await env.DB.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).bind(...params).run();
+    await env.DB.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`)
+        .bind(...params)
+        .run();
 
-    await writeAdminOperationLog(env, { action: '修改用户', targetType: 'user', targetId: targetUserId, detail: JSON.stringify({ initials, isAdmin }), operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '修改用户',
+        targetType: 'user',
+        targetId: targetUserId,
+        detail: JSON.stringify({ initials, isAdmin }),
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: '已更新' }, 200, origin);
 }
 
@@ -988,9 +1292,16 @@ async function handleAdminBanUser(request, env, origin) {
     if (!admin) return error('无权限', 403, origin);
     if (targetUserId === admin.id) return error('不能封禁自己', 400, origin);
 
-    await env.DB.prepare('UPDATE users SET banned = ? WHERE id = ?').bind(banned ? 1 : 0, targetUserId).run();
+    await env.DB.prepare('UPDATE users SET banned = ? WHERE id = ?')
+        .bind(banned ? 1 : 0, targetUserId)
+        .run();
 
-    await writeAdminOperationLog(env, { action: banned ? '封禁用户' : '解封用户', targetType: 'user', targetId: targetUserId, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: banned ? '封禁用户' : '解封用户',
+        targetType: 'user',
+        targetId: targetUserId,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: banned ? '已封禁' : '已解封' }, 200, origin);
 }
 
@@ -1001,12 +1312,13 @@ async function handleAdminBatchBan(request, env, origin) {
     const banned = body.banned ?? body.ban;
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
-    if (!Array.isArray(userIds) || userIds.length === 0) return error('缺少 userIds 数组', 400, origin);
+    if (!Array.isArray(userIds) || userIds.length === 0)
+        return error('缺少 userIds 数组', 400, origin);
 
     const bannedValue = banned ? 1 : 0;
     const adminId = admin.id || '';
     // 过滤掉自己
-    const targets = userIds.filter(id => id !== adminId);
+    const targets = userIds.filter((id) => id !== adminId);
     if (targets.length === 0) return error('不能封禁自己', 400, origin);
 
     // 批量更新
@@ -1033,7 +1345,8 @@ async function handleAdminBanks(url, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const { results } = await env.DB.prepare(`
+    const { results } = await env.DB.prepare(
+        `
         SELECT 
             bank_id,
             bank_name,
@@ -1044,7 +1357,8 @@ async function handleAdminBanks(url, env, origin) {
         FROM stats
         GROUP BY bank_id
         ORDER BY total_answered DESC
-    `).all();
+    `
+    ).all();
 
     return json({ ok: true, banks: results }, 200, origin);
 }
@@ -1056,7 +1370,8 @@ async function handleAdminActivity(url, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const { results } = await env.DB.prepare(`
+    const { results } = await env.DB.prepare(
+        `
         SELECT 
             u.id, u.initials,
             s.bank_name,
@@ -1067,7 +1382,8 @@ async function handleAdminActivity(url, env, origin) {
         WHERE s.updated_at IS NOT NULL AND s.updated_at != ''
         ORDER BY s.updated_at DESC
         LIMIT 50
-    `).all();
+    `
+    ).all();
 
     return json({ ok: true, activity: results }, 200, origin);
 }
@@ -1083,12 +1399,16 @@ async function handleAdminOverview(url, env, origin) {
     const todayChina = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
     const todayReg = await env.DB.prepare(
         "SELECT COUNT(*) as cnt FROM users WHERE date(created_at, '+8 hours') = ?"
-    ).bind(todayChina).first();
+    )
+        .bind(todayChina)
+        .first();
 
     // 今日活跃（有更新记录的，北京时间）
     const todayActive = await env.DB.prepare(
         "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE date(updated_at, '+8 hours') = ?"
-    ).bind(todayChina).first();
+    )
+        .bind(todayChina)
+        .first();
 
     // 总题库数
     const bankCount = await env.DB.prepare(
@@ -1101,24 +1421,30 @@ async function handleAdminOverview(url, env, origin) {
     ).first();
 
     // 最近7天注册趋势
-    const weekTrend = await env.DB.prepare(`
+    const weekTrend = await env.DB.prepare(
+        `
         SELECT SUBSTR(created_at, 1, 10) as day, COUNT(*) as cnt
         FROM users
         WHERE created_at >= DATE('now', '-7 days')
         GROUP BY day
         ORDER BY day
-    `).all();
+    `
+    ).all();
 
-    return json({
-        ok: true,
-        overview: {
-            todayReg: todayReg?.cnt || 0,
-            todayActive: todayActive?.cnt || 0,
-            bankCount: bankCount?.cnt || 0,
-            bannedCount: bannedCount?.cnt || 0,
-            weekTrend: weekTrend?.results || []
-        }
-    }, 200, origin);
+    return json(
+        {
+            ok: true,
+            overview: {
+                todayReg: todayReg?.cnt || 0,
+                todayActive: todayActive?.cnt || 0,
+                bankCount: bankCount?.cnt || 0,
+                bannedCount: bannedCount?.cnt || 0,
+                weekTrend: weekTrend?.results || []
+            }
+        },
+        200,
+        origin
+    );
 }
 
 // ========== 管理员：发布公告 ==========
@@ -1129,11 +1455,16 @@ async function handleAdminAnnounce(request, env, origin) {
     if (!admin) return error('无权限', 403, origin);
     if (!content || content.length > 500) return error('公告内容1-500字', 400, origin);
 
-    await env.DB.prepare(
-        'INSERT INTO announcements (content, created_at) VALUES (?, ?)'
-    ).bind(content.trim(), new Date().toISOString()).run();
+    await env.DB.prepare('INSERT INTO announcements (content, created_at) VALUES (?, ?)')
+        .bind(content.trim(), new Date().toISOString())
+        .run();
 
-    await writeAdminOperationLog(env, { action: '发布公告', targetType: 'announcement', detail: content.slice(0, 100), operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '发布公告',
+        targetType: 'announcement',
+        detail: content.slice(0, 100),
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: '已发布' }, 200, origin);
 }
 
@@ -1169,7 +1500,12 @@ async function handleAdminDeleteAnnouncement(request, env, origin) {
     if (!id) return error('缺少 id', 400, origin);
 
     await env.DB.prepare('DELETE FROM announcements WHERE id = ?').bind(id).run();
-    await writeAdminOperationLog(env, { action: '删除公告', targetType: 'announcement', targetId: String(id), operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '删除公告',
+        targetType: 'announcement',
+        targetId: String(id),
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true }, 200, origin);
 }
 
@@ -1182,24 +1518,37 @@ async function handleAdminEditAnnouncement(request, env, origin) {
     if (!id || !content) return error('缺少参数', 400, origin);
     if (content.length > 500) return error('公告内容不超过500字', 400, origin);
 
-    await env.DB.prepare('UPDATE announcements SET content = ? WHERE id = ?').bind(content.trim(), id).run();
-    await writeAdminOperationLog(env, { action: '编辑公告', targetType: 'announcement', targetId: String(id), detail: content.slice(0, 100), operator: admin.id || admin.initials || '' });
+    await env.DB.prepare('UPDATE announcements SET content = ? WHERE id = ?')
+        .bind(content.trim(), id)
+        .run();
+    await writeAdminOperationLog(env, {
+        action: '编辑公告',
+        targetType: 'announcement',
+        targetId: String(id),
+        detail: content.slice(0, 100),
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true }, 200, origin);
 }
 
 // ========== 管理员：手动调整用户数据 ==========
 async function handleAdminAdjustStats(request, env, origin) {
     const body = await request.json();
-    const { deviceId, password, targetUserId, bankId, bankName, answered, correct, duration } = body;
+    const { deviceId, password, targetUserId, bankId, bankName, answered, correct, duration } =
+        body;
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
     if (!targetUserId || !bankId) return error('缺少参数', 400, origin);
-    if (answered !== undefined && typeof answered !== 'number') return error('answered 必须为数字', 400, origin);
-    if (correct !== undefined && typeof correct !== 'number') return error('correct 必须为数字', 400, origin);
-    if (duration !== undefined && typeof duration !== 'number') return error('duration 必须为数字', 400, origin);
+    if (answered !== undefined && typeof answered !== 'number')
+        return error('answered 必须为数字', 400, origin);
+    if (correct !== undefined && typeof correct !== 'number')
+        return error('correct 必须为数字', 400, origin);
+    if (duration !== undefined && typeof duration !== 'number')
+        return error('duration 必须为数字', 400, origin);
 
     const now = new Date().toISOString();
-    await env.DB.prepare(`
+    await env.DB.prepare(
+        `
         INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id, bank_id) DO UPDATE SET
@@ -1207,9 +1556,18 @@ async function handleAdminAdjustStats(request, env, origin) {
             correct = stats.correct + excluded.correct,
             duration = stats.duration + excluded.duration,
             updated_at = excluded.updated_at
-    `).bind(targetUserId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now).run();
+    `
+    )
+        .bind(targetUserId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now)
+        .run();
 
-    await writeAdminOperationLog(env, { action: '调整用户数据', targetType: 'user', targetId: targetUserId, detail: JSON.stringify({ bankId, answered, correct, duration }), operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '调整用户数据',
+        targetType: 'user',
+        targetId: targetUserId,
+        detail: JSON.stringify({ bankId, answered, correct, duration }),
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: '已调整' }, 200, origin);
 }
 
@@ -1229,14 +1587,34 @@ async function handleAdminChangeSyncCode(request, env, origin) {
     const exists = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(code).first();
     if (exists) return error('该同步码已被使用', 400, origin);
 
-    // 事务性更新三张表（全部成功或全部回滚）
-    await env.DB.batch([
-        env.DB.prepare('UPDATE users SET id = ? WHERE id = ?').bind(code, targetUserId),
-        env.DB.prepare('UPDATE devices SET user_id = ? WHERE user_id = ?').bind(code, targetUserId),
-        env.DB.prepare('UPDATE stats SET user_id = ? WHERE user_id = ?').bind(code, targetUserId)
-    ]);
+    // 事务性更新三张表（全部成功或全部回滚）。
+    // devices/stats 有指向 users(id) 的外键，D1 默认强制外键，
+    // 因此必须在本事务内延迟约束检查，否则改主键必定失败。
+    try {
+        await env.DB.batch([
+            env.DB.prepare('PRAGMA defer_foreign_keys = ON'),
+            env.DB.prepare('UPDATE users SET id = ? WHERE id = ?').bind(code, targetUserId),
+            env.DB.prepare('UPDATE devices SET user_id = ? WHERE user_id = ?').bind(
+                code,
+                targetUserId
+            ),
+            env.DB.prepare('UPDATE stats SET user_id = ? WHERE user_id = ?').bind(
+                code,
+                targetUserId
+            )
+        ]);
+    } catch (e) {
+        console.error('[Admin] 修改同步码失败:', e.message);
+        return error('修改失败：该用户存在关联数据，请先解除设备绑定后重试', 409, origin);
+    }
 
-    await writeAdminOperationLog(env, { action: '修改同步码', targetType: 'user', targetId: targetUserId, detail: `→ ${code}`, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '修改同步码',
+        targetType: 'user',
+        targetId: targetUserId,
+        detail: `→ ${code}`,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: '同步码已修改', newCode: code }, 200, origin);
 }
 
@@ -1249,15 +1627,34 @@ async function handleAdminRemoveDevice(request, env, origin) {
     if (!targetDeviceId) return error('缺少参数', 400, origin);
 
     // 检查设备是否存在
-    const dev = await env.DB.prepare('SELECT user_id FROM devices WHERE device_id = ?').bind(targetDeviceId).first();
+    const dev = await env.DB.prepare('SELECT user_id FROM devices WHERE device_id = ?')
+        .bind(targetDeviceId)
+        .first();
     if (!dev) return error('设备不存在', 404, origin);
     // 检查用户是否还有其他设备
-    const count = await env.DB.prepare('SELECT COUNT(*) as cnt FROM devices WHERE user_id = ?').bind(dev.user_id).first();
+    const count = await env.DB.prepare('SELECT COUNT(*) as cnt FROM devices WHERE user_id = ?')
+        .bind(dev.user_id)
+        .first();
     if (count.cnt <= 1) return error('该用户只有一个设备，无法解绑', 400, origin);
 
-    await env.DB.prepare('DELETE FROM devices WHERE device_id = ?').bind(targetDeviceId).run();
+    try {
+        // client_logs 有指向 devices(device_id) 的外键，必须先清掉
+        await env.DB.batch([
+            env.DB.prepare('DELETE FROM client_logs WHERE device_id = ?').bind(targetDeviceId),
+            env.DB.prepare('DELETE FROM devices WHERE device_id = ?').bind(targetDeviceId)
+        ]);
+    } catch (e) {
+        console.error('[Admin] 解绑设备失败:', e.message);
+        return error('解绑失败，请稍后重试', 500, origin);
+    }
 
-    await writeAdminOperationLog(env, { action: '解绑设备', targetType: 'user', targetId: dev.user_id, detail: targetDeviceId, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '解绑设备',
+        targetType: 'user',
+        targetId: dev.user_id,
+        detail: targetDeviceId,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, message: '设备已解绑' }, 200, origin);
 }
 
@@ -1270,15 +1667,41 @@ async function handleAdminUserCloudData(userId, url, env, origin) {
 
     const user = await env.DB.prepare(
         'SELECT id, initials, settings, progress, bookmarks, last_sync_at FROM users WHERE id = ?'
-    ).bind(userId).first();
+    )
+        .bind(userId)
+        .first();
     if (!user) return error('用户不存在', 404, origin);
 
-    let settings = {}, progress = {}, bookmarks = {};
-    try { settings = JSON.parse(user.settings || '{}'); } catch {}
-    try { progress = JSON.parse(user.progress || '{}'); } catch {}
-    try { bookmarks = JSON.parse(user.bookmarks || '{}'); } catch {}
+    let settings = {},
+        progress = {},
+        bookmarks = {};
+    try {
+        settings = JSON.parse(user.settings || '{}');
+    } catch {
+        /* 容错：解析失败时沿用默认值 */
+    }
+    try {
+        progress = JSON.parse(user.progress || '{}');
+    } catch {
+        /* 容错：解析失败时沿用默认值 */
+    }
+    try {
+        bookmarks = JSON.parse(user.bookmarks || '{}');
+    } catch {
+        /* 容错：解析失败时沿用默认值 */
+    }
 
-    return json({ ok: true, user: { id: user.id, initials: user.initials, lastSyncAt: user.last_sync_at }, settings, progress, bookmarks }, 200, origin);
+    return json(
+        {
+            ok: true,
+            user: { id: user.id, initials: user.initials, lastSyncAt: user.last_sync_at },
+            settings,
+            progress,
+            bookmarks
+        },
+        200,
+        origin
+    );
 }
 
 // ==================== 题库管理 API ====================
@@ -1289,10 +1712,10 @@ async function handleGetBanks(env, origin) {
         'SELECT id, name, description, category, version, question_count, allowed_modes, enabled, updated_at FROM banks ORDER BY name'
     ).all();
     // 解析 allowed_modes JSON
-    const banks = (rows.results || []).map(b => ({
+    const banks = (rows.results || []).map((b) => ({
         ...b,
         enabled: b.enabled !== 0, // 转为布尔值
-        allowed_modes: b.allowed_modes ? JSON.parse(b.allowed_modes) : null
+        allowed_modes: safeParseJson(b.allowed_modes, null)
     }));
     // 题库启用/禁用需要立即生效，不能缓存列表响应
     return json({ ok: true, banks }, 200, origin);
@@ -1300,29 +1723,31 @@ async function handleGetBanks(env, origin) {
 
 // 前端：获取题库完整数据（含题目）
 async function handleGetBank(bankId, env, origin) {
-    const bank = await env.DB.prepare(
-        'SELECT * FROM banks WHERE id = ?'
-    ).bind(bankId).first();
+    const bank = await env.DB.prepare('SELECT * FROM banks WHERE id = ?').bind(bankId).first();
     if (!bank) return error('题库不存在', 404, origin);
     // 检查题库是否启用
     if (bank.enabled === 0) return error('题库已禁用', 403, origin);
 
-    let questions = [];
-    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+    const questions = safeParseJson(bank.questions_json, []) || [];
 
     // 缓存 5 分钟（减少重复请求，更新延迟最多 5 分钟）
-    return json({
-        ok: true,
-        bank: {
-            id: bank.id,
-            name: bank.name,
-            description: bank.description,
-            category: bank.category,
-            version: bank.version,
-            allowed_modes: bank.allowed_modes ? JSON.parse(bank.allowed_modes) : null,
-            questions
-        }
-    }, 200, origin, 300);
+    return json(
+        {
+            ok: true,
+            bank: {
+                id: bank.id,
+                name: bank.name,
+                description: bank.description,
+                category: bank.category,
+                version: bank.version,
+                allowed_modes: safeParseJson(bank.allowed_modes, null),
+                questions
+            }
+        },
+        200,
+        origin,
+        300
+    );
 }
 
 // 管理员：导入/替换题库
@@ -1333,23 +1758,104 @@ async function handleAdminImportBank(request, env, origin) {
     if (!admin) return error('无权限', 403, origin);
     if (!id || !name || !questions) return error('缺少参数', 400, origin);
 
-    const now = new Date().toISOString();
-    const existing = await env.DB.prepare('SELECT version, allowed_modes FROM banks WHERE id = ?').bind(id).first();
-    const version = existing ? (existing.version || 0) + 1 : 1;
-    const modesJson = allowed_modes ? JSON.stringify(allowed_modes) : (existing?.allowed_modes || '');
+    if (!Array.isArray(questions)) return error('questions 必须是数组', 400, origin);
+    if (questions.length > 5000) return error('单次最多导入 5000 题', 400, origin);
+    const questionsJson = JSON.stringify(questions);
+    if (questionsJson.length > 1_800_000) {
+        return error('题库体积过大（超过约 1.8MB），请拆分后导入', 413, origin);
+    }
+    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(String(id))) {
+        return error('题库 ID 只能是小写字母、数字、下划线或连字符，2-64 位', 400, origin);
+    }
 
-    await env.DB.prepare(`
-        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(id, name, description || '', category || '', version, questions.length, JSON.stringify(questions), modesJson, now, now).run();
+    const now = new Date().toISOString();
+    const existing = await env.DB.prepare(
+        'SELECT version, allowed_modes, enabled, created_at FROM banks WHERE id = ?'
+    )
+        .bind(id)
+        .first();
+    const version = existing ? (existing.version || 0) + 1 : 1;
+    const modesJson = allowed_modes ? JSON.stringify(allowed_modes) : existing?.allowed_modes || '';
+    const enabled = existing ? existing.enabled : 1;
+    const createdAt = existing ? existing.created_at : now;
+
+    await env.DB.prepare(
+        `
+        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, enabled, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+    )
+        .bind(
+            id,
+            String(name).slice(0, 100),
+            String(description || '').slice(0, 500),
+            String(category || '').slice(0, 100),
+            version,
+            questions.length,
+            questionsJson,
+            modesJson,
+            enabled,
+            createdAt,
+            now
+        )
+        .run();
 
     // 记录历史
     await env.DB.prepare(
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(id, existing ? 'upload' : 'create', `${questions.length}道题`, admin.id, now).run();
+    )
+        .bind(id, existing ? 'upload' : 'create', `${questions.length}道题`, admin.id, now)
+        .run();
 
-    await writeAdminOperationLog(env, { action: existing ? '导入题库' : '创建题库', targetType: 'bank', targetId: id, detail: `${name} (${questions.length}题)`, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: existing ? '导入题库' : '创建题库',
+        targetType: 'bank',
+        targetId: id,
+        detail: `${name} (${questions.length}题)`,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, version, count: questions.length }, 200, origin);
+}
+
+// 管理员：新建空题库
+async function handleAdminCreateBank(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, id, name, category } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    if (typeof id !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(id)) {
+        return error('题库 ID 只能是小写字母、数字、下划线或连字符，2-64 位', 400, origin);
+    }
+    if (typeof name !== 'string' || !name.trim() || name.length > 100) {
+        return error('题库名称必填且不超过 100 字', 400, origin);
+    }
+
+    const existing = await env.DB.prepare('SELECT id FROM banks WHERE id = ?').bind(id).first();
+    if (existing) return error('该题库 ID 已存在', 409, origin);
+
+    const now = new Date().toISOString();
+    await env.DB.prepare(
+        `INSERT INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
+         VALUES (?, ?, '', ?, 1, 0, '[]', '', ?, ?)`
+    )
+        .bind(id, name.trim(), (category || '').toString().slice(0, 50), now, now)
+        .run();
+
+    await env.DB.prepare(
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    )
+        .bind(id, 'create', '0道题', admin.id || admin.initials || '', now)
+        .run();
+
+    await writeAdminOperationLog(env, {
+        action: '创建题库',
+        targetType: 'bank',
+        targetId: id,
+        detail: name.trim(),
+        operator: admin.id || admin.initials || ''
+    });
+    return json({ ok: true, id, version: 1, count: 0 }, 200, origin);
 }
 
 // 管理员：获取单个题库详情
@@ -1362,10 +1868,22 @@ async function handleAdminGetBank(bankId, url, env, origin) {
     const bank = await env.DB.prepare('SELECT * FROM banks WHERE id = ?').bind(bankId).first();
     if (!bank) return error('题库不存在', 404, origin);
 
-    let questions = [];
-    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+    const questions = safeParseJson(bank.questions_json, []) || [];
 
-    return json({ ok: true, bank: { ...bank, questions, questions_json: undefined, enabled: bank.enabled !== 0, allowed_modes: bank.allowed_modes ? JSON.parse(bank.allowed_modes) : null } }, 200, origin);
+    return json(
+        {
+            ok: true,
+            bank: {
+                ...bank,
+                questions,
+                questions_json: undefined,
+                enabled: bank.enabled !== 0,
+                allowed_modes: safeParseJson(bank.allowed_modes, null)
+            }
+        },
+        200,
+        origin
+    );
 }
 
 // 管理员：启用/禁用题库
@@ -1375,22 +1893,32 @@ async function handleAdminToggleBank(bankId, request, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
+    const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?')
+        .bind(bankId)
+        .first();
     if (!bank) return error('题库不存在', 404, origin);
 
     const enabledValue = enabled ? 1 : 0;
     const now = new Date().toISOString();
 
-    await env.DB.prepare(
-        'UPDATE banks SET enabled = ?, updated_at = ? WHERE id = ?'
-    ).bind(enabledValue, now, bankId).run();
+    await env.DB.prepare('UPDATE banks SET enabled = ?, updated_at = ? WHERE id = ?')
+        .bind(enabledValue, now, bankId)
+        .run();
 
     // 记录历史
     await env.DB.prepare(
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(bankId, 'toggle', `${enabled ? '启用' : '禁用'}题库`, admin.id, now).run();
+    )
+        .bind(bankId, 'toggle', `${enabled ? '启用' : '禁用'}题库`, admin.id, now)
+        .run();
 
-    await writeAdminOperationLog(env, { action: enabled ? '启用题库' : '禁用题库', targetType: 'bank', targetId: bankId, detail: bank.name, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: enabled ? '启用题库' : '禁用题库',
+        targetType: 'bank',
+        targetId: bankId,
+        detail: bank.name,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, enabled: !!enabledValue }, 200, origin);
 }
 
@@ -1399,35 +1927,47 @@ async function handleAdminDeleteBank(bankId, request, env, origin) {
     try {
         // 支持从body或URL参数获取认证信息
         let deviceId, password;
-        
+
         // 尝试从body获取
         try {
             const body = await request.json();
             deviceId = body.deviceId;
             password = body.password;
-        } catch (e) {
+        } catch {
             // body解析失败，尝试从URL参数获取
             const url = new URL(request.url);
             deviceId = url.searchParams.get('deviceId');
             password = url.searchParams.get('password');
         }
-        
-        console.log('删除题库请求:', { bankId, deviceId: deviceId ? '已提供' : '未提供', password: password ? '已提供' : '未提供' });
-        
+
+        console.log('删除题库请求:', {
+            bankId,
+            deviceId: deviceId ? '已提供' : '未提供',
+            password: password ? '已提供' : '未提供'
+        });
+
         const admin = await requireAdmin(deviceId, password, env);
         if (!admin) return error('无权限', 403, origin);
 
-        const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?').bind(bankId).first();
+        const bank = await env.DB.prepare('SELECT id, name FROM banks WHERE id = ?')
+            .bind(bankId)
+            .first();
         if (!bank) return error('题库不存在', 404, origin);
 
         console.log('开始删除题库:', bank.name);
-        
+
         // 删除题库、历史记录和统计数据（注意顺序：先删子表，再删父表）
         await env.DB.prepare('DELETE FROM stats WHERE bank_id = ?').bind(bankId).run();
         await env.DB.prepare('DELETE FROM bank_history WHERE bank_id = ?').bind(bankId).run();
         await env.DB.prepare('DELETE FROM banks WHERE id = ?').bind(bankId).run();
 
-        await writeAdminOperationLog(env, { action: '删除题库', targetType: 'bank', targetId: bankId, detail: bank.name, operator: admin.id || admin.initials || '' });
+        await writeAdminOperationLog(env, {
+            action: '删除题库',
+            targetType: 'bank',
+            targetId: bankId,
+            detail: bank.name,
+            operator: admin.id || admin.initials || ''
+        });
         console.log('题库删除成功:', bank.name);
         return json({ ok: true, message: `题库 "${bank.name}" 已删除` }, 200, origin);
     } catch (e) {
@@ -1442,54 +1982,112 @@ async function handleAdminImportQuestions(bankId, request, env, origin) {
     const { deviceId, password, questions: newQuestions } = body;
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
-    if (!Array.isArray(newQuestions) || newQuestions.length === 0) return error('缺少题目数组', 400, origin);
+    if (!Array.isArray(newQuestions) || newQuestions.length === 0)
+        return error('缺少题目数组', 400, origin);
 
-    const bank = await env.DB.prepare('SELECT questions_json, version FROM banks WHERE id = ?').bind(bankId).first();
+    const bank = await env.DB.prepare('SELECT questions_json, version FROM banks WHERE id = ?')
+        .bind(bankId)
+        .first();
     if (!bank) return error('题库不存在', 404, origin);
 
-    let questions = [];
-    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+    const questions = safeParseJson(bank.questions_json, []) || [];
 
     const maxId = questions.reduce((max, q) => Math.max(max, q.id || 0), 0);
     let added = 0;
     const now = new Date().toISOString();
 
-    newQuestions.forEach((q, i) => {
-        if (!q.question) return; // 跳过无效题目
+    const TYPE_ALIASES = {
+        multi: 'multiple',
+        单选题: 'single',
+        多选题: 'multiple',
+        判断题: 'judge',
+        填空题: 'fill',
+        简答题: 'essay',
+        编程题: 'code'
+    };
+
+    newQuestions.forEach((q) => {
+        if (!q || typeof q.question !== 'string' || !q.question.trim()) return; // 跳过无效题目
+        const type = TYPE_ALIASES[q.type] || q.type || 'single';
         const question = {
             id: maxId + added + 1,
-            type: q.type || 'single',
+            type,
             category: q.category || '',
             tags: q.tags || [],
             difficulty: q.difficulty || 1,
             question: q.question,
-            options: q.options || [],
+            options: Array.isArray(q.options) ? q.options : [],
             answer: q.answer,
             explanation: q.explanation || ''
         };
-        // 规范化选项：去除 A. B. C. 前缀
+        // 可选字段必须原样保留，否则导入会丢图片/代码/记忆提示
+        [
+            'img',
+            'image',
+            'answerImg',
+            'code',
+            'codeLanguage',
+            'memoryAid',
+            'source',
+            'sourceId'
+        ].forEach((k) => {
+            if (q[k] !== undefined) question[k] = q[k];
+        });
+
+        // 规范化选项：只去字母前缀，不能把对象选项 String() 成 [object Object]
         if (question.options.length > 0) {
-            question.options = question.options.map(opt => {
-                return String(opt).replace(/^[A-Z][.、。\s]+/, '').trim();
+            question.options = question.options.map((opt) => {
+                if (opt && typeof opt === 'object') {
+                    return {
+                        ...opt,
+                        text: String(opt.text ?? '')
+                            .replace(/^[A-Z][.、。\s]+/, '')
+                            .trim()
+                    };
+                }
+                return String(opt)
+                    .replace(/^[A-Z][.、。\s]+/, '')
+                    .trim();
             });
         }
-        // 规范化答案：数组转字符串
-        if (Array.isArray(question.answer)) {
-            question.answer = question.answer.join('');
+
+        // 规范化答案：多选保留数组（join('') 会把 "A,B" 变成 "AB" 且不可逆），
+        // 单选去空格转大写，判断题接受中文/字符串
+        if (type === 'multiple' && Array.isArray(question.answer)) {
+            question.answer = question.answer.map((a) => String(a).trim().toUpperCase());
+        } else if (type === 'single' && typeof question.answer === 'string') {
+            question.answer = question.answer.trim().toUpperCase();
+        } else if (type === 'judge') {
+            const v = question.answer;
+            question.answer =
+                v === true || v === 'true' || v === '对' || v === '正确' || v === 'A' || v === 1;
+        } else if (type === 'fill' && typeof question.answer === 'string') {
+            question.answer = [question.answer];
         }
+
         questions.push(question);
         added++;
     });
 
     await env.DB.prepare(
         'UPDATE banks SET questions_json = ?, question_count = ?, version = version + 1, updated_at = ? WHERE id = ?'
-    ).bind(JSON.stringify(questions), questions.length, now, bankId).run();
+    )
+        .bind(JSON.stringify(questions), questions.length, now, bankId)
+        .run();
 
     await env.DB.prepare(
-        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)' 
-    ).bind(bankId, 'batch_import', `批量导入 ${added} 题`, admin.id, now).run();
+        'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
+    )
+        .bind(bankId, 'batch_import', `批量导入 ${added} 题`, admin.id, now)
+        .run();
 
-    await writeAdminOperationLog(env, { action: '批量导入题目', targetType: 'bank', targetId: bankId, detail: `${added}题`, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '批量导入题目',
+        targetType: 'bank',
+        targetId: bankId,
+        detail: `${added}题`,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, added, total: questions.length }, 200, origin);
 }
 
@@ -1500,11 +2098,12 @@ async function handleAdminAddQuestion(bankId, request, env, origin) {
     if (!admin) return error('无权限', 403, origin);
     if (!question || !question.question) return error('缺少题目内容', 400, origin);
 
-    const bank = await env.DB.prepare('SELECT questions_json, version FROM banks WHERE id = ?').bind(bankId).first();
+    const bank = await env.DB.prepare('SELECT questions_json, version FROM banks WHERE id = ?')
+        .bind(bankId)
+        .first();
     if (!bank) return error('题库不存在', 404, origin);
 
-    let questions = [];
-    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+    const questions = safeParseJson(bank.questions_json, []) || [];
 
     const maxId = questions.reduce((max, q) => Math.max(max, q.id || 0), 0);
     question.id = maxId + 1;
@@ -1513,13 +2112,23 @@ async function handleAdminAddQuestion(bankId, request, env, origin) {
     const now = new Date().toISOString();
     await env.DB.prepare(
         'UPDATE banks SET questions_json = ?, question_count = ?, version = version + 1, updated_at = ? WHERE id = ?'
-    ).bind(JSON.stringify(questions), questions.length, now, bankId).run();
+    )
+        .bind(JSON.stringify(questions), questions.length, now, bankId)
+        .run();
 
     await env.DB.prepare(
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(bankId, 'add_question', `添加: ${question.question.slice(0, 50)}`, admin.id, now).run();
+    )
+        .bind(bankId, 'add_question', `添加: ${question.question.slice(0, 50)}`, admin.id, now)
+        .run();
 
-    await writeAdminOperationLog(env, { action: '添加题目', targetType: 'question', targetId: `${bankId}#${question.id}`, detail: question.question.slice(0, 80), operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '添加题目',
+        targetType: 'question',
+        targetId: `${bankId}#${question.id}`,
+        detail: question.question.slice(0, 80),
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, id: question.id, count: questions.length }, 200, origin);
 }
 
@@ -1530,13 +2139,14 @@ async function handleAdminEditQuestion(bankId, qid, request, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const bank = await env.DB.prepare('SELECT questions_json FROM banks WHERE id = ?').bind(bankId).first();
+    const bank = await env.DB.prepare('SELECT questions_json FROM banks WHERE id = ?')
+        .bind(bankId)
+        .first();
     if (!bank) return error('题库不存在', 404, origin);
 
-    let questions = [];
-    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+    const questions = safeParseJson(bank.questions_json, []) || [];
 
-    const idx = questions.findIndex(q => q.id === qid);
+    const idx = questions.findIndex((q) => q.id === qid);
     if (idx === -1) return error('题目不存在', 404, origin);
 
     questions[idx] = { ...questions[idx], ...question, id: qid };
@@ -1544,13 +2154,28 @@ async function handleAdminEditQuestion(bankId, qid, request, env, origin) {
     const now = new Date().toISOString();
     await env.DB.prepare(
         'UPDATE banks SET questions_json = ?, version = version + 1, updated_at = ? WHERE id = ?'
-    ).bind(JSON.stringify(questions), now, bankId).run();
+    )
+        .bind(JSON.stringify(questions), now, bankId)
+        .run();
 
     await env.DB.prepare(
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(bankId, 'edit_question', `编辑 #${qid}: ${(question.question || '').slice(0, 50)}`, admin.id, now).run();
+    )
+        .bind(
+            bankId,
+            'edit_question',
+            `编辑 #${qid}: ${(question.question || '').slice(0, 50)}`,
+            admin.id,
+            now
+        )
+        .run();
 
-    await writeAdminOperationLog(env, { action: '编辑题目', targetType: 'question', targetId: `${bankId}#${qid}`, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '编辑题目',
+        targetType: 'question',
+        targetId: `${bankId}#${qid}`,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true }, 200, origin);
 }
 
@@ -1561,13 +2186,14 @@ async function handleAdminDeleteQuestion(bankId, qid, request, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const bank = await env.DB.prepare('SELECT questions_json FROM banks WHERE id = ?').bind(bankId).first();
+    const bank = await env.DB.prepare('SELECT questions_json FROM banks WHERE id = ?')
+        .bind(bankId)
+        .first();
     if (!bank) return error('题库不存在', 404, origin);
 
-    let questions = [];
-    try { questions = JSON.parse(bank.questions_json || '[]'); } catch {}
+    const questions = safeParseJson(bank.questions_json, []) || [];
 
-    const idx = questions.findIndex(q => q.id === qid);
+    const idx = questions.findIndex((q) => q.id === qid);
     if (idx === -1) return error('题目不存在', 404, origin);
 
     const removed = questions.splice(idx, 1)[0];
@@ -1575,13 +2201,29 @@ async function handleAdminDeleteQuestion(bankId, qid, request, env, origin) {
     const now = new Date().toISOString();
     await env.DB.prepare(
         'UPDATE banks SET questions_json = ?, question_count = ?, version = version + 1, updated_at = ? WHERE id = ?'
-    ).bind(JSON.stringify(questions), questions.length, now, bankId).run();
+    )
+        .bind(JSON.stringify(questions), questions.length, now, bankId)
+        .run();
 
     await env.DB.prepare(
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(bankId, 'delete_question', `删除 #${qid}: ${(removed.question || '').slice(0, 50)}`, admin.id, now).run();
+    )
+        .bind(
+            bankId,
+            'delete_question',
+            `删除 #${qid}: ${(removed.question || '').slice(0, 50)}`,
+            admin.id,
+            now
+        )
+        .run();
 
-    await writeAdminOperationLog(env, { action: '删除题目', targetType: 'question', targetId: `${bankId}#${qid}`, detail: (removed.question || '').slice(0, 80), operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: '删除题目',
+        targetType: 'question',
+        targetId: `${bankId}#${qid}`,
+        detail: (removed.question || '').slice(0, 80),
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, count: questions.length }, 200, origin);
 }
 
@@ -1594,7 +2236,9 @@ async function handleAdminBankHistory(bankId, url, env, origin) {
 
     const rows = await env.DB.prepare(
         'SELECT * FROM bank_history WHERE bank_id = ? ORDER BY created_at DESC LIMIT 50'
-    ).bind(bankId).all();
+    )
+        .bind(bankId)
+        .all();
 
     return json({ ok: true, history: rows.results || [] }, 200, origin);
 }
@@ -1606,7 +2250,11 @@ async function handleAdminUpdateBankSettings(bankId, request, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
-    const bank = await env.DB.prepare('SELECT id, name, description, category FROM banks WHERE id = ?').bind(bankId).first();
+    const bank = await env.DB.prepare(
+        'SELECT id, name, description, category FROM banks WHERE id = ?'
+    )
+        .bind(bankId)
+        .first();
     if (!bank) return error('题库不存在', 404, origin);
 
     const now = new Date().toISOString();
@@ -1650,84 +2298,138 @@ async function handleAdminUpdateBankSettings(bankId, request, env, origin) {
 
     // 只有有变更时才更新
     if (changes.length > 0) {
-        await env.DB.prepare(updateSql).bind(...params).run();
+        await env.DB.prepare(updateSql)
+            .bind(...params)
+            .run();
 
         await env.DB.prepare(
             'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind(bankId, 'update_settings', changes.join('; '), admin.id, now).run();
+        )
+            .bind(bankId, 'update_settings', changes.join('; '), admin.id, now)
+            .run();
 
-        await writeAdminOperationLog(env, { action: '更新题库设置', targetType: 'bank', targetId: bankId, detail: changes.join('; '), operator: admin.id || admin.initials || '' });
+        await writeAdminOperationLog(env, {
+            action: '更新题库设置',
+            targetType: 'bank',
+            targetId: bankId,
+            detail: changes.join('; '),
+            operator: admin.id || admin.initials || ''
+        });
     }
 
     // 查询更新后的数据
-    const updated = await env.DB.prepare('SELECT name, description, category, allowed_modes FROM banks WHERE id = ?').bind(bankId).first();
+    const updated = await env.DB.prepare(
+        'SELECT name, description, category, allowed_modes FROM banks WHERE id = ?'
+    )
+        .bind(bankId)
+        .first();
 
-    return json({ 
-        ok: true, 
-        bank: {
-            name: updated.name,
-            description: updated.description,
-            category: updated.category,
-            allowed_modes: updated.allowed_modes ? JSON.parse(updated.allowed_modes) : null
-        }
-    }, 200, origin);
+    return json(
+        {
+            ok: true,
+            bank: {
+                name: updated.name,
+                description: updated.description,
+                category: updated.category,
+                allowed_modes: safeParseJson(updated.allowed_modes, null)
+            }
+        },
+        200,
+        origin
+    );
 }
 
 // 管理员：上传题库（前端专用接口）
 async function handleAdminUploadBank(request, env, origin) {
     const body = await request.json();
     const { deviceId, password, bank, existingId } = body;
-    
+
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
-    
-    if (!bank || !bank.id || !bank.name || !bank.questions) {
-        return error('题库格式错误，缺少必要字段', 400, origin);
+
+    if (!bank || !bank.id || !bank.name || !Array.isArray(bank.questions)) {
+        return error('题库格式错误：缺少 id/name，或 questions 不是数组', 400, origin);
     }
-    
-    const id = existingId || bank.id;
+    if (bank.questions.length > 5000) {
+        return error('单次最多上传 5000 题', 400, origin);
+    }
+    // D1 单行上限约 2MB，超限时写入会以晦涩错误失败
+    const questionsJson = JSON.stringify(bank.questions);
+    if (questionsJson.length > 1_800_000) {
+        return error('题库体积过大（超过约 1.8MB），请拆分后上传', 413, origin);
+    }
+
+    const id = String(existingId || bank.id);
+    if (!/^[a-z0-9][a-z0-9_-]{1,63}$/.test(id)) {
+        return error('题库 ID 只能是小写字母、数字、下划线或连字符，2-64 位', 400, origin);
+    }
+
     const now = new Date().toISOString();
-    const existing = await env.DB.prepare('SELECT version, allowed_modes FROM banks WHERE id = ?').bind(id).first();
+    const existing = await env.DB.prepare(
+        'SELECT version, allowed_modes, enabled, created_at FROM banks WHERE id = ?'
+    )
+        .bind(id)
+        .first();
     const version = existing ? (existing.version || 0) + 1 : 1;
     const modesJson = existing?.allowed_modes || '';
-    
+    // 保留启用状态与创建时间：INSERT OR REPLACE 会整行重建，
+    // 不显式写回就会把禁用中的题库静默重新启用
+    const enabled = existing ? existing.enabled : 1;
+    const createdAt = existing ? existing.created_at : now;
+
     // 处理 categories 字段（前端用 categories，后端用 category）
-    const category = bank.category || (Array.isArray(bank.categories) ? bank.categories.join(', ') : '');
-    
-    await env.DB.prepare(`
-        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-        id,
-        bank.name,
-        bank.description || '',
-        category,
-        version,
-        bank.questions.length,
-        JSON.stringify(bank.questions),
-        modesJson,
-        now,
-        now
-    ).run();
-    
+    const category =
+        bank.category || (Array.isArray(bank.categories) ? bank.categories.join(', ') : '');
+
+    await env.DB.prepare(
+        `
+        INSERT OR REPLACE INTO banks (id, name, description, category, version, question_count, questions_json, allowed_modes, enabled, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+    )
+        .bind(
+            id,
+            String(bank.name).slice(0, 100),
+            String(bank.description || '').slice(0, 500),
+            String(category).slice(0, 100),
+            version,
+            bank.questions.length,
+            questionsJson,
+            modesJson,
+            enabled,
+            createdAt,
+            now
+        )
+        .run();
+
     // 记录历史
     await env.DB.prepare(
         'INSERT INTO bank_history (bank_id, action, detail, operator, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(id, existing ? 'replace' : 'create', `${bank.questions.length}道题`, admin.id, now).run();
+    )
+        .bind(id, existing ? 'replace' : 'create', `${bank.questions.length}道题`, admin.id, now)
+        .run();
 
-    await writeAdminOperationLog(env, { action: existing ? '替换题库' : '上传题库', targetType: 'bank', targetId: id, detail: `${bank.name} (${bank.questions.length}题)`, operator: admin.id || admin.initials || '' });
+    await writeAdminOperationLog(env, {
+        action: existing ? '替换题库' : '上传题库',
+        targetType: 'bank',
+        targetId: id,
+        detail: `${bank.name} (${bank.questions.length}题)`,
+        operator: admin.id || admin.initials || ''
+    });
     return json({ ok: true, version, count: bank.questions.length }, 200, origin);
 }
 
 // ========== AI 解读：自动建表 ==========
 async function ensureAIConfigTable(env) {
-    await env.DB.prepare(`
+    await env.DB.prepare(
+        `
         CREATE TABLE IF NOT EXISTS app_config (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL DEFAULT '',
             updated_at TEXT
         )
-    `).run();
+    `
+    ).run();
 }
 
 async function getAIConfigRaw(env) {
@@ -1735,15 +2437,23 @@ async function getAIConfigRaw(env) {
         "SELECT value FROM app_config WHERE key = 'ai_config'"
     ).first();
     if (!row) return null;
-    try { return JSON.parse(row.value); } catch { return null; }
+    try {
+        return JSON.parse(row.value);
+    } catch {
+        return null;
+    }
 }
 
 async function saveAIConfigRaw(env, config) {
     const now = new Date().toISOString();
-    await env.DB.prepare(`
+    await env.DB.prepare(
+        `
         INSERT INTO app_config (key, value, updated_at) VALUES ('ai_config', ?, ?)
         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-    `).bind(JSON.stringify(config), now).run();
+    `
+    )
+        .bind(JSON.stringify(config), now)
+        .run();
 }
 
 // GET /api/ai/config（公开，不暴露 API 密钥）
@@ -1752,20 +2462,41 @@ async function handleGetAIConfig(env, origin) {
         await ensureAIConfigTable(env);
         const c = await getAIConfigRaw(env);
         if (!c || !c.enabled) {
-            return json({ ok: true, config: { enabled: false, allowUserOverride: false, hasGlobalKey: false, mode: 'search', provider: 'openai', baseUrl: '', model: '' } }, 200, origin, 30);
+            return json(
+                {
+                    ok: true,
+                    config: {
+                        enabled: false,
+                        allowUserOverride: false,
+                        hasGlobalKey: false,
+                        mode: 'search',
+                        provider: 'openai',
+                        baseUrl: '',
+                        model: ''
+                    }
+                },
+                200,
+                origin,
+                30
+            );
         }
-        return json({
-            ok: true,
-            config: {
-                enabled: !!c.enabled,
-                allowUserOverride: !!c.allowUserOverride,
-                hasGlobalKey: !!(c.apiKey && c.apiKey.length > 0),
-                mode: c.mode || 'search',
-                provider: c.provider || 'openai',
-                baseUrl: c.baseUrl || '',
-                model: c.model || ''
-            }
-        }, 200, origin, 30);
+        return json(
+            {
+                ok: true,
+                config: {
+                    enabled: !!c.enabled,
+                    allowUserOverride: !!c.allowUserOverride,
+                    hasGlobalKey: !!(c.apiKey && c.apiKey.length > 0),
+                    mode: c.mode || 'search',
+                    provider: c.provider || 'openai',
+                    baseUrl: c.baseUrl || '',
+                    model: c.model || ''
+                }
+            },
+            200,
+            origin,
+            30
+        );
     } catch (e) {
         return error('获取 AI 配置失败: ' + e.message, 500, origin);
     }
@@ -1782,22 +2513,43 @@ async function handleAdminGetAIConfig(url, env, origin) {
         await ensureAIConfigTable(env);
         const c = await getAIConfigRaw(env);
         if (!c) {
-            return json({ ok: true, config: { enabled: false, allowUserOverride: false, hasGlobalKey: false, mode: 'search', provider: 'openai', baseUrl: '', model: '', systemPrompt: '', updatedAt: null } }, 200, origin);
+            return json(
+                {
+                    ok: true,
+                    config: {
+                        enabled: false,
+                        allowUserOverride: false,
+                        hasGlobalKey: false,
+                        mode: 'search',
+                        provider: 'openai',
+                        baseUrl: '',
+                        model: '',
+                        systemPrompt: '',
+                        updatedAt: null
+                    }
+                },
+                200,
+                origin
+            );
         }
-        return json({
-            ok: true,
-            config: {
-                enabled: !!c.enabled,
-                allowUserOverride: !!c.allowUserOverride,
-                hasGlobalKey: !!(c.apiKey && c.apiKey.length > 0),
-                mode: c.mode || 'search',
-                provider: c.provider || 'openai',
-                baseUrl: c.baseUrl || '',
-                model: c.model || '',
-                systemPrompt: c.systemPrompt || '',
-                updatedAt: c.updatedAt || null
-            }
-        }, 200, origin);
+        return json(
+            {
+                ok: true,
+                config: {
+                    enabled: !!c.enabled,
+                    allowUserOverride: !!c.allowUserOverride,
+                    hasGlobalKey: !!(c.apiKey && c.apiKey.length > 0),
+                    mode: c.mode || 'search',
+                    provider: c.provider || 'openai',
+                    baseUrl: c.baseUrl || '',
+                    model: c.model || '',
+                    systemPrompt: c.systemPrompt || '',
+                    updatedAt: c.updatedAt || null
+                }
+            },
+            200,
+            origin
+        );
     } catch (e) {
         return error('获取 AI 配置失败: ' + e.message, 500, origin);
     }
@@ -1818,7 +2570,8 @@ async function handleAdminUpdateAIConfig(request, env, origin) {
         const merged = { ...existing };
 
         if (config.enabled !== undefined) merged.enabled = !!config.enabled;
-        if (config.allowUserOverride !== undefined) merged.allowUserOverride = !!config.allowUserOverride;
+        if (config.allowUserOverride !== undefined)
+            merged.allowUserOverride = !!config.allowUserOverride;
         if (config.mode !== undefined) merged.mode = config.mode;
         if (config.provider !== undefined) merged.provider = config.provider;
         if (config.baseUrl !== undefined) merged.baseUrl = config.baseUrl;
@@ -1832,7 +2585,16 @@ async function handleAdminUpdateAIConfig(request, env, origin) {
         merged.updatedAt = new Date().toISOString();
 
         await saveAIConfigRaw(env, merged);
-        await writeAdminOperationLog(env, { action: '更新AI配置', targetType: 'system', detail: JSON.stringify({ enabled: merged.enabled, mode: merged.mode, provider: merged.provider }), operator: admin.id || admin.initials || '' });
+        await writeAdminOperationLog(env, {
+            action: '更新AI配置',
+            targetType: 'system',
+            detail: JSON.stringify({
+                enabled: merged.enabled,
+                mode: merged.mode,
+                provider: merged.provider
+            }),
+            operator: admin.id || admin.initials || ''
+        });
         return json({ ok: true }, 200, origin);
     } catch (e) {
         return error('保存 AI 配置失败: ' + e.message, 500, origin);
@@ -1845,6 +2607,12 @@ async function handleAIExplain(request, env, origin) {
     if (!body || !body.question) return error('缺少 question 参数', 400, origin);
 
     const { question, bankName, override } = body;
+
+    // question 会被拼进模型上下文：限制长度，避免超大 payload 烧 token
+    if (typeof question !== 'string' || question.length > 8000) {
+        return error('question 过长（上限 8000 字符）', 400, origin);
+    }
+
     const userProvider = override?.provider;
     const userBaseUrl = override?.baseUrl;
     const userApiKey = override?.apiKey;
@@ -1859,11 +2627,35 @@ async function handleAIExplain(request, env, origin) {
         const allowUser = !!globalCfg.allowUserOverride;
         const hasUserKey = allowUser && userApiKey && userApiKey.length > 0;
 
-        const provider = hasUserKey && userProvider ? userProvider : (globalCfg.provider || 'openai');
-        const baseUrl = (hasUserKey && userBaseUrl ? userBaseUrl : (globalCfg.baseUrl || '')).replace(/\/+$/, '');
-        const apiKey = hasUserKey ? userApiKey : (globalCfg.apiKey || '');
-        const model = hasUserKey && userModel ? userModel : (globalCfg.model || 'gpt-4o-mini');
-        const systemPrompt = globalCfg.systemPrompt || `你是一位严谨的辅导老师。根据题目、选项、正确答案和解析，为学生提供详细的讲解。
+        const provider = hasUserKey && userProvider ? userProvider : globalCfg.provider || 'openai';
+        const baseUrl = (hasUserKey && userBaseUrl ? userBaseUrl : globalCfg.baseUrl || '').replace(
+            /\/+$/,
+            ''
+        );
+        // 自定义 baseUrl 会让 Worker 从 Cloudflare 内网发起请求（SSRF）。
+        // 只允许 https，并拒绝内网/环回/元数据地址。
+        if (hasUserKey && userBaseUrl) {
+            let host = '';
+            try {
+                const u = new URL(baseUrl);
+                if (u.protocol !== 'https:')
+                    return error('自定义 Base URL 必须是 https', 400, origin);
+                host = u.hostname.toLowerCase();
+            } catch {
+                return error('自定义 Base URL 格式错误', 400, origin);
+            }
+            const isPrivate =
+                /^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|\[?::1\]?$)/.test(host) ||
+                /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+                host.endsWith('.internal') ||
+                host.endsWith('.local');
+            if (isPrivate) return error('不允许指向内网地址', 400, origin);
+        }
+        const apiKey = hasUserKey ? userApiKey : globalCfg.apiKey || '';
+        const model = hasUserKey && userModel ? userModel : globalCfg.model || 'gpt-4o-mini';
+        const systemPrompt =
+            globalCfg.systemPrompt ||
+            `你是一位严谨的辅导老师。根据题目、选项、正确答案和解析，为学生提供详细的讲解。
 
 【核心规则】
 1. 明确告诉学生他的作答是否正确
@@ -1895,17 +2687,28 @@ async function handleAIExplain(request, env, origin) {
                     if (provider === 'gemini') {
                         const url = `${baseUrl}/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`;
                         const payload = {
-                            contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userMessage }] }],
+                            contents: [
+                                {
+                                    role: 'user',
+                                    parts: [{ text: systemPrompt + '\n\n' + userMessage }]
+                                }
+                            ],
                             generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
                         };
                         const resp = await fetch(url, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
+                            body: JSON.stringify(payload),
+                            signal: AbortSignal.timeout(30000)
                         });
                         if (!resp.ok) {
-                            const errText = await resp.text();
-                            controller.enqueue(encoder.encode(`[AI 接口错误 ${resp.status}] ${errText.slice(0, 200)}`));
+                            await resp.text().catch(() => '');
+                            // 不回显上游错误正文：可能含额度、内网信息或密钥片段
+                            controller.enqueue(
+                                encoder.encode(
+                                    `[AI 接口错误 ${resp.status}] 上游服务返回异常，请稍后重试`
+                                )
+                            );
                             controller.close();
                             return;
                         }
@@ -1924,7 +2727,9 @@ async function handleAIExplain(request, env, origin) {
                                     const d = JSON.parse(line.slice(6));
                                     const text = d.candidates?.[0]?.content?.parts?.[0]?.text;
                                     if (text) controller.enqueue(encoder.encode(text));
-                                } catch {}
+                                } catch {
+                                    /* 容错：解析失败时沿用默认值 */
+                                }
                             }
                         }
                         controller.close();
@@ -1943,12 +2748,20 @@ async function handleAIExplain(request, env, origin) {
                         };
                         const resp = await fetch(url, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                            body: JSON.stringify(payload)
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${apiKey}`
+                            },
+                            body: JSON.stringify(payload),
+                            signal: AbortSignal.timeout(30000)
                         });
                         if (!resp.ok) {
-                            const errText = await resp.text();
-                            controller.enqueue(encoder.encode(`[AI 接口错误 ${resp.status}] ${errText.slice(0, 200)}`));
+                            await resp.text().catch(() => '');
+                            controller.enqueue(
+                                encoder.encode(
+                                    `[AI 接口错误 ${resp.status}] 上游服务返回异常，请稍后重试`
+                                )
+                            );
                             controller.close();
                             return;
                         }
@@ -1964,18 +2777,29 @@ async function handleAIExplain(request, env, origin) {
                             for (const line of lines) {
                                 if (!line.startsWith('data: ')) continue;
                                 const data = line.slice(6).trim();
-                                if (data === '[DONE]') { controller.close(); return; }
+                                if (data === '[DONE]') {
+                                    controller.close();
+                                    return;
+                                }
                                 try {
                                     const d = JSON.parse(data);
                                     const delta = d.choices?.[0]?.delta || {};
                                     // 思考内容（reasoning_content）
                                     if (delta.reasoning_content) {
-                                        controller.enqueue(encoder.encode('\x00[THINK]\x00' + delta.reasoning_content + '\x00[/THINK]\x00'));
+                                        controller.enqueue(
+                                            encoder.encode(
+                                                '\x00[THINK]\x00' +
+                                                    delta.reasoning_content +
+                                                    '\x00[/THINK]\x00'
+                                            )
+                                        );
                                     }
                                     // 正式回答
                                     const token = delta.content;
                                     if (token) controller.enqueue(encoder.encode(token));
-                                } catch {}
+                                } catch {
+                                    /* 容错：解析失败时沿用默认值 */
+                                }
                             }
                         }
                         controller.close();
@@ -1993,7 +2817,6 @@ async function handleAIExplain(request, env, origin) {
     }
 }
 
-
 // ========== 前端日志收集 ==========
 
 /**
@@ -2008,14 +2831,22 @@ async function handleLogs(request, env, origin) {
             return json({ ok: false, error: '无效的日志格式' }, 400, origin);
         }
 
-        const deviceId = body.deviceId || 'unknown';
-        const logs = body.logs;
+        // deviceId 来自完全公开的接口：必须限字符集与长度，
+        // 否则恶意值会进入管理后台表格（曾导致内联 onclick 注入）
+        const rawDeviceId = typeof body.deviceId === 'string' ? body.deviceId : '';
+        const deviceId = /^[A-Za-z0-9_-]{1,64}$/.test(rawDeviceId) ? rawDeviceId : '';
+        if (!deviceId) {
+            return json({ ok: false, error: '无效的设备ID' }, 400, origin);
+        }
+        const logs = body.logs.slice(0, 50);
 
         // 速率限制检查
         const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
         const recentLogs = await env.DB.prepare(
             'SELECT COUNT(*) as cnt FROM client_logs WHERE device_id = ? AND created_at > ?'
-        ).bind(deviceId, oneHourAgo).first();
+        )
+            .bind(deviceId, oneHourAgo)
+            .first();
 
         const recentCount = recentLogs?.cnt || 0;
         const maxAllowed = 100;
@@ -2036,20 +2867,36 @@ async function handleLogs(request, env, origin) {
         );
 
         const insertBatch = [];
+        const text = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+        const int = (v) => {
+            const n = Number(v);
+            return Number.isFinite(n) ? Math.trunc(n) : 0;
+        };
+        // 客户端时间戳不可信（可伪造排序、可塞入任意字符串），
+        // 仅在格式合法且落在合理区间内时采用，否则用服务端时间
+        const serverNow = new Date().toISOString();
+        const safeTs = (ts) => {
+            if (typeof ts !== 'string' || ts.length > 40) return serverNow;
+            const t = Date.parse(ts);
+            if (Number.isNaN(t)) return serverNow;
+            const drift = Math.abs(Date.now() - t);
+            return drift > 7 * 24 * 3600 * 1000 ? serverNow : new Date(t).toISOString();
+        };
         for (const log of batch) {
+            if (!log || typeof log !== 'object') continue;
             insertBatch.push(
                 stmt.bind(
                     deviceId,
-                    (log.level || 'log').slice(0, 10),
-                    (log.type || 'console').slice(0, 20),
-                    (log.message || '').slice(0, 1000),
-                    (log.stack || '').slice(0, 2000),
-                    (log.pageUrl || '').slice(0, 500),
-                    (log.source || '').slice(0, 500),
-                    log.line || 0,
-                    log.col || 0,
-                    (log.ua || '').slice(0, 500),
-                    log.ts || new Date().toISOString()
+                    text(log.level, 10) || 'log',
+                    text(log.type, 20) || 'console',
+                    text(log.message, 1000),
+                    text(log.stack, 2000),
+                    text(log.pageUrl, 500),
+                    text(log.source, 500),
+                    int(log.line),
+                    int(log.col),
+                    text(log.ua, 500),
+                    safeTs(log.ts)
                 )
             );
         }
@@ -2058,13 +2905,16 @@ async function handleLogs(request, env, origin) {
             await env.DB.batch(insertBatch);
         }
 
-        return json({ ok: true, received: batch.length, dropped: logs.length - batch.length }, 200, origin);
+        return json(
+            { ok: true, received: batch.length, dropped: logs.length - batch.length },
+            200,
+            origin
+        );
     } catch (e) {
         console.error('[Logs] 处理错误:', e.message);
         return json({ ok: false, error: '处理失败' }, 500, origin);
     }
 }
-
 
 /**
  * GET /api/admin/logs - 管理员查看前端日志
@@ -2082,8 +2932,10 @@ async function handleAdminLogs(url, env, origin) {
     const timeStart = url.searchParams.get('timeStart') || '';
     const timeEnd = url.searchParams.get('timeEnd') || '';
     const userName = url.searchParams.get('userName') || '';
-    const limit = Math.min(parseInt(url.searchParams.get('limit')) || 50, 200);
-    const offset = parseInt(url.searchParams.get('offset')) || 0;
+    const rawLimit = parseInt(url.searchParams.get('limit'), 10);
+    const limit = Math.max(1, Math.min(Number.isFinite(rawLimit) ? rawLimit : 50, 200));
+    const rawOffset = parseInt(url.searchParams.get('offset'), 10);
+    const offset = Math.max(0, Number.isFinite(rawOffset) ? rawOffset : 0);
 
     // 验证管理员权限
     const pwd = url.searchParams.get('password') || '';
@@ -2134,7 +2986,9 @@ async function handleAdminLogs(url, env, origin) {
         query += ' ORDER BY cl.created_at DESC LIMIT ? OFFSET ?';
         params.push(limit, offset);
 
-        const { results } = await env.DB.prepare(query).bind(...params).all();
+        const { results } = await env.DB.prepare(query)
+            .bind(...params)
+            .all();
 
         // 获取总数（复用相同筛选条件）
         let countQuery = `
@@ -2144,14 +2998,37 @@ async function handleAdminLogs(url, env, origin) {
             LEFT JOIN users u ON d.user_id = u.id
             WHERE 1=1`;
         const countParams = [];
-        if (filterDeviceId) { countQuery += ' AND cl.device_id = ?'; countParams.push(filterDeviceId); }
-        if (level) { countQuery += ' AND cl.level = ?'; countParams.push(level); }
-        if (type) { countQuery += ' AND cl.type = ?'; countParams.push(type); }
-        if (keyword) { countQuery += ' AND cl.message LIKE ?'; countParams.push('%' + keyword + '%'); }
-        if (timeStart) { countQuery += ' AND cl.created_at >= ?'; countParams.push(timeStart); }
-        if (timeEnd) { countQuery += ' AND cl.created_at <= ?'; countParams.push(timeEnd); }
-        if (userName) { countQuery += ' AND u.initials LIKE ?'; countParams.push('%' + userName + '%'); }
-        const { total } = await env.DB.prepare(countQuery).bind(...countParams).first();
+        if (filterDeviceId) {
+            countQuery += ' AND cl.device_id = ?';
+            countParams.push(filterDeviceId);
+        }
+        if (level) {
+            countQuery += ' AND cl.level = ?';
+            countParams.push(level);
+        }
+        if (type) {
+            countQuery += ' AND cl.type = ?';
+            countParams.push(type);
+        }
+        if (keyword) {
+            countQuery += ' AND cl.message LIKE ?';
+            countParams.push('%' + keyword + '%');
+        }
+        if (timeStart) {
+            countQuery += ' AND cl.created_at >= ?';
+            countParams.push(timeStart);
+        }
+        if (timeEnd) {
+            countQuery += ' AND cl.created_at <= ?';
+            countParams.push(timeEnd);
+        }
+        if (userName) {
+            countQuery += ' AND u.initials LIKE ?';
+            countParams.push('%' + userName + '%');
+        }
+        const { total } = await env.DB.prepare(countQuery)
+            .bind(...countParams)
+            .first();
 
         // 获取错误日志聚合统计
         const { results: errorSummary } = await env.DB.prepare(
@@ -2177,13 +3054,17 @@ async function handleAdminLogs(url, env, origin) {
              LIMIT 20`
         ).all();
 
-        return json({
-            ok: true,
-            logs: results || [],
-            total: total || 0,
-            errorSummary: errorSummary || [],
-            activeDevices: activeDevices || []
-        }, 200, origin);
+        return json(
+            {
+                ok: true,
+                logs: results || [],
+                total: total || 0,
+                errorSummary: errorSummary || [],
+                activeDevices: activeDevices || []
+            },
+            200,
+            origin
+        );
     } catch (e) {
         console.error('[Admin Logs] 查询错误:', e.message);
         return error('查询失败', 500, origin);

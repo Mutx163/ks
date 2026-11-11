@@ -125,6 +125,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
     gap: var(--space-5);
+    /* 面板不再互相拉高：空数据时不会出现一整屏空白卡 */
+    align-items: start;
 }
 
 .insight-grid .insight-panel {
@@ -366,12 +368,23 @@
 }
 
 .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
     text-align: center;
-    padding: var(--space-6);
+    padding: var(--space-5);
     color: var(--text-tertiary);
     background: var(--bg);
     border: 1px dashed var(--border);
     border-radius: var(--radius);
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+}
+
+.empty-state strong {
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 @media (max-width: 900px) {
@@ -409,7 +422,8 @@
 
     .insight-main {
         margin-top: 0;
-        padding: 60px 0 var(--space-4);
+        /* 移动端顶栏是隐藏的（base.css），60px 只会变成纯空白 */
+        padding: var(--space-4) 0;
     }
 
     .insight-summary {

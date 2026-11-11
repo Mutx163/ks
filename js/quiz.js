@@ -9,7 +9,6 @@ import './vendor/lucide.js';
 import './vendor/katex.js';
 import './vendor/marked.js';
 
-
 import Core from './quiz-core.js';
 import Renderer from './quiz-renderer.js';
 import Answers from './quiz-answers.js';

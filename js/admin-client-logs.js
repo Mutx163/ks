@@ -96,7 +96,7 @@ export function initClientLogs(Admin) {
 
                           return `<tr>
                         <td style="font-size:12px;color:var(--admin-text-tertiary);white-space:nowrap">${Admin.fmtTime(log.created_at)}</td>
-                        <td><span class="status-pill ${LEVEL_COLORS[lv] || ''}">${LEVEL_LABELS[lv] || lv}</span></td>
+                        <td><span class="status-pill ${LEVEL_COLORS[lv] || ''}">${Utils.escapeHtml(LEVEL_LABELS[lv] || lv)}</span></td>
                         <td style="font-size:12px;white-space:nowrap">${TYPE_ICONS[log.type] || '📋'} ${Utils.escapeHtml(log.type || 'console')}</td>
                         <td style="font-size:12px">${userHtml}</td>
                         <td style="max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px" title="${Utils.escapeHtml(log.message || '')}">${Utils.escapeHtml(msg)}</td>
@@ -137,11 +137,11 @@ export function initClientLogs(Admin) {
                             .map(
                                 (
                                     dev
-                                ) => `<tr style="cursor:pointer" onclick="Admin.filterClientLogsByDevice(decodeURIComponent('${encodeURIComponent(dev.device_id)}'))">
+                                ) => `<tr style="cursor:pointer" data-device-id="${Utils.escapeHtml(dev.device_id || '')}">
                             <td>${dev.user_name ? `<strong>${Utils.escapeHtml(dev.user_name)}</strong>` : '<span style="color:var(--admin-text-tertiary)">未绑定</span>'}</td>
                             <td><code style="font-size:11px">${dev.sync_code ? Utils.escapeHtml(dev.sync_code) : '-'}</code></td>
-                            <td>${dev.log_count}</td>
-                            <td style="font-size:12px">${Admin.fmtTime(dev.last_active)}</td>
+                            <td>${Number(dev.log_count) || 0}</td>
+                            <td style="font-size:12px">${Utils.escapeHtml(Admin.fmtTime(dev.last_active))}</td>
                         </tr>`
                             )
                             .join('')}</tbody>
@@ -232,6 +232,16 @@ export function initClientLogs(Admin) {
                 </div>
                 ${this.pager({ page, pageSize, total, onPage: 'Admin.setClientLogsPage', onPageSize: 'Admin.setClientLogsPageSize' })}
             `;
+
+            // 设备 ID 来自公开的 /api/logs，绝不能拼进内联 onclick；
+            // 用事件委托读取 data 属性，避免任何引号逃逸。
+            if (!el._deviceClickBound) {
+                el._deviceClickBound = true;
+                el.addEventListener('click', (e) => {
+                    const row = e.target.closest('tr[data-device-id]');
+                    if (row) Admin.filterClientLogsByDevice(row.dataset.deviceId);
+                });
+            }
         } catch (e) {
             el.innerHTML = this.emptyState({ title: '客户端日志加载失败', desc: e.message });
         }
@@ -239,15 +249,19 @@ export function initClientLogs(Admin) {
 
     // ===== 筛选条件摘要文字 =====
     Admin._clfSummaryStr = function (f, total) {
-        const parts = [`共 ${total} 条`];
+        // 用户名/关键词来自输入框，必须转义后再进 innerHTML
+        const esc = (v) => Utils.escapeHtml(String(v ?? ''));
+        const parts = [`共 ${Number(total) || 0} 条`];
         if (f.timePreset && f.timePreset !== 'all')
-            parts.push(TIME_PRESETS[f.timePreset]?.label || '');
-        if (f.level) parts.push(`级别:${LEVEL_LABELS[f.level] || f.level}`);
+            parts.push(esc(TIME_PRESETS[f.timePreset]?.label || ''));
+        if (f.level) parts.push(`级别:${esc(LEVEL_LABELS[f.level] || f.level)}`);
         if (f.type)
-            parts.push(`类型:${TYPE_OPTIONS.find((o) => o.value === f.type)?.label || f.type}`);
-        if (f.userName) parts.push(`用户:${f.userName}`);
-        if (f.keyword) parts.push(`关键词:${f.keyword}`);
-        if (f.deviceId) parts.push(`设备:${f.deviceId.slice(0, 8)}…`);
+            parts.push(
+                `类型:${esc(TYPE_OPTIONS.find((o) => o.value === f.type)?.label || f.type)}`
+            );
+        if (f.userName) parts.push(`用户:${esc(f.userName)}`);
+        if (f.keyword) parts.push(`关键词:${esc(f.keyword)}`);
+        if (f.deviceId) parts.push(`设备:${esc(f.deviceId.slice(0, 8))}…`);
         return parts.join(' · ');
     };
 

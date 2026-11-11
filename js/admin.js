@@ -19,23 +19,9 @@ import { initStatus } from './admin-status.js';
 
 const Admin = {
     users: [],
-    password: (() => {
-        const saved = localStorage.getItem('admin_pwd');
-        if (!saved) return sessionStorage.getItem('admin_pwd') || '';
-        try {
-            const { pwd, ts, remember } = JSON.parse(saved);
-            // 根据"记住我"设置判断有效期
-            const maxAge = remember ? 7 * 24 * 3600000 : 24 * 3600000; // 7天 或 24小时
-            if (Date.now() - ts > maxAge) {
-                localStorage.removeItem('admin_pwd');
-                return '';
-            }
-            return pwd;
-        } catch {
-            localStorage.removeItem('admin_pwd');
-            return '';
-        }
-    })(),
+    // 口令只保留在内存（登录后有效，刷新需重输）。
+    // 不再写入 localStorage：任何同源 XSS 都能直接读走，且明文长期驻留。
+    password: '',
     sort: 'time',
     tab: 'overview',
     _loginVerified: false, // 标记是否已验证过密码
@@ -192,25 +178,16 @@ const Admin = {
     async login() {
         const pwd = document.getElementById('admin-password').value.trim();
         if (!pwd) return;
-        this.logAction('后台登录尝试', {
-            remember: document.getElementById('remember-me')?.checked || false
-        });
-        const remember = document.getElementById('remember-me')?.checked || false;
+        this.logAction('后台登录尝试');
         const err = document.getElementById('login-error');
         err.style.display = 'none';
+        // 清掉旧版本可能残留的明文口令
+        localStorage.removeItem('admin_pwd');
+        sessionStorage.removeItem('admin_pwd');
         try {
             const d = await this.getWithAuth('/api/admin/users', pwd);
             if (d && d.ok) {
-                // 保存密码，包含"记住我"状态
-                localStorage.setItem(
-                    'admin_pwd',
-                    JSON.stringify({
-                        pwd,
-                        ts: Date.now(),
-                        remember
-                    })
-                );
-                sessionStorage.setItem('admin_pwd', pwd);
+                // 只存内存：刷新页面需要重新登录，换取口令不被同源脚本读取
                 this.password = pwd;
                 this.users = d.users;
                 this._loginVerified = true;
@@ -855,8 +832,10 @@ const Admin = {
             urlObj.searchParams.set('_ts', Date.now().toString());
         }
         const url = urlObj.toString();
+        // 鉴权字段必须最后写入：业务参数里若也有 deviceId，
+        // 展开顺序反了会把管理员自己的设备 ID 覆盖掉，导致一律 403
         const payload = options.authInBody
-            ? { deviceId: API.getDeviceId(), password: this.password, ...body }
+            ? { ...body, deviceId: API.getDeviceId(), password: this.password }
             : body;
 
         this.logAction('后台接口请求开始', { requestId, method, path, body: payload });

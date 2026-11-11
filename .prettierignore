@@ -1,0 +1,8 @@
+node_modules/
+dist/
+js/vendor/
+banks/
+revdoc/
+reviews/
+.tmp-*/
+package-lock.json

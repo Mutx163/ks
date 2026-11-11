@@ -5,7 +5,6 @@
 // 首页首屏只需要图标；Prism/KaTeX/Marked 留给题目页或 AI 解读按需加载。
 import './vendor/lucide.js';
 
-
 import LogCollector from './logCollector.js';
 import Storage from './storage.js';
 import Utils from './utils.js';
@@ -50,31 +49,7 @@ const App = {
             console.warn('[App] 题库列表加载超时或失败:', e.message);
         }
 
-        // 题库列表到手后，立即并行加载完整题库详情，骨架屏继续保持可见。
-        Perf.mark('开始加载题库详情');
-        let fullBanksFailed = false;
-        if (bankList && bankList.length > 0) {
-            try {
-                await Promise.race([
-                    BankLoader.loadAllBanks(bankList),
-                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
-                ]);
-                Perf.mark('题库详情加载完成');
-            } catch (e) {
-                Perf.mark('题库详情加载失败');
-                fullBanksFailed = true;
-                console.warn('[App] 题库详情加载超时或失败:', e.message);
-            }
-        }
-
-        // 此时完整数据已就绪（或超时退回到元数据），一次性渲染 + 隐藏骨架，无中间闪变。
-        Perf.mark('加载本地数据');
-        this.loadData();
-
-        Perf.mark('开始渲染');
-        this.render();
-        this.bindEvents();
-        Perf.mark('渲染完成');
+        this._banksLoadFailed = banksLoadFailed;
 
         const skeleton = document.getElementById('loading-skeleton');
         const homeView = document.getElementById('home-view');
@@ -84,9 +59,28 @@ const App = {
             if (homeView) homeView.classList.remove('is-preparing');
             if (skeleton) skeleton.classList.add('hidden');
         };
-        const elapsed = Date.now() - window._pageStartTime;
-        if (elapsed < 500) setTimeout(showReal, 500 - elapsed);
-        else showReal();
+
+        // 首屏只用元数据渲染：卡片需要的名称/描述/分类/题数都在 /api/banks 里，
+        // 没必要为渲染卡片先下载全部题目（实测约 200KB gzip）。
+        // 必须 try/finally：渲染过程中任何异常都不能让骨架屏永久停留
+        // （home-view 仍带 is-preparing 时是 visibility:hidden，等于整页空白）
+        try {
+            Perf.mark('加载本地数据');
+            this.loadData();
+
+            Perf.mark('开始渲染');
+            this.render();
+            this.bindEvents();
+            Perf.mark('渲染完成');
+        } catch (e) {
+            console.error('[App] 首屏渲染失败:', e);
+            if (this.state.banks.length === 0) this.showBanksLoadError();
+        } finally {
+            showReal();
+        }
+
+        // 题目详情在首屏可见之后再补齐（题型筛选、搜索、考试需要）
+        this.loadBankDetailsInBackground(bankList);
 
         // 首次访问：提示注册
         if (!API.isRegistered()) {
@@ -105,7 +99,7 @@ const App = {
         this.loadAnnouncement();
 
         // 显示题库加载失败提示
-        if (banksLoadFailed && this.state.banks.length === 0) {
+        if (this._banksLoadFailed && this.state.banks.length === 0) {
             this.showBanksLoadError();
         }
 
@@ -116,6 +110,58 @@ const App = {
 
         // 云同步不是首屏必需，首屏渲染稳定后再执行
         this.scheduleCloudSync();
+    },
+
+    /**
+     * 首屏渲染稳定后，再补齐题库详情。
+     * 优先加载最近使用的题库，其余在空闲时补。
+     */
+    loadBankDetailsInBackground(bankList) {
+        if (!bankList || bankList.length === 0) return;
+        this._fullBanksFailed = false;
+
+        const recent = new Set(Storage.getRecentBanks());
+        const ordered = [...bankList].sort(
+            (a, b) => Number(recent.has(b.id)) - Number(recent.has(a.id))
+        );
+
+        const run = async () => {
+            Perf.mark('开始加载题库详情');
+            const CONCURRENCY = 3;
+            let cursor = 0;
+            const worker = async () => {
+                while (cursor < ordered.length) {
+                    const bank = ordered[cursor++];
+                    try {
+                        await BankLoader.loadBank(bank.id);
+                    } catch (e) {
+                        this._fullBanksFailed = true;
+                        console.warn('[App] 题库详情加载失败:', bank.id, e.message);
+                    }
+                }
+            };
+            await Promise.all(
+                Array.from({ length: Math.min(CONCURRENCY, ordered.length) }, worker)
+            );
+            Perf.mark('题库详情加载完成');
+            // 详情到位后重绘一次，让题型筛选按钮出现
+            try {
+                this.loadData();
+                this.render();
+            } catch (e) {
+                console.warn('[App] 详情加载后重绘失败:', e.message);
+            }
+            if (this._fullBanksFailed) {
+                Utils.showToast('部分题库详情加载失败，可稍后刷新重试', 'warning', 3000);
+            }
+        };
+
+        // 等首屏稳定后再开始，避免和 LCP 抢带宽
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(run, { timeout: 2500 });
+        } else {
+            setTimeout(run, 600);
+        }
     },
 
     scheduleCloudSync() {
@@ -343,7 +389,7 @@ const App = {
             <div class="wrong-book card-fade-in">
                 <div class="wrong-book-header">
                     <span class="wrong-book-icon">${Utils.icon('x-circle')}</span>
-                    <span class="wrong-book-title title-gradient">错题本</span>
+                    <span class="wrong-book-title">错题本</span>
                     <span class="wrong-book-count">${stats.totalWrong} 题</span>
                 </div>
                 <div class="wrong-book-body">
@@ -594,45 +640,46 @@ const App = {
      */
     _renderModeButtons(bankId, allowedModes, wrongCount, dueCount, bookmarkCount) {
         const btns = [];
+        const safeBankId = Utils.jsSafe(bankId);
 
         if (this._isModeAllowed(allowedModes, 'all')) {
             btns.push(
-                `<button class="btn btn-primary btn-sm" onclick="App.startQuiz('${bankId}', 'all')">${Utils.icon('list')} 顺序刷题</button>`
+                `<button class="btn btn-primary btn-sm" onclick="App.startQuiz('${safeBankId}', 'all')">${Utils.icon('list')} 顺序刷题</button>`
             );
         }
         if (this._isModeAllowed(allowedModes, 'random')) {
             btns.push(
-                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'random')">${Utils.icon('shuffle')} 随机</button>`
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${safeBankId}', 'random')">${Utils.icon('shuffle')} 随机</button>`
             );
         }
         if (this._isModeAllowed(allowedModes, 'shuffle_options')) {
             btns.push(
-                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'shuffle_options')">${Utils.icon('refresh-cw')} 选项乱序</button>`
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${safeBankId}', 'shuffle_options')">${Utils.icon('refresh-cw')} 选项乱序</button>`
             );
         }
         if (this._isModeAllowed(allowedModes, 'wrong')) {
             btns.push(
-                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>${Utils.icon('alert-circle')} 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}</button>`
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${safeBankId}', 'wrong')" ${wrongCount === 0 ? 'disabled' : ''}>${Utils.icon('alert-circle')} 错题${wrongCount > 0 ? '(' + wrongCount + ')' : ''}</button>`
             );
         }
         if (this._isModeAllowed(allowedModes, 'review')) {
             btns.push(
-                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'review')">${Utils.icon('book-open')} 背题</button>`
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${safeBankId}', 'review')">${Utils.icon('book-open')} 背题</button>`
             );
         }
         if (this._isModeAllowed(allowedModes, 'spaced') && dueCount > 0) {
             btns.push(
-                `<button class="btn btn-accent btn-sm" onclick="App.startQuiz('${bankId}', 'spaced')">${Utils.icon('brain')} 复习(${dueCount})</button>`
+                `<button class="btn btn-accent btn-sm" onclick="App.startQuiz('${safeBankId}', 'spaced')">${Utils.icon('brain')} 复习(${dueCount})</button>`
             );
         }
         if (this._isModeAllowed(allowedModes, 'bookmark') && bookmarkCount > 0) {
             btns.push(
-                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${bankId}', 'bookmark')">${Utils.icon('star')} 收藏(${bookmarkCount})</button>`
+                `<button class="btn btn-secondary btn-sm" onclick="App.startQuiz('${safeBankId}', 'bookmark')">${Utils.icon('star')} 收藏(${bookmarkCount})</button>`
             );
         }
         if (this._isModeAllowed(allowedModes, 'exam')) {
             btns.push(
-                `<button class="btn btn-secondary btn-sm" onclick="App.startExam('${bankId}')">${Utils.icon('file-text')} 考试</button>`
+                `<button class="btn btn-secondary btn-sm" onclick="App.startExam('${safeBankId}')">${Utils.icon('file-text')} 考试</button>`
             );
         }
 
@@ -701,11 +748,15 @@ const App = {
         const banks = this.getSortedBanks();
 
         if (banks.length === 0) {
+            // 走到这里说明加载已经结束：不能继续显示「加载中…」，
+            // 那会让「管理员未启用任何题库」看起来像永远加载不完
+            const failed = this._banksLoadFailed;
             container.innerHTML = `
                 <div class="bank-empty">
-                    <div class="bank-empty-icon">${Utils.icon('book-open', 'icon-xl')}</div>
-                    <div class="bank-empty-title">加载题库中...</div>
-                    <div class="bank-empty-desc">请稍候，题库正在加载</div>
+                    <div class="bank-empty-icon">${Utils.icon(failed ? 'wifi-off' : 'book-open', 'icon-xl')}</div>
+                    <div class="bank-empty-title">${failed ? '题库加载失败' : '暂无可用题库'}</div>
+                    <div class="bank-empty-desc">${failed ? '请检查网络后重试' : '管理员尚未启用任何题库'}</div>
+                    <button class="btn btn-secondary btn-sm" style="margin-top:var(--space-3)" onclick="location.reload()">刷新重试</button>
                 </div>
             `;
             return;
@@ -723,16 +774,18 @@ const App = {
                 const bookmarkCount = Storage.getBookmarkCount(bank.id);
 
                 const questions = bank.questions || [];
-                const totalQuestions = bank.questionCount || bank.question_count || questions.length;
+                const totalQuestions =
+                    bank.questionCount || bank.question_count || questions.length;
                 const bankTypes = this.getBankTypes(bank);
 
                 const iconClass = bank.id.includes('c-language') ? 'c-lang' : 'default';
                 const iconText = bank.id.includes('c-language') ? 'C' : 'Q';
+                const iconSvg = bank.id.includes('c-language') ? '' : Utils.icon('book-open');
 
                 return `
-                <div class="bank-card card-fade-in" data-id="${bank.id}">
+                <div class="bank-card" data-id="${Utils.escapeHtml(bank.id)}">
                     <div class="bank-card-header">
-                        <div class="bank-card-icon ${iconClass}">${iconText}</div>
+                        <div class="bank-card-icon ${iconClass}">${iconSvg || iconText}</div>
                         <div class="bank-card-info">
                             <div class="bank-card-title">${Utils.escapeHtml(bank.name)}</div>
                             <div class="bank-card-desc">${Utils.escapeHtml(bank.description || '')}</div>
@@ -745,51 +798,48 @@ const App = {
                             .map((cat) => `<span class="tag">${Utils.escapeHtml(cat)}</span>`)
                             .join('')}
                         ${dueCount > 0 ? `<span class="tag tag-warning">${Utils.icon('brain')} ${dueCount} 待复习</span>` : ''}
-                        ${bankTypes.filter((t) => t !== 'all').length > 0
-                            ? `<span class="tag">${bankTypes
-                                .filter((t) => t !== 'all')
-                                .map((t) => this.getTypeLabel(t))
-                                .join(' · ')}</span>`
-                            : ''}
                     </div>
 
-                    <div class="bank-card-progress">
+                    ${
+                        stats.progress > 0
+                            ? `<div class="bank-card-progress">
                         <div class="bank-card-progress-header">
-                            <span>完成进度</span>
+                            <span>已答 ${stats.answered} / ${totalQuestions}</span>
                             <span>${stats.progress}%</span>
                         </div>
                         <div class="progress-bar">
-                            <div class="progress-bar-fill ${stats.progress === 100 ? 'success' : stats.progress > 0 ? 'warning' : ''}" 
+                            <div class="progress-bar-fill ${stats.progress === 100 ? 'success' : 'warning'}"
                                  style="width: ${stats.progress}%"></div>
                         </div>
-                    </div>
+                    </div>`
+                            : ''
+                    }
 
                     <div class="bank-card-stats">
-                        <div class="bank-card-stat">
-                            共 <span class="bank-card-stat-num">${totalQuestions}</span> 题
-                        </div>
-                        <div class="bank-card-stat">
-                            已答 <span class="bank-card-stat-num">${stats.answered}</span>
-                        </div>
-                        <div class="bank-card-stat">
-                            正确 <span class="bank-card-stat-num">${stats.correct}</span>
-                        </div>
+                        <div class="bank-card-stat">共 <span class="bank-card-stat-num">${totalQuestions}</span> 题</div>
+                        ${stats.answered > 0 ? `<div class="bank-card-stat">已答 <span class="bank-card-stat-num">${stats.answered}</span></div>` : ''}
+                        ${stats.correct > 0 ? `<div class="bank-card-stat">正确 <span class="bank-card-stat-num">${stats.correct}</span></div>` : ''}
+                        ${stats.answered === 0 ? '<div class="bank-card-stat">未开始</div>' : ''}
                     </div>
 
                     <!-- 题型筛选行（选择题型后，刷题按钮自动使用所选题型） -->
-                    ${bankTypes.filter((t) => t !== 'all').length > 0
-                        ? `<div class="bank-card-types">
+                    ${
+                        bankTypes.filter((t) => t !== 'all').length > 0
+                            ? `<div class="bank-card-types">
                         ${bankTypes
                             .map((type) => {
                                 const isActive =
                                     (this.state.selectedTypes[bank.id] || 'all') === type;
-                                return `<button class="bank-type-btn ${isActive ? 'active' : ''}" onclick="App.selectType('${bank.id}', '${type}')">
-                                ${type === 'all' ? Utils.icon('layers') + ' 全部' : this.getTypeLabel(type)}
+                                const safeBankIdType = Utils.jsSafe(bank.id);
+                                const safeType = Utils.jsSafe(type);
+                                return `<button class="bank-type-btn ${isActive ? 'active' : ''}" onclick="App.selectType('${safeBankIdType}', '${safeType}')">
+                                ${type === 'all' ? Utils.icon('layers') + ' 全部' : Utils.escapeHtml(this.getTypeLabel(type))}
                             </button>`;
                             })
                             .join('')}
                     </div>`
-                        : ''}
+                            : ''
+                    }
 
                     <!-- 刷题模式按钮网格 -->
                     <div class="bank-card-modes">
@@ -797,10 +847,10 @@ const App = {
                     </div>
 
                     <div class="bank-card-footer">
-                        <button class="btn btn-ghost btn-sm" onclick="App.resetProgress('${bank.id}')" title="重置进度">
+                        <button class="btn btn-ghost btn-sm" onclick="App.resetProgress('${Utils.jsSafe(bank.id)}')" title="重置进度">
                             <span>${Utils.icon('rotate-ccw')} 重置</span>
                         </button>
-                        <button class="btn btn-ghost btn-sm" onclick="App.exportBank('${bank.id}')" title="导出题库">
+                        <button class="btn btn-ghost btn-sm" onclick="App.exportBank('${Utils.jsSafe(bank.id)}')" title="导出题库">
                             <span>${Utils.icon('download')} 导出</span>
                         </button>
                     </div>
@@ -899,8 +949,9 @@ const App = {
         // 记录题库使用
         Storage.recordBankUsage(bankId);
         const selectedType = this.state.selectedTypes[bankId] || 'all';
-        const typeParam = selectedType !== 'all' ? `&type=${selectedType}` : '';
-        window.location.href = `quiz.html?bank=${bankId}&mode=${mode}${typeParam}`;
+        const typeParam = selectedType !== 'all' ? `&type=${encodeURIComponent(selectedType)}` : '';
+        // bank/id 来自题库数据，必须编码：含 & 或 # 会截断查询串
+        window.location.href = `quiz.html?bank=${encodeURIComponent(bankId)}&mode=${encodeURIComponent(mode)}${typeParam}`;
     },
 
     /**
@@ -924,7 +975,7 @@ const App = {
         `;
 
         Utils.showModal({
-            title: '📝 模拟考试设置',
+            title: '模拟考试设置',
             content,
             buttons: [
                 {
@@ -936,7 +987,7 @@ const App = {
                         const passRate = parseInt(modal.querySelector('#exam-pass').value) || 60;
                         const countParam = count > 0 ? `&count=${count}` : '';
                         const timeParam = timeMinutes > 0 ? `&time=${timeMinutes * 60}` : '';
-                        window.location.href = `quiz.html?bank=${bankId}&mode=exam${countParam}${timeParam}&pass=${passRate}`;
+                        window.location.href = `quiz.html?bank=${encodeURIComponent(bankId)}&mode=exam${countParam}${timeParam}&pass=${passRate}`;
                     }
                 },
                 {
@@ -1107,7 +1158,8 @@ const App = {
         Utils.showToast(
             `${Utils.icon(themeIconNames[theme] || 'monitor')} 主题：${themeLabels[theme]}`,
             'success',
-            1500
+            1500,
+            { unsafe: true }
         );
     },
 
@@ -1118,7 +1170,7 @@ const App = {
         // 记录打开时的初始状态
         const initialTheme = document.documentElement.getAttribute('data-theme') || 'auto';
         const initialColor = document.documentElement.getAttribute('data-color') || 'parchment';
-        
+
         const themes = [
             { value: 'auto', icon: 'monitor', label: '跟随系统' },
             { value: 'light', icon: 'sun', label: '浅色模式' },
@@ -1126,19 +1178,19 @@ const App = {
         ];
 
         const colors = [
-            { 
-                value: 'parchment', 
-                label: '暖色羊皮纸', 
-                primary: '#155e9c', 
-                bg: '#f1e9d2', 
-                fg: '#4a3e2a' 
+            {
+                value: 'parchment',
+                label: '暖色羊皮纸',
+                primary: '#155e9c',
+                bg: '#f1e9d2',
+                fg: '#4a3e2a'
             },
-            { 
-                value: 'white', 
-                label: '白色简洁', 
-                primary: '#2563eb', 
-                bg: '#ffffff', 
-                fg: '#0f172a' 
+            {
+                value: 'white',
+                label: '白色简洁',
+                primary: '#2563eb',
+                bg: '#ffffff',
+                fg: '#0f172a'
             }
         ];
 
@@ -1147,7 +1199,9 @@ const App = {
             <div class="theme-picker-section">
                 <span class="theme-picker-label">色彩风格</span>
                 <div class="theme-picker-grid-2">
-                    ${colors.map(c => `
+                    ${colors
+                        .map(
+                            (c) => `
                         <div class="theme-picker-card ${c.value === initialColor ? 'active' : ''}" data-type="color" data-value="${c.value}">
                             <div class="check-badge">✓</div>
                             <div class="color-preview-dots">
@@ -1158,20 +1212,26 @@ const App = {
                             <input type="radio" name="colorScheme" value="${c.value}" ${c.value === initialColor ? 'checked' : ''}>
                             <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">${c.label}</span>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
             <div class="theme-picker-section" style="border-top: 1px solid var(--border); padding-top: var(--space-3); margin-top: var(--space-3);">
                 <span class="theme-picker-label">亮度模式</span>
                 <div class="theme-picker-grid">
-                    ${themes.map(t => `
+                    ${themes
+                        .map(
+                            (t) => `
                         <div class="theme-picker-card ${t.value === initialTheme ? 'active' : ''}" data-type="theme" data-value="${t.value}">
                             <div class="check-badge">✓</div>
                             ${Utils.icon(t.icon, 'theme-picker-icon')}
                             <input type="radio" name="theme" value="${t.value}" ${t.value === initialTheme ? 'checked' : ''}>
                             <span style="font-size: 11px; white-space: nowrap; color: var(--text-secondary);">${t.label}</span>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
         `;
@@ -1203,18 +1263,24 @@ const App = {
                     class: 'btn-primary',
                     onClick: (overlay) => {
                         confirmed = true;
-                        
+
                         // 获取当前高亮的卡片选项
-                        const activeThemeCard = overlay.querySelector('.theme-picker-card[data-type="theme"].active');
-                        const activeColorCard = overlay.querySelector('.theme-picker-card[data-type="color"].active');
-                        
+                        const activeThemeCard = overlay.querySelector(
+                            '.theme-picker-card[data-type="theme"].active'
+                        );
+                        const activeColorCard = overlay.querySelector(
+                            '.theme-picker-card[data-type="color"].active'
+                        );
+
                         const theme = activeThemeCard ? activeThemeCard.dataset.value : 'auto';
-                        const colorScheme = activeColorCard ? activeColorCard.dataset.value : 'parchment';
+                        const colorScheme = activeColorCard
+                            ? activeColorCard.dataset.value
+                            : 'parchment';
 
                         // 持久化保存
                         Storage.updateSettings({ theme, colorScheme });
                         applyTempState(theme, colorScheme);
-                        
+
                         Utils.showToast('主题已更新', 'success');
                         overlay.remove();
                     }
@@ -1240,16 +1306,18 @@ const App = {
 
         // 动态绑定卡片点击与实时预览事件
         if (modal) {
-            modal.querySelectorAll('.theme-picker-card').forEach(card => {
+            modal.querySelectorAll('.theme-picker-card').forEach((card) => {
                 card.addEventListener('click', () => {
                     const type = card.dataset.type;
 
                     // 1. 清除当前类别中所有其他卡片的 active 状态，并取消 radio 选中
-                    modal.querySelectorAll(`.theme-picker-card[data-type="${type}"]`).forEach(c => {
-                        c.classList.remove('active');
-                        const radio = c.querySelector('input[type="radio"]');
-                        if (radio) radio.checked = false;
-                    });
+                    modal
+                        .querySelectorAll(`.theme-picker-card[data-type="${type}"]`)
+                        .forEach((c) => {
+                            c.classList.remove('active');
+                            const radio = c.querySelector('input[type="radio"]');
+                            if (radio) radio.checked = false;
+                        });
 
                     // 2. 激活当前点击的卡片并选中 radio
                     card.classList.add('active');
@@ -1257,10 +1325,16 @@ const App = {
                     if (currentRadio) currentRadio.checked = true;
 
                     // 3. 读取最新的选择状态
-                    const activeThemeCard = modal.querySelector('.theme-picker-card[data-type="theme"].active');
-                    const activeColorCard = modal.querySelector('.theme-picker-card[data-type="color"].active');
+                    const activeThemeCard = modal.querySelector(
+                        '.theme-picker-card[data-type="theme"].active'
+                    );
+                    const activeColorCard = modal.querySelector(
+                        '.theme-picker-card[data-type="color"].active'
+                    );
                     const activeTheme = activeThemeCard ? activeThemeCard.dataset.value : 'auto';
-                    const activeColor = activeColorCard ? activeColorCard.dataset.value : 'parchment';
+                    const activeColor = activeColorCard
+                        ? activeColorCard.dataset.value
+                        : 'parchment';
 
                     // 4. 即时生效（Live Preview）
                     applyTempState(activeTheme, activeColor);
@@ -1377,7 +1451,7 @@ const App = {
                         ? `
                 <div style="margin-top: var(--space-2);">
                     <button class="btn-admin-entrance" onclick="window.open('admin.html', '_blank'); this.closest('.modal-overlay').remove();">
-                        👑 进入管理后台
+                        进入管理后台
                     </button>
                 </div>
                 `
@@ -1408,7 +1482,8 @@ const App = {
                         }
 
                         const newSwipe = modal.querySelector('#setting-swipe').checked;
-                        const newLogCollection = modal.querySelector('#setting-log-collection').checked;
+                        const newLogCollection =
+                            modal.querySelector('#setting-log-collection').checked;
                         LogCollector.setEnabled(newLogCollection);
 
                         Storage.updateSettings({
@@ -1560,7 +1635,8 @@ const App = {
                 Utils.showToast(
                     `${Utils.icon('lightbulb')} 按 Enter 提交 · Alt+←→ 切换 · A-D 选答案`,
                     'info',
-                    4000
+                    4000,
+                    { unsafe: true }
                 );
                 localStorage.setItem('quiz_shortcuts_shown', '1');
             }, 2000);
@@ -1570,7 +1646,7 @@ const App = {
         if (!localStorage.getItem('quiz_welcome_shown') && this.state.banks.length > 0) {
             localStorage.setItem('quiz_welcome_shown', '1');
             setTimeout(() => {
-                Utils.showToast('👋 点击题库卡片上的「开始刷题」按钮即可学习', 'info', 5000);
+                Utils.showToast('点击题库卡片上的「开始刷题」按钮即可学习', 'info', 5000);
             }, 4000);
         }
     }

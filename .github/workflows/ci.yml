@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   lint-and-build:
     runs-on: ubuntu-latest
@@ -22,6 +29,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check formatting
+        run: npx prettier --check "js/**/*.js" "css/**/*.css" "worker/**/*.js" "*.html"
+
+      # 覆盖 js/ 与 worker/src，且 --max-warnings 0：
+      # 之前只扫 js/ 且全部是 warning，worker 的 20+ 个真实错误完全被绕过
       - name: Lint
         run: npm run lint
 

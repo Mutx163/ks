@@ -388,7 +388,7 @@
 .question-nav-item.current {
     background: var(--primary);
     border-color: var(--primary);
-    color: white;
+    color: var(--on-primary);
 }
 
 .question-nav-item.correct {
@@ -401,6 +401,14 @@
     background: var(--danger-light);
     border-color: var(--danger);
     color: var(--danger);
+}
+
+/* 题内小提示：统一字号与颜色，替代零散内联样式 */
+.question-hint {
+    margin-top: var(--space-3);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
 }
 
 /* ===== 题目卡片 ===== */
@@ -525,7 +533,7 @@
     gap: 4px;
     padding: 4px 10px;
     border: 1px solid var(--primary);
-    border-radius: 16px;
+    border-radius: var(--radius-pill);
     background: var(--primary-light);
     color: var(--primary);
     font-size: 12px;
@@ -537,8 +545,8 @@
 
 .btn-ai:hover {
     background: var(--primary);
-    color: white;
-    transform: scale(1.05);
+    color: var(--on-primary);
+    transform: scale(1.02);
 }
 
 .btn-ai svg {
@@ -589,7 +597,7 @@
     width: 32px;
     height: 32px;
     border: 3px solid var(--border, #ddd);
-    border-top-color: var(--primary, #6366f1);
+    border-top-color: var(--primary);
     border-radius: 50%;
     animation: img-spin 0.8s linear infinite;
 }
@@ -668,25 +676,25 @@
 
 .essay-input:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .btn-success {
     background: var(--success);
-    color: white;
+    color: var(--on-success);
 }
 
 .btn-success:hover {
-    background: #1b5e20;
+    background: var(--success-dark);
 }
 
 .btn-danger {
     background: var(--danger);
-    color: white;
+    color: var(--on-danger);
 }
 
 .btn-danger:hover {
-    background: #b71c1c;
+    background: var(--danger-dark);
 }
 
 /* ===== 选项 ===== */
@@ -742,7 +750,7 @@
 
 .option-item.correct .option-marker {
     background: var(--success);
-    color: white;
+    color: var(--on-success);
 }
 
 .option-item.correct.disabled:hover {
@@ -759,7 +767,7 @@
 
 .option-item.wrong .option-marker {
     background: var(--danger);
-    color: white;
+    color: var(--on-danger);
 }
 
 .option-item.wrong.disabled:hover {
@@ -830,19 +838,19 @@
 .option-item.selected .option-marker {
     border-color: var(--primary);
     background: var(--primary);
-    color: white;
+    color: var(--on-primary);
 }
 
 .option-item.correct .option-marker {
     border-color: var(--success);
     background: var(--success);
-    color: white;
+    color: var(--on-success);
 }
 
 .option-item.wrong .option-marker {
     border-color: var(--danger);
     background: var(--danger);
-    color: white;
+    color: var(--on-danger);
 }
 
 .option-content {
@@ -945,7 +953,7 @@
 
 .fill-input:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .fill-input.correct {
@@ -985,7 +993,7 @@
 
 .code-editor:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 /* ===== 结果提示 ===== */
@@ -1002,8 +1010,14 @@
 }
 
 .result-banner-icon {
-    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
     flex-shrink: 0;
+}
+
+.result-banner-icon .icon {
+    width: 20px;
+    height: 20px;
 }
 .result-banner-text {
     flex: 1;
@@ -1012,13 +1026,13 @@
 .result-banner.correct {
     background: var(--success-light);
     color: var(--success);
-    border: 1px solid var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
 }
 
 .result-banner.wrong {
     background: var(--danger-light);
     color: var(--danger);
-    border: 1px solid var(--danger);
+    border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
 }
 
 /* ===== 🎯 正确答案卡片 ===== */
@@ -1069,7 +1083,7 @@
     padding: 0 6px;
     border-radius: 6px; /* rounded-md */
     background: var(--primary);
-    color: #ffffff !important; /* 徽章内强制白字，防范黑夜模式反色 */
+    color: var(--on-primary);
     font-weight: 700;
     font-size: var(--font-size-sm);
     margin-right: 8px;
@@ -1078,7 +1092,7 @@
 
 /* 文本徽章（适用于 判断题“正确/错误” 等） */
 .answer-badge.text {
-    border-radius: 12px; /* rounded-full */
+    border-radius: var(--radius-pill);
     min-width: auto;
     padding: 2px 14px;
     height: auto;
@@ -1143,7 +1157,8 @@
 .code-answer-wrapper code {
     font-family: monospace;
     font-size: 13px;
-    color: var(--text);
+    /* 深色代码底上必须用配套的浅色前景，用 --text 在浅色主题下是黑字，对比度仅 1.6:1 */
+    color: var(--type-code-color);
     background: transparent !important;
     padding: 0 !important;
     border: none !important;
@@ -1210,6 +1225,20 @@
 }
 .explanation-content p:last-child {
     margin-bottom: 0;
+}
+
+/* 块级公式在窄屏可横向滚动，避免右侧被裁切 */
+/* 题干预选项里的块级公式同样需要横向滚动，否则窄屏会被 overflow-x:hidden 直接裁掉 */
+.question-text .katex-display,
+.option-content .katex-display,
+.explanation-content .katex-display,
+.correct-answer-content .katex-display,
+.essay-answer-content .katex-display,
+.math-block {
+    margin: 0.8em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
 }
 
 .explanation-content code {
@@ -1501,12 +1530,12 @@
 /* ===== btn-warning ===== */
 .btn-warning {
     background: var(--warning);
-    color: white;
+    color: var(--on-warning);
     border-color: var(--warning);
 }
 .btn-warning:hover {
-    filter: brightness(1.1);
-    color: white;
+    background: var(--warning-dark);
+    color: var(--on-warning);
 }
 .btn-outline {
     background: transparent;
@@ -1641,7 +1670,7 @@
     .option-item {
         padding: 14px 16px;
         min-height: 52px;
-        border-radius: 10px;
+        border-radius: var(--radius);
     }
     .option-marker {
         width: 28px;

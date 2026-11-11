@@ -1,4 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="20" fill="#4f46e5"/>
-  <text x="50" y="68" font-family="Arial, sans-serif" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Q</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="城科卷王">
+  <rect width="64" height="64" rx="14" fill="#155e9c"/>
+  <rect x="15" y="12" width="34" height="40" rx="4" fill="#f9f6ec"/>
+  <rect x="21" y="20" width="22" height="3" rx="1.5" fill="#155e9c" opacity="0.85"/>
+  <rect x="21" y="27" width="22" height="3" rx="1.5" fill="#155e9c" opacity="0.55"/>
+  <rect x="21" y="34" width="14" height="3" rx="1.5" fill="#155e9c" opacity="0.55"/>
+  <circle cx="43" cy="45" r="8" fill="#b45309"/>
+  <path d="M39.6 45.2l2.4 2.4 4.6-4.8" fill="none" stroke="#f9f6ec" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

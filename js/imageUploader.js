@@ -4,6 +4,18 @@
  */
 
 const ImageUploader = {
+    // 图床凭证。构建时通过 VITE_IMG_UPLOAD_TOKEN 注入（Cloudflare Pages 环境变量），
+    // 绝不把第三方密钥硬编码进仓库或打进公开 bundle。
+    // 未配置时上传会直接提示走 URL 方式，而不是带着空 token 请求。
+    TOKEN: (import.meta.env && import.meta.env.VITE_IMG_UPLOAD_TOKEN) || '',
+    ENDPOINT:
+        (import.meta.env && import.meta.env.VITE_IMG_UPLOAD_ENDPOINT) ||
+        'https://img.wwoyun.cn/api/v2/upload',
+
+    isConfigured() {
+        return typeof this.TOKEN === 'string' && this.TOKEN.length > 0;
+    },
+
     // 图床配置
     PROVIDERS: {
         wwpic: {
@@ -37,11 +49,8 @@ const ImageUploader = {
                     xhr.addEventListener('error', () =>
                         resolve({ success: false, error: '网络错误' })
                     );
-                    xhr.open('POST', 'https://img.wwoyun.cn/api/v2/upload');
-                    xhr.setRequestHeader(
-                        'Authorization',
-                        'Bearer 171|ZDEnLUKTwjfvXblPTp7mPsJnB71HZZOcB8fHeiyj401e1955'
-                    );
+                    xhr.open('POST', ImageUploader.ENDPOINT);
+                    xhr.setRequestHeader('Authorization', `Bearer ${ImageUploader.TOKEN}`);
                     xhr.send(formData);
                 });
             }
@@ -54,6 +63,40 @@ const ImageUploader = {
     },
 
     /**
+     * 压缩图片：长边限制到 maxEdge，输出 JPEG/WebP。
+     * 原图直传 10MB 在移动端既慢又浪费图床配额。
+     */
+    async compress(file, { maxEdge = 1600, quality = 0.85 } = {}) {
+        // GIF 压缩会丢掉动画，直接原样返回
+        if (!file || file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+        try {
+            const bitmap = await createImageBitmap(file);
+            const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+            if (scale >= 1 && file.size <= 400 * 1024) return file;
+            const w = Math.round(bitmap.width * scale);
+            const h = Math.round(bitmap.height * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(bitmap, 0, 0, w, h);
+            bitmap.close?.();
+            const type = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+            if (!blob || blob.size >= file.size) return file;
+            return new File(
+                [blob],
+                file.name.replace(/\.[^.]+$/, type === 'image/png' ? '.png' : '.jpg'),
+                {
+                    type
+                }
+            );
+        } catch {
+            return file;
+        }
+    },
+
+    /**
      * 上传图片
      * @param {File} file - 图片文件
      * @param {Function} onProgress - 进度回调 (0-100)
@@ -62,6 +105,13 @@ const ImageUploader = {
     async upload(file, onProgress) {
         if (!file) {
             return { success: false, error: '请选择文件' };
+        }
+
+        if (!this.isConfigured()) {
+            return {
+                success: false,
+                error: '图床上传未配置（需要设置 VITE_IMG_UPLOAD_TOKEN），请直接填写图片 URL'
+            };
         }
 
         // 验证文件类型
@@ -82,6 +132,8 @@ const ImageUploader = {
         }
 
         try {
+            // 上传前压缩，避免 10MB 原图直传
+            file = await this.compress(file);
             console.log(`[ImageUploader] 📤 上传到 ${provider.name}...`);
             const result = await provider.upload(file, onProgress);
             if (result.success) {

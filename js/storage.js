@@ -52,11 +52,26 @@ const Storage = {
      * 获取存储值
      */
     get(key) {
+        let raw;
         try {
-            const value = localStorage.getItem(key);
-            return value ? JSON.parse(value) : null;
+            raw = localStorage.getItem(key);
         } catch (e) {
+            // 隐私模式 / 被禁用：读都失败时只能返回空
             console.error('Storage get error:', e);
+            return null;
+        }
+        if (!raw) return null;
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            // 数据损坏：先备份原始串再返回 null，
+            // 否则 init() 会直接用默认值覆盖，用户数据永久丢失
+            console.error('Storage parse error:', key, e);
+            try {
+                localStorage.setItem(`${key}.corrupt.${Date.now()}`, raw.slice(0, 200000));
+            } catch {
+                /* 备份失败也不影响主流程 */
+            }
             return null;
         }
     },
@@ -170,7 +185,40 @@ const Storage = {
 
     getBankProgress(bankId) {
         const progress = this.getProgress();
-        return progress[bankId] || { answered: 0, correct: 0, wrong: 0, questions: {} };
+        const p = progress[bankId];
+        if (!p) return { answered: 0, correct: 0, wrong: 0, questions: {} };
+        // 结构归一：老数据/云端合并可能缺少 questions，直接访问会 TypeError
+        if (!p.questions || typeof p.questions !== 'object' || Array.isArray(p.questions)) {
+            p.questions = {};
+        }
+        return p;
+    },
+
+    // ==================== 上报游标 ====================
+    // 记录「已经推送到云端的累计量」，按题库持久化。
+    // 只放在 session 里会在完成/换模式后归零，导致历史作答被整批重推。
+    getStatsCursor(bankId) {
+        const p = this.getProgress()[bankId];
+        const c = p && p.statsCursor;
+        if (!c || typeof c !== 'object') return { answered: 0, correct: 0, duration: 0 };
+        return {
+            answered: Math.max(0, Number(c.answered) || 0),
+            correct: Math.max(0, Number(c.correct) || 0),
+            duration: Math.max(0, Number(c.duration) || 0)
+        };
+    },
+
+    setStatsCursor(bankId, cursor) {
+        const progress = this.getProgress();
+        if (!progress[bankId]) {
+            progress[bankId] = { answered: 0, correct: 0, wrong: 0, questions: {} };
+        }
+        progress[bankId].statsCursor = {
+            answered: Math.max(0, Number(cursor.answered) || 0),
+            correct: Math.max(0, Number(cursor.correct) || 0),
+            duration: Math.max(0, Number(cursor.duration) || 0)
+        };
+        this.set(this.KEYS.PROGRESS, progress);
     },
 
     updateQuestionProgress(bankId, questionId, isCorrect, userAnswer) {
@@ -252,7 +300,15 @@ const Storage = {
 
     resetBankProgress(bankId) {
         const progress = this.getProgress();
-        progress[bankId] = { answered: 0, correct: 0, wrong: 0, questions: {} };
+        // 重置本地进度的同时把上报游标归零（本地已答从 0 重新计），
+        // 否则后续增量会算成负数而不再上报
+        progress[bankId] = {
+            answered: 0,
+            correct: 0,
+            wrong: 0,
+            questions: {},
+            statsCursor: { answered: 0, correct: 0, duration: 0 }
+        };
         this.set(this.KEYS.PROGRESS, progress);
         return true;
     },
@@ -261,7 +317,9 @@ const Storage = {
         const progress = this.getBankProgress(bankId);
         const wrongIds = [];
         for (const [qId, qProgress] of Object.entries(progress.questions)) {
-            if (!qProgress.correct) wrongIds.push(parseInt(qId));
+            if (!qProgress || qProgress.correct) continue;
+            // 保留原始 key 类型：题目 id 可能是字符串，parseInt 会变 NaN
+            wrongIds.push(/^\d+$/.test(qId) ? Number(qId) : qId);
         }
         return wrongIds;
     },
@@ -288,20 +346,23 @@ const Storage = {
     },
 
     clearAllWrong() {
+        // 语义是「移除错题记录」，不是「把错题改判为正确」。
+        // 后者会把正确率凭空抬高并同步到云端排行榜，与按钮文案不符。
         const progress = this.getProgress();
         for (const bankId of Object.keys(progress)) {
-            if (progress[bankId] && progress[bankId].questions) {
-                const questions = progress[bankId].questions;
-                let corrected = 0;
-                for (const [qId, qProgress] of Object.entries(questions)) {
-                    if (!qProgress.correct) {
-                        questions[qId] = { ...qProgress, correct: true };
-                        corrected++;
-                    }
+            const bp = progress[bankId];
+            if (!bp || !bp.questions) continue;
+            const questions = bp.questions;
+            let removed = 0;
+            for (const [qId, qProgress] of Object.entries(questions)) {
+                if (!qProgress || !qProgress.correct) {
+                    delete questions[qId];
+                    removed++;
                 }
-                progress[bankId].wrong = 0;
-                progress[bankId].correct += corrected;
             }
+            bp.wrong = 0;
+            bp.answered = Math.max(0, (Number(bp.answered) || 0) - removed);
+            bp.correct = Math.max(0, Math.min(Number(bp.correct) || 0, bp.answered));
         }
         this.set(this.KEYS.PROGRESS, progress);
     },
@@ -559,6 +620,16 @@ const Storage = {
      */
     clearAll() {
         Object.values(this.KEYS).forEach((key) => this.remove(key));
+        // 账号相关与缓存类 key 不在 KEYS 里，必须显式清理，
+        // 否则「清空本地数据」后旧队列仍会把增量补推回云端
+        [
+            'ks_sync_queue',
+            'quiz_ai_explain_local',
+            'ks_cached_announce',
+            'ks_is_admin',
+            'ks_last_pull',
+            'quiz_search_results'
+        ].forEach((key) => this.remove(key));
         this._bankData.clear();
         this.init();
     },
@@ -569,6 +640,18 @@ const Storage = {
     clearLegacyCache() {
         this.remove('quiz_banks_meta');
         this.remove('quiz_cache_versions');
+        // 更早版本把整份题库写进 localStorage，现在没有任何读取方，
+        // 留着只会白占配额
+        try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('ks_bank_data_') || key === 'ks_api_base')) {
+                    localStorage.removeItem(key);
+                }
+            }
+        } catch {
+            /* localStorage 不可用时忽略 */
+        }
         console.log('[Storage] ✅ 已清除旧缓存数据');
     }
 };
