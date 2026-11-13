@@ -30,6 +30,83 @@ export function initBanks(Admin) {
         unknown: '未知'
     };
 
+    // 题型排序按常用顺序，而不是字符串字典序
+    const TYPE_ORDER = ['single', 'multiple', 'multi', 'judge', 'fill', 'essay', 'code'];
+
+    // 题目列表排序选项
+    const QUESTION_SORT_OPTIONS = [
+        { key: 'default', label: '默认顺序' },
+        { key: 'id_asc', label: '题号升序' },
+        { key: 'id_desc', label: '题号降序' },
+        { key: 'type', label: '按题型' },
+        { key: 'category', label: '按分类' },
+        { key: 'question', label: '按题干' }
+    ];
+
+    // 题库列表可排序列（列顺序即表格列顺序）
+    const BANK_SORT_COLUMNS = [
+        { key: 'name', label: '题库' },
+        { key: 'category', label: '分类' },
+        { key: 'question_count', label: '题目数' },
+        { key: 'version', label: '版本' },
+        { key: 'enabled', label: '前台状态' },
+        { key: 'updated_at', label: '更新时间' }
+    ];
+    const BANK_SORT_VALUE = {
+        name: (b) => b.name || '',
+        category: (b) => b.category || '未分类',
+        question_count: (b) => Number(b.question_count) || 0,
+        version: (b) => Number(b.version) || 1,
+        enabled: (b) => (b.enabled !== false ? 1 : 0),
+        updated_at: (b) => new Date(b.updated_at || 0).getTime() || 0
+    };
+    // 数值/时间列首次点击优先降序，文本列优先升序
+    const BANK_SORT_DESC_FIRST = new Set(['question_count', 'version', 'enabled', 'updated_at']);
+
+    Admin.bankSort = { key: 'name', dir: 'asc' };
+    Admin.questionSort = 'default';
+
+    Admin._sortBanks = function (banks) {
+        const { key, dir } = this.bankSort || {};
+        const getValue = BANK_SORT_VALUE[key] || BANK_SORT_VALUE.name;
+        const sign = dir === 'desc' ? -1 : 1;
+        return [...banks].sort((a, b) => {
+            const va = getValue(a);
+            const vb = getValue(b);
+            if (typeof va === 'number' && typeof vb === 'number') return sign * (va - vb);
+            return sign * String(va).localeCompare(String(vb), 'zh-CN', { numeric: true });
+        });
+    };
+
+    Admin.setBankSort = function (key) {
+        const cur = this.bankSort || { key: 'name', dir: 'asc' };
+        this.bankSort =
+            cur.key === key
+                ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' }
+                : { key, dir: BANK_SORT_DESC_FIRST.has(key) ? 'desc' : 'asc' };
+        this.renderBanks();
+    };
+
+    Admin.onBankSortKey = function (e, key) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        this.setBankSort(key);
+    };
+
+    Admin._bankSortTh = function (key) {
+        const col = BANK_SORT_COLUMNS.find((c) => c.key === key);
+        const label = col ? col.label : key;
+        const active = this.bankSort?.key === key;
+        const dir = active ? this.bankSort.dir : '';
+        return `<th class="th-sort${active ? ' active' : ''}" tabindex="0" scope="col"
+            aria-sort="${active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}"
+            title="按${label}排序"
+            onclick="Admin.setBankSort('${key}')"
+            onkeydown="Admin.onBankSortKey(event, '${key}')">${label}<span class="sort-ind" aria-hidden="true">${
+                active ? (dir === 'asc' ? '↑' : '↓') : '↕'
+            }</span></th>`;
+    };
+
     // ==================== 题库列表页 ====================
     Admin.renderBanks = async function () {
         const el = document.getElementById('sec-banks');
@@ -80,6 +157,12 @@ export function initBanks(Admin) {
             if (category !== 'all')
                 banks = banks.filter((b) => (b.category || '未分类') === category);
 
+            banks = this._sortBanks(banks);
+
+            const sortDesc = this.bankSort?.dir === 'desc';
+            const sortLabel =
+                BANK_SORT_COLUMNS.find((c) => c.key === this.bankSort?.key)?.label || '题库';
+
             const rows = banks
                 .map((b) => {
                     const id = Utils.jsSafe(b.id);
@@ -122,6 +205,15 @@ export function initBanks(Admin) {
                             ${categories.map((c) => `<option value="${Utils.escapeHtml(c)}" ${category === c ? 'selected' : ''}>${Utils.escapeHtml(c)}</option>`).join('')}
                         </select>
                     </div>
+                    <div class="toolbar-group">
+                        <select id="bank-sort-select" class="admin-select" style="width:auto" onchange="Admin.setBankSortField(this.value)" title="排序字段">
+                            ${BANK_SORT_COLUMNS.map(
+                                (c) =>
+                                    `<option value="${c.key}" ${this.bankSort?.key === c.key ? 'selected' : ''}>按${c.label}</option>`
+                            ).join('')}
+                        </select>
+                        <button class="fbtn" onclick="Admin.toggleBankSortDir()" title="切换升降序">${sortDesc ? '降序 ↓' : '升序 ↑'}</button>
+                    </div>
                 </div>
                 <div class="card">
                     <div class="card-header">
@@ -129,11 +221,11 @@ export function initBanks(Admin) {
                             <h3>题库列表</h3>
                             <span class="status-pill info">${banks.length}/${(d.banks || []).length} 个题库</span>
                         </div>
-                        <span class="count">点击行进入详情</span>
+                        <span class="count">当前按${sortLabel}${sortDesc ? '降序' : '升序'} · 点击行进入详情</span>
                     </div>
                     <div class="table-wrap">
                         <table>
-                            <thead><tr><th>题库</th><th>分类</th><th>题目数</th><th>版本</th><th>前台状态</th><th>更新时间</th><th>操作</th></tr></thead>
+                            <thead><tr>${BANK_SORT_COLUMNS.map((c) => this._bankSortTh(c.key)).join('')}<th>操作</th></tr></thead>
                             <tbody>${rows || `<tr><td colspan="7">${this.emptyState({ title: '没有匹配题库', desc: '请调整搜索词或筛选条件。' })}</td></tr>`}</tbody>
                         </table>
                     </div>
@@ -158,6 +250,21 @@ export function initBanks(Admin) {
             .toLowerCase();
         this.bankStatusFilter = document.getElementById('bank-status-filter')?.value || 'all';
         this.bankCategoryFilter = document.getElementById('bank-category-filter')?.value || 'all';
+        this.renderBanks();
+    };
+
+    Admin.setBankSortField = function (key) {
+        const cur = this.bankSort || { key: 'name', dir: 'asc' };
+        this.bankSort = {
+            key,
+            dir: cur.key === key ? cur.dir : BANK_SORT_DESC_FIRST.has(key) ? 'desc' : 'asc'
+        };
+        this.renderBanks();
+    };
+
+    Admin.toggleBankSortDir = function () {
+        const cur = this.bankSort || { key: 'name', dir: 'asc' };
+        this.bankSort = { key: cur.key, dir: cur.dir === 'asc' ? 'desc' : 'asc' };
         this.renderBanks();
     };
 
@@ -312,7 +419,7 @@ export function initBanks(Admin) {
             el.innerHTML = `
                 ${this.pageHeader({
                     title: '题目管理',
-                    description: `${title} · 共 ${qs.length} 题。支持搜索、按题型筛选和逐题编辑。`,
+                    description: `${title} · 共 ${qs.length} 题。支持搜索、按题型筛选、排序和逐题编辑。`,
                     crumbs: ['管理后台', '题库管理', title, '题目管理'],
                     actions: `<button class="abtn" onclick="Admin.showBankDetail('${Utils.jsSafe(bankId)}')">返回题库详情</button><button class="abtn primary" onclick="Admin.addQuestion('${Utils.jsSafe(bankId)}')">添加题目</button>`
                 })}
@@ -324,6 +431,12 @@ export function initBanks(Admin) {
                                 <input class="admin-input" type="text" id="bank-search" placeholder="搜索题目内容..." oninput="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
                                 <select class="admin-select" id="bank-type-filter" style="width:auto" onchange="Admin.filterBankQuestions('${Utils.jsSafe(bankId)}')">
                                     <option value="">全部题型</option><option value="single">单选</option><option value="multiple">多选</option><option value="judge">判断</option><option value="fill">填空</option><option value="essay">简答</option><option value="code">编程</option>
+                                </select>
+                                <select class="admin-select" id="bank-question-sort" style="width:auto" onchange="Admin.setQuestionSort('${Utils.jsSafe(bankId)}')" title="题目排序方式">
+                                    ${QUESTION_SORT_OPTIONS.map(
+                                        (o) =>
+                                            `<option value="${o.key}" ${this.questionSort === o.key ? 'selected' : ''}>${o.label}</option>`
+                                    ).join('')}
                                 </select>
                             </div>
                         </div>
@@ -361,7 +474,52 @@ export function initBanks(Admin) {
         else Utils.showToast(r?.error || '保存失败', 'error');
     };
 
+    Admin._sortQuestions = function (qs, sortKey) {
+        const key = sortKey || this.questionSort || 'default';
+        if (key === 'default') return qs;
+        const typeRank = (q) => {
+            const i = TYPE_ORDER.indexOf(q.type);
+            return i === -1 ? TYPE_ORDER.length : i;
+        };
+        const idOf = (q) => {
+            const n = Number(q.id);
+            return Number.isFinite(n) ? n : Infinity;
+        };
+        const list = [...qs];
+        switch (key) {
+            case 'id_asc':
+                return list.sort((a, b) => idOf(a) - idOf(b));
+            case 'id_desc':
+                return list.sort((a, b) => idOf(b) - idOf(a));
+            case 'type':
+                return list.sort(
+                    (a, b) =>
+                        typeRank(a) - typeRank(b) ||
+                        (TYPE_LABELS[a.type] || '').localeCompare(
+                            TYPE_LABELS[b.type] || '',
+                            'zh-CN'
+                        )
+                );
+            case 'category':
+                return list.sort((a, b) =>
+                    (a.category || '').localeCompare(b.category || '', 'zh-CN', { numeric: true })
+                );
+            case 'question':
+                return list.sort((a, b) =>
+                    (a.question || '').localeCompare(b.question || '', 'zh-CN', { numeric: true })
+                );
+            default:
+                return list;
+        }
+    };
+
+    Admin.setQuestionSort = function (bankId) {
+        this.questionSort = document.getElementById('bank-question-sort')?.value || 'default';
+        this.filterBankQuestions(bankId);
+    };
+
     Admin._renderQuestionList = function (bankId, qs) {
+        qs = this._sortQuestions(qs);
         if (!qs.length)
             return this.emptyState({
                 title: '暂无题目',
