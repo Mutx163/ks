@@ -43,3 +43,7 @@ worker/.wrangler/
 # 临时工作目录与审查报告（避免 git add -A 误提交）
 .tmp-*/
 revdoc/
+
+# Python 缓存
+__pycache__/
+*.pyc

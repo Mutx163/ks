@@ -2,12 +2,14 @@
 """从《练习题》docx 与《第二章》pptx 生成工装夹具设计题库。
 
 用法：
-    python scripts/build_fixture_banks.py [练习题docx路径]
+    python scripts/build_fixture_banks.py [练习题docx路径] [第二章pptx路径]
 
 docx 中加粗的选项即正确答案，脚本自动识别；解析由本文件的 EXPL 表提供。
-pptx 内容为讲课稿，题目由本文件的 PPT_QUESTIONS 手工整理。
+pptx 中概念题由 PPT_QUESTIONS 手工整理，计算题为 PPT_CALC_QUESTIONS，
+配图从 pptx 按页抽取到 public/images/fixture-design-ch2/ 后随构建发布。
 """
 
+import hashlib
 import json
 import re
 import sys
@@ -17,6 +19,9 @@ import docx
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DOCX = Path.home() / "Downloads" / "练习题 .docx"
+DEFAULT_PPTX = Path.home() / "Downloads" / "第二章.pptx"
+# 站点静态资源目录，Vite 会把 public/ 原样复制到 dist/
+PUBLIC_IMG_DIR = ROOT / "public" / "images" / "fixture-design-ch2"
 
 # ---------------------------------------------------------------- docx 解析表
 
@@ -692,8 +697,8 @@ PPT_QUESTIONS = [
          question="圆柱形工件在V形块上定位铣键槽，工序尺寸分别以中心线、上母线、下母线标注，定位误差最大的是（　）。",
          options=["A. 以中心线标注", "B. 以上母线标注",
                   "C. 以下母线标注", "D. 三者完全相同"],
-         answer="C",
-         explanation="V形块定位时基准位移误差三者相同，但各工序基准到定位基准的距离方向不同：以下母线标注时基准不重合误差与位移误差同向相加，定位误差最大；以上母线标注时两者反向相减，定位误差最小；以中心线标注时只有位移误差。记忆：下母线最大，上母线最小。"),
+         answer="B",
+         explanation="V形块定位时基准位移误差三者相同，但各工序基准到定位基准的距离方向不同：以上母线标注时，工件直径变小使轴线下降、上母线又随半径缩小而再下降，两段同向叠加，定位误差最大；以下母线标注时，轴线下降使下母线也下降、半径缩小却使下母线上移，两者反向抵消，定位误差最小；以中心线标注时只有位移误差。记忆：上母线最大，下母线最小。"),
     dict(type="single", category="定位误差分析", difficulty=2,
          question="V形块角度一定时，基准位移误差随（　）增大而增大。",
          options=["A. 工件直径公差", "B. 工件长度",
@@ -737,7 +742,493 @@ PPT_QUESTIONS = [
 ]
 
 
-def build_ppt_bank():
+# ---------------------------------------------------------------- pptx 计算题
+# 课件里的例题、习题都是大题，压成选择题会丢掉解题过程，这里按简答题收录。
+# img_slide 指向 pptx 页码，构建时把该页配图抽到 public/images/fixture-design-ch2/。
+
+PPT_CALC_QUESTIONS = [
+    dict(
+        category="定位误差计算",
+        difficulty=4,
+        img_slide=76,
+        img_crop=(0.0, 0.0, 1.0, 0.48),  # 只要图，不要下方已印出的解题过程
+        question=r"如图 2.37（a）所示，台阶轴在 V 形块上定位。已知 $d_1=\phi 20^{0}_{-0.013}$ mm，$d_2=\phi 45^{0}_{-0.016}$ mm，两外圆的同轴度公差为 $\phi 0.02$ mm，V 形块夹角 $\alpha=90°$。试计算对距离尺寸 $H\pm0.20$ mm 产生的定位误差，并分析该方案是否可行。",
+        answer=r"""**① 基准不重合误差**
+
+工序基准是 $d_2$ 外圆的下母线 $G$，定位基准是 $d_1$ 外圆轴线，两者不重合。不重合量由两部分组成：
+
+· 同轴度公差 $\phi 0.02$ → 轴线偏心 $\pm 0.01$，取 $2\times 0.01=0.02$ mm
+· $d_2$ 的半径公差 $0.016/2=0.008$ mm
+
+$$\Delta_{jb}=2\times0.01+0.008=0.028\ \text{mm}$$
+
+**② 基准位移误差**
+
+$$\Delta_{jw}=\frac{\delta_{d_1}}{2\sin\frac{\alpha}{2}}=\frac{0.013}{2\sin45°}=0.0092\ \text{mm}$$
+
+**③ 定位误差**
+
+$$\Delta_{dw}=\Delta_{jb}+\Delta_{jw}=0.028+0.0092=0.0372\ \text{mm}$$
+
+**④ 判断**
+
+工序尺寸公差 $T=0.4$ mm，定位误差一般应控制在工序公差的三分之一以内：
+
+$$\frac{0.4}{3}=0.13\ \text{mm}>0.0372\ \text{mm}$$
+
+该定位方案可行。""",
+        explanation=r"V 形块定位时定位基准是外圆轴线，基准位移误差只与定位外圆的公差有关，公式 $\delta_d/(2\sin(\alpha/2))$ 要记牢。本题的不重合误差来自两处：一是两外圆的同轴度（要乘 2，因为偏心在两个方向上都可能），二是被测量外圆 $d_2$ 的半径公差。判断可行性时用三分之一工序公差作经验判据。易错点：把同轴度 $0.02$ 直接当成 $\pm0.02$ 用，那样算出的 $\Delta_{jb}$ 会翻倍。",
+    ),
+    dict(
+        category="定位误差计算",
+        difficulty=4,
+        img_slide=65,
+        img_crop=(0.43, 0.0, 1.0, 1.0),
+        question=r"圆柱形工件在 V 形块上定位铣削键槽，槽底位置可用 $h_1$、$h_2$、$h_3$ 三种方法标注，工序基准分别是上母线、中心线和下母线（见图）。已知工件直径公差 $T_d=0.1$ mm，V 形块夹角 $\alpha=90°$，求三种工序尺寸的定位误差各是多少。",
+        answer=r"""V 形块定位的基准位移误差与工序尺寸的标注方式无关，都是：
+
+$$\Delta_{jw}=\frac{T_d}{2\sin\frac{\alpha}{2}}=\frac{0.1}{2\sin45°}=0.0707\ \text{mm}$$
+
+方向：工件直径变小 → 中心下降，位移误差向下。
+
+**① 以上母线为工序基准（$h_1$）**：半径缩小使上母线再下移 $T_d/2$，与位移同向叠加
+
+$$\Delta_{jb}=\frac{T_d}{2}=0.05\ \text{mm},\quad \Delta_{dw}=0.0707+0.05=0.1207\ \text{mm}$$
+
+**② 以中心线为工序基准（$h_2$）**：工序基准就是定位基准，$\Delta_{jb}=0$
+
+$$\Delta_{dw}=\Delta_{jw}=0.0707\ \text{mm}$$
+
+**③ 以下母线为工序基准（$h_3$）**：半径缩小使下母线上移 $T_d/2$，与位移反向相减
+
+$$\Delta_{dw}=0.0707-0.05=0.0207\ \text{mm}$$
+
+结论：上母线标注最大，下母线标注最小，中心线标注居中。""",
+        explanation=r"三个尺寸的位移误差完全一样，差别只在不重合误差的符号。判断符号不要背口诀，想物理过程：直径变小后中心下降，上母线随之下降、下母线随之上移，再和位移方向比同向还是反向。所以中心线标注时定位误差就等于位移误差，上母线标注时叠加变大，下母线标注时抵消变小。想让定位误差最小，应以下母线标注。",
+    ),
+    dict(
+        category="定位误差计算",
+        difficulty=5,
+        img_slide=57,
+        img_crop=(0.0, 0.0, 0.282, 1.0),
+        question=r"如图 2.34（a）所示，在套筒上铣键槽，要保证工序尺寸 $H_1$、$H_2$、$H_3$。现采用水平定位心轴定位加**径向夹紧**。设套筒定位孔最大直径 $D_{max}$、心轴工作部分最小直径 $d_{min}$、内孔公差 $\delta_D$、外圆公差 $\delta_{d_1}$，试分析三个工序尺寸的定位误差。",
+        answer=r"""**① 基准位移误差**
+
+水平心轴加径向夹紧时，夹紧力作用在工件外圆上，会产生翻转力矩把工件推向一侧，配合间隙在全直径方向都可能转化为位移，不能只取一半，必须取最大间隙：
+
+$$\Delta_{jw}=D_{max}-d_{min}$$
+
+**② 三个工序尺寸的基准不重合误差**
+
+· $H_1$：工序基准是孔轴线，与定位基准重合 → $\Delta_{jb}=0$
+· $H_2$：工序基准是内孔上母线 $B$，偏离轴线 $\delta_D/2$ → $\Delta_{jb}=\delta_D/2$
+· $H_3$：工序基准是外圆下母线 $A$，偏离轴线 $\delta_{d_1}/2$ → $\Delta_{jb}=\delta_{d_1}/2$
+
+**③ 合成**
+
+$$\Delta_{dw1}=D_{max}-d_{min}$$
+
+$$\Delta_{dw2}=(D_{max}-d_{min})+\frac{\delta_D}{2}$$
+
+$$\Delta_{dw3}=(D_{max}-d_{min})+\frac{\delta_{d_1}}{2}$$""",
+        explanation=r"关键是分清夹紧方式：径向夹紧没有把工件压向端面，工件在心轴上可能偏到极限位置，所以要取全部最大间隙；换成轴向端面夹紧才取一半。三个尺寸的位移误差相同，区别只在工序基准离轴线多远。记法：径向全间隙，轴向取一半。",
+    ),
+    dict(
+        category="定位误差计算",
+        difficulty=5,
+        img_slide=58,
+        img_crop=(0.0, 0.0, 0.282, 1.0),
+        question=r"仍如图 2.34（a）所示，在套筒上铣键槽，保证工序尺寸 $H_1$、$H_2$、$H_3$。现改用水平定位心轴定位加**轴向端面夹紧**，其余条件同上题。试分析三个工序尺寸的定位误差，并与径向夹紧方案比较。",
+        answer=r"""**① 基准位移误差**
+
+轴向端面夹紧时，工件被压紧在端面上，心轴与孔的间隙只能使工件在半径方向偏移最大间隙的一半：
+
+$$\Delta_{jw}=\frac{D_{max}-d_{min}}{2}$$
+
+**② 基准不重合误差**（与径向夹紧相同）
+
+$$\Delta_{jb1}=0,\quad \Delta_{jb2}=\frac{\delta_D}{2},\quad \Delta_{jb3}=\frac{\delta_{d_1}}{2}$$
+
+**③ 合成**
+
+$$\Delta_{dw1}=\frac{D_{max}-d_{min}}{2}$$
+
+$$\Delta_{dw2}=\frac{D_{max}-d_{min}}{2}+\frac{\delta_D}{2}$$
+
+$$\Delta_{dw3}=\frac{D_{max}-d_{min}}{2}+\frac{\delta_{d_1}}{2}$$
+
+**④ 比较**
+
+轴向端面夹紧把位移误差减少了一半，三个尺寸的定位精度都明显提高，所以精加工时优先采用端面夹紧。""",
+        explanation=r"同一套夹具，夹紧方式不同，位移误差差一倍：径向夹紧取全部间隙，轴向端面夹紧取一半。原因是端面夹紧把工件轴向固定，径向只能由间隙自然对中，最多偏半个间隙。记法：压端面，省一半。",
+    ),
+    dict(
+        category="定位误差计算",
+        difficulty=4,
+        img_slide=60,
+        question=r"工件的外圆 $\phi 50^{0}_{-0.016}$、内孔 $\phi 30^{+0.021}_{0}$ 和两端面均已加工合格，并保证外圆对内孔的同轴度误差在 $\phi 0.015$ mm 以内。现采用水平心轴和一个端面定位铣键槽，心轴直径 $\phi 30^{-0.007}_{-0.020}$，槽底位置尺寸 $H=42^{0}_{-0.30}$ mm。求定位误差并验证是否满足要求。",
+        answer=r"""**① 基准位移误差**（水平心轴加端面定位，取半个最大间隙）
+
+$$D_{max}=30+0.021=30.021\ \text{mm},\quad d_{min}=30-0.020=29.980\ \text{mm}$$
+
+$$\Delta_{jw}=\frac{30.021-29.980}{2}=0.0205\ \text{mm}$$
+
+**② 基准不重合误差**
+
+工序基准是外圆下母线，定位基准是内孔轴线，两者相距 $\delta_d/2$：
+
+$$\Delta_{jb}=\frac{0.016}{2}=0.008\ \text{mm}$$
+
+**③ 同轴度的影响**
+
+外圆对内孔的同轴度 $T=0.015$ mm，直接叠加到工序尺寸方向上：
+
+$$\Delta_{dw}=\Delta_{jw}+\Delta_{jb}+T=0.0205+0.008+0.015=0.0435\ \text{mm}$$
+
+**④ 判断**
+
+$$0.0435\ \text{mm}<\frac{0.30}{3}=0.1\ \text{mm}$$
+
+满足精度要求。""",
+        explanation=r"这道题三个来源都要算：配合间隙造成的位移、外圆半径造成的不重合、外圆对内孔的同轴度。同轴度是图样给出的形位公差，不是配合带来的，但同样影响工序尺寸，必须单独加上。判断仍用三分之一工序公差。易错点：漏掉同轴度，或者把 $0.015$ 取了半值。",
+    ),
+    dict(
+        category="定位误差计算",
+        difficulty=4,
+        img_slide=61,
+        question=r"工件以内孔定位，心轴**垂直安放**。心轴直径 $d_1=\phi 40^{-0.05}_{-0.15}$ mm，工件内孔直径 $D=\phi 40^{+0.15}_{0}$ mm，工件外圆直径 $d=\phi 100^{0}_{-0.17}$ mm，工序尺寸为外圆上母线到加工孔中心的距离 $h_1$。求该工序尺寸的定位误差。",
+        answer=r"""**① 基准位移误差**
+
+心轴垂直安放时，工件靠自重套在心轴上，间隙在水平面内任意方向都可能出现，必须取最大间隙：
+
+$$D_{max}=40+0.15=40.15\ \text{mm},\quad d_{1min}=40-0.15=39.85\ \text{mm}$$
+
+$$\Delta_{jw}=D_{max}-d_{1min}=40.15-39.85=0.30\ \text{mm}$$
+
+**② 基准不重合误差**
+
+工序基准是外圆上母线，定位基准是内孔轴线，两者相距 $\delta_d/2$：
+
+$$\Delta_{jb}=\frac{0.17}{2}=0.085\ \text{mm}$$
+
+**③ 定位误差**
+
+$$\Delta_{dw}=\Delta_{jw}+\Delta_{jb}=0.30+0.085=0.385\ \text{mm}$$""",
+        explanation=r"判断取全部间隙还是半个间隙，看工件能不能被固定到一侧：垂直心轴既没有端面压紧，也没有重力固定方向，间隙可以全部转化成位移，所以取 $D_{max}-d_{min}$。水平心轴配端面夹紧才取一半。这是同一类题的固定分岔点，先判断安放方向和夹紧方式再动笔。",
+    ),
+    dict(
+        category="定位误差计算",
+        difficulty=4,
+        img_slide=62,
+        question=r"如图 2.35 所示三种定位方案，本工序需钻直径 $\phi_1$ 的孔，三种方案的工序尺寸分别为 $l_1$、$l_2$、$l_3$。定位销为 $\phi 22\frac{H7}{g6}$，孔径最大 $D_{max}=22.021$ mm、销径最小 $d_{min}=21.98$ mm，工件外圆 $\phi 50^{+0.05}_{0}$。试分别计算三种方案的定位误差。",
+        answer=r"""**公共部分**：三种方案都用同一根定位销，基准位移误差相同
+
+$$\Delta_{jw}=D_{max}-d_{min}=22.021-21.98=0.041\ \text{mm}$$
+
+**① 方案 a：工序基准与定位基准重合**
+
+$$\Delta_{jb}=0,\quad \Delta_{dw}=\Delta_{jw}=0.041\ \text{mm}$$
+
+**② 方案 b：工序基准为外圆母线**
+
+$$\Delta_{jb}=\frac{\delta_d}{2}=\frac{0.05}{2}=0.025\ \text{mm}$$
+
+$$\Delta_{dw}=\Delta_{jw}+\Delta_{jb}=0.041+0.025=0.066\ \text{mm}$$
+
+**③ 方案 c：工序尺寸还要经过 $L_3\pm0.10$ 的尺寸换算**
+
+$$\Delta_{jb}=\frac{0.05}{2}+0.10=0.125\ \text{mm}$$
+
+$$\Delta_{dw}=0.041+0.125=0.166\ \text{mm}$$
+
+结论：$a<b<c$，工序基准离定位基准越远、尺寸链越长，定位误差越大。""",
+        explanation=r"三张图共用一把销，位移误差一样，差别全在不重合误差。方案 c 多了一段 $L_3\pm0.10$ 的尺寸换算，凡是工序基准要绕道另一段尺寸才能到定位基准，这段尺寸的公差就要整段计入，不能只取半值。规律：先比位移误差，再比工序基准与定位基准之间隔了几段尺寸。",
+    ),
+    dict(
+        category="定位误差计算",
+        difficulty=5,
+        img_slide=72,
+        question=r"如图所示零件上铣键槽，要求保证槽深尺寸 $54^{0}_{-0.14}$ mm，工序基准为外圆下母线。现有三种定位方案：方案 b 用 $90°$ V 形块定位，方案 c 用心轴（$\phi 32^{-0.01}_{-0.03}$）定位，方案 d 用支承板定位。工件外圆 $\phi 60^{0}_{-0.10}$，内孔 $\phi 32^{+0.03}_{0}$。试计算方案 b、c 的定位误差，比较三种方案并判断是否满足要求。",
+        answer=r"""**方案 b：V 形块定位**
+
+$$\Delta_{jw}=\frac{T_d}{2\sin\frac{\alpha}{2}}=\frac{0.10}{2\sin45°}=0.0707\ \text{mm}$$
+
+工序基准是外圆下母线，半径缩小使下母线上移，与位移方向相反，取减号：
+
+$$\Delta_{jb}=\frac{T_d}{2}=0.05\ \text{mm},\quad \Delta_{dw}=0.0707-0.05=0.0207\ \text{mm}$$
+
+**方案 c：心轴定位**
+
+$$D_{max}=32+0.03=32.03\ \text{mm},\quad d_{min}=32-0.03=31.97\ \text{mm}$$
+
+$$\Delta_{jw}=D_{max}-d_{min}=32.03-31.97=0.06\ \text{mm}$$
+
+心轴定位时间隙方向不可控，按最不利情况与不重合误差同向叠加：
+
+$$\Delta_{dw}=0.06+0.05=0.11\ \text{mm}$$
+
+**方案 d：支承板定位**
+
+工序基准（下母线）与定位基准重合，$\Delta_{jw}=0$、$\Delta_{jb}=0$，定位误差为零。
+
+**判断**
+
+槽深公差 $T=0.14$ mm，三分之一为 $0.047$ mm：
+
+· 方案 b：$0.0207$ mm ✅
+· 方案 c：$0.11$ mm ❌
+· 方案 d：$0$ ✅
+
+优先选方案 d，其次方案 b；方案 c 定位误差超限，不可用。""",
+        explanation=r"这道题的价值在抵消与叠加的对比：V 形块对中定位，工件中心下降时工序基准（下母线）反而上升，两个误差反向，所以定位误差很小；心轴定位时间隙方向不定，只能按最不利情况同向叠加，误差大。方案 d 的工序基准与定位基准重合，两个误差都不存在。解题顺序：定基准 → 定合成符号 → 比大小 → 用三分之一公差判可行性。",
+    ),
+    dict(
+        category="一面两孔设计计算",
+        difficulty=5,
+        img_slide=90,
+        question=r"如图 2.38 所示为连杆盖的工序图，要求加工其上的 4 个定位销孔。根据加工要求，用平面 A 和两个 $\phi 12H7\left(^{+0.027}_{0}\right)$ 的孔定位，两定位孔的中心距为 $59\pm0.1$ mm。试设计两定位销尺寸并计算定位误差。",
+        answer=r"""**① 确定定位销的中心距和尺寸公差**
+
+销间距公差取孔间距公差的 $1/5\sim1/3$：
+
+$$\delta_{Ld}=\frac{1}{5}\times0.2=0.04\ \text{mm}$$
+
+两销中心距 $=59\pm0.02$ mm。
+
+**② 确定圆柱销尺寸及公差**
+
+圆柱销必须留最小间隙，选 $g6$。基本尺寸 $10\sim18$ mm 段，$es=-0.006$ mm，$IT6=0.011$ mm：
+
+$$ei=es-IT6=-0.017\ \text{mm}$$
+
+圆柱销 $=\phi 12g6=\phi 12^{-0.006}_{-0.017}$ mm。
+
+**③ 选取削边销尺寸**
+
+按表 2.2，$d=12$ mm 落在 $>8\sim20$ 段：$B=d-2=10$ mm，$b_1=4$ mm。
+
+**④ 确定削边销直径及配合**
+
+$$a=\delta_{LD}+\delta_{Ld}=0.2+0.04=0.24\ \text{mm}$$
+
+$$X_{2min}=\frac{2ab_1}{D_{2min}}=\frac{2\times4\times0.24}{12}=0.16\ \text{mm}$$
+
+$$d_{2max}=D_{2min}-X_{2min}=12-0.16=11.84\ \text{mm}$$
+
+削边销取 $h6$，最小间隙为零：$\phi 11.84h6=\phi 11.84^{-0.011}_{0}$ mm。
+
+**⑤ 计算定位误差**
+
+$$\Delta_{jb}=0.2\ \text{mm}$$
+
+$$\Delta_{jw}=D_{1max}-d_{1min}=12.027-11.983=0.044\ \text{mm}$$
+
+$$\Delta_{dw}=\Delta_{jb}+\Delta_{jw}=0.244\ \text{mm}$$
+
+第二销的最大间隙要按削边销公差带的下限算：
+
+$$X_{2max}=D_{2max}-d_{2min}=12.027-(11.84-0.011)=0.198\ \text{mm}$$
+
+**⑥ 转角误差**
+
+$$\Delta\beta=\arctan\frac{X_{1max}+X_{2max}}{2L}=\arctan\frac{0.044+0.198}{2\times59}\approx0.002\ \text{rad}\approx0.12°$$
+
+按转角误差折算到加工尺寸上，左侧约 $0.052$ mm，右侧约 $0.206$ mm。""",
+        explanation=r"一面两孔设计的五个步骤要背下来：销距公差 → 圆柱销 → 削边销宽度 → 削边销直径 → 算误差。三个易错点：一是销距公差取孔距公差的 $1/5\sim1/3$ 而不是相等；二是 $X_{2min}=2ab_1/D_{2min}$ 里的 $b_1$ 查表得到、$a$ 是补偿量；三是圆柱销用 $g6$、削边销用 $h6$，因为削边销沿连心线方向不靠外径间隙补偿，允许零最小间隙。另注意课件把 $\phi 12$ 孔标成 $H7\left(^{+0.027}_{0}\right)$，而 $\phi 12$ 的 $H7$ 实际是 $^{+0.018}_{0}$，$+0.027$ 对应 $H8$；本例按课件标注计算，考试时以试卷为准。",
+    ),
+    dict(
+        category="一面两孔设计计算",
+        difficulty=5,
+        img_slide=97,
+        question=r"工件以一面两孔定位：孔 1 为 $\phi 12H7\left(^{+0.018}_{0}\right)$，孔 2 为 $\phi 10H7\left(^{+0.015}_{0}\right)$，两孔中心距 $100\pm0.06$ mm，孔距公差 $\delta_{LD}=0.12$ mm。要求设计圆柱销与削边销，并计算定位误差。",
+        answer=r"""**① 销距及公差**
+
+$$\delta_{Ld}=\frac{1}{3}\times0.12=0.04\ \text{mm}$$
+
+两销中心距 $=100\pm0.02$ mm。
+
+**② 圆柱销**
+
+孔 1 配 $\phi 12g6$：基本尺寸 $10\sim18$ mm，$es=-0.006$ mm，$IT6=0.011$ mm，$ei=-0.017$ mm
+
+$$\phi 12g6=\phi 12^{-0.006}_{-0.017}\ \text{mm}$$
+
+**③ 削边销尺寸**
+
+按表 2.2，$d=10$ mm 落在 $>8\sim20$ 段：$B=d-2=8$ mm，$b_1=4$ mm。
+
+**④ 削边销直径及公差**
+
+$$a=\delta_{LD}+\delta_{Ld}=0.12+0.04=0.16\ \text{mm}$$
+
+$$X_{2min}=\frac{2ab_1}{D_{2min}}=\frac{2\times4\times0.16}{10}=0.128\ \text{mm}$$
+
+$$d_{2max}=D_{2min}-X_{2min}=10-0.128=9.871\ \text{mm}$$
+
+取 $h6$（$es=0$，$IT6=0.009$ mm）：$\phi 9.871h6=\phi 9.871^{0}_{-0.009}$ mm。
+
+**⑤ 定位误差与转角误差**
+
+$$\Delta=D_{1max}-d_{1min}=12.018-11.983=0.035\ \text{mm}$$
+
+$$X_{1max}=12.018-11.983=0.035\ \text{mm},\quad X_{2max}=10.015-9.862=0.153\ \text{mm}$$
+
+$$\Delta\beta=\arctan\frac{X_{2max}+X_{1max}}{2L}=\arctan\frac{0.153+0.035}{2\times100}=0.0539°$$""",
+        explanation=r"与连杆盖例题同一套流程，换了孔径和中心距，用来检验能否独立走完五个步骤。注意两点：一是 $X_{2min}$ 的分母是削边销所在孔的最小直径 $D_{2min}=10$，不要误用 $12$；二是转角误差公式的分母是 $2L$，$L$ 为两孔中心距。",
+    ),
+    dict(
+        category="工艺基准",
+        difficulty=4,
+        img_slide=59,
+        question=r"如图所示工件以底面 A 定位加工 $\phi 20H8$ 孔，孔的位置由 B 面标注为 $40\pm0.1$ mm。图样上台阶尺寸为 $20\pm0.025$ mm，总高为 $100\pm0.05$ mm。求该工序尺寸的基准不重合误差。",
+        answer=r"""**分析基准**
+
+· 定位基准：底面 A
+· 工序基准：B 面
+
+两者不重合，从 A 走到 B 的尺寸链由两段组成：$20\pm0.025$ 与 $100\pm0.05$。
+
+**计算**
+
+基准不重合误差等于这两段尺寸公差之和：
+
+$$\Delta_{jb1}=0.025-(-0.025)=0.05\ \text{mm}$$
+
+$$\Delta_{jb2}=0.05-(-0.05)=0.10\ \text{mm}$$
+
+$$\Delta_{jb}=\Delta_{jb1}+\Delta_{jb2}=0.05+0.10=0.15\ \text{mm}$$""",
+        explanation=r"基准不重合误差的算法是固定的：从定位基准走到工序基准，路径上每段尺寸的公差都累加，方向相反时符号相反。这道题最容易错的地方是把工序尺寸本身的公差 $40\pm0.1$ 也加进去——它由对刀保证，不属于基准不重合误差。记法：不重合误差只算基准之间那段路。",
+    ),
+    dict(
+        category="综合计算",
+        difficulty=5,
+        img_slide=105,
+        question=r"习题 2.10：在卧式镗床上镗削如图 2.41 所示零件的 $R43^{+0.5}_{0}$ 的 1/4 圆孔，采用“一面两销”定位。已知两定位孔为 $2-\phi 8^{+0.085}_{+0.035}$，孔心距 $50\pm0.03$ mm。试设计两定位销尺寸并计算定位误差。",
+        answer=r"""**① 读图取数**
+
+· 定位面：零件一侧端面
+· 定位孔：$2-\phi 8^{+0.085}_{+0.035}$，最小孔径 $D_{min}=8.035$ mm
+· 孔心距：$50\pm0.03$ mm，故 $\delta_{LD}=0.06$ mm
+· 待加工尺寸：$R43^{+0.5}_{0}$ 的 1/4 圆孔，位置尺寸 $5\pm0.2$ mm，工序公差 $0.5$ mm
+
+**② 销距及公差**
+
+$$\delta_{Ld}=\left(\frac{1}{5}\sim\frac{1}{3}\right)\times0.06=0.012\sim0.02\ \text{mm}$$
+
+取 $\delta_{Ld}=0.02$ mm，两销中心距 $=50\pm0.01$ mm。
+
+**③ 圆柱销**
+
+圆柱销取 $g6$，先按基孔制换算孔的基本尺寸，再减最小间隙：
+
+$$d_{1max}=D_{1min}-X_{1min}$$
+
+直径 $8$ mm 落在 $>6\sim10$ mm 段，$IT6=0.009$ mm，$g$ 的基本偏差 $es=-0.005$ mm，故
+
+$$\phi 8g6=\phi 8^{-0.005}_{-0.014}\ \text{mm}\quad(d_{max}=7.995,\ d_{min}=7.986)$$
+
+**④ 削边销**
+
+按表 2.2，$d=8$ mm 落在 $>6\sim8$ 段：$b_1=3$ mm。
+
+$$a=\delta_{LD}+\delta_{Ld}=0.06+0.02=0.08\ \text{mm}$$
+
+$$X_{2min}=\frac{2ab_1}{D_{2min}}=\frac{2\times3\times0.08}{8.035}=0.060\ \text{mm}$$
+
+$$d_{2max}=D_{2min}-X_{2min}=8.035-0.060=7.975\ \text{mm}$$
+
+取 $h6$：$\phi 7.975h6=\phi 7.975^{0}_{-0.009}$ mm。
+
+**⑤ 定位误差**
+
+孔径最大 $D_{1max}=D_{2max}=8.085$ mm，销径最小 $d_{1min}=7.986$ mm：
+
+$$\Delta_{jw}=D_{1max}-d_{1min}=8.085-7.986=0.099\ \text{mm}$$
+
+$$X_{1max}=0.099\ \text{mm},\quad X_{2max}=D_{2max}-d_{2min}=8.085-7.966=0.119\ \text{mm}$$
+
+$$\Delta\beta=\arctan\frac{X_{1max}+X_{2max}}{2L}=\arctan\frac{0.099+0.119}{2\times50}=0.125°$$
+
+把 $\Delta\beta$ 折算到 $R43$ 圆弧的加工方向（力臂约 $43$ mm）：
+
+$$\Delta_{\beta}=43\times\tan0.125°\approx0.094\ \text{mm}$$
+
+$$\Delta_{dw}\approx0.099+0.094=0.193\ \text{mm}$$
+
+工序公差 $0.5$ mm，三分之一为 $0.167$ mm。$0.193>0.167$，略超三分之一判据，但仍小于工序公差，属可用方案；若加工要求更严，应提高定位孔精度或收紧销距公差。""",
+        explanation=r"这是一道综合练习，重点在走完全流程：读图取数 → 销距 → 圆柱销 → 削边销 → 误差与转角误差。三个容易卡住的地方：一是定位孔给的是双向公差 $^{+0.085}_{+0.035}$，最小孔径是 $8.035$ 而不是 $8$，销的尺寸要按它换算；二是 $b_1$ 与 $B$ 必须按孔径所在的尺寸段查表 2.2，段位取错整题数值都会偏；三是转角误差要乘以力臂折算到加工尺寸方向，不能直接和不重合误差相加。",
+    ),
+]
+IMG_MAX_EDGE = 1600
+
+
+def extract_calc_images(pptx_path):
+    """把计算题用到的配图从 pptx 抽到 public/ 下，返回 题目的 img 站点路径。
+
+    每道题可用 img_crop=(x0, y0, x1, y1) 按比例裁掉课件里多余的子图或公式，
+    同一页、同一裁剪的题目共用一张图，避免重复文件。
+    """
+    import io
+
+    from PIL import Image
+    from pptx import Presentation
+
+    PUBLIC_IMG_DIR.mkdir(parents=True, exist_ok=True)
+    prs = Presentation(str(pptx_path))
+    # (页码, 裁剪) -> 站点路径；同一张源图只落盘一次
+    cache = {}
+
+    for item in PPT_CALC_QUESTIONS:
+        slide_no = item["img_slide"]
+        crop = item.get("img_crop")
+        key = (slide_no, crop)
+        if key in cache:
+            item["_img_path"] = cache[key]
+            continue
+
+        pictures = [
+            shape
+            for shape in prs.slides[slide_no - 1].shapes
+            if shape.shape_type == 13  # PICTURE
+        ]
+        if not pictures:
+            raise SystemExit(f"第 {slide_no} 页没有找到配图")
+        # 一页可能有多张图（装饰图标、表格截图），取面积最大的那张
+        source = sorted(pictures, key=lambda shape: shape.width * shape.height, reverse=True)[0]
+        blob = source.image.blob
+
+        image = Image.open(io.BytesIO(blob))
+        if crop:
+            width, height = image.size
+            box = (
+                round(width * crop[0]),
+                round(height * crop[1]),
+                round(width * crop[2]),
+                round(height * crop[3]),
+            )
+            image = image.crop(box)
+        if max(image.size) > IMG_MAX_EDGE:
+            scale = IMG_MAX_EDGE / max(image.size)
+            image = image.resize(
+                (round(image.width * scale), round(image.height * scale)),
+                Image.LANCZOS,
+            )
+
+        buffer = io.BytesIO()
+        image.save(buffer, format="PNG", optimize=True)
+        data = buffer.getvalue()
+        digest = hashlib.md5(data).hexdigest()[:10]
+        filename = f"ch2-p{slide_no:03d}-{digest}.png"
+        out = PUBLIC_IMG_DIR / filename
+        if not out.exists():
+            out.write_bytes(data)
+        cache[key] = f"/images/fixture-design-ch2/{filename}"
+        item["_img_path"] = cache[key]
+
+    return cache
+
+
+def build_ppt_bank(pptx_path=None):
     questions = []
     for idx, item in enumerate(PPT_QUESTIONS, 1):
         questions.append({
@@ -750,25 +1241,47 @@ def build_ppt_bank():
             "answer": item["answer"],
             "explanation": item["explanation"],
         })
+
+    if pptx_path:
+        extract_calc_images(pptx_path)
+    next_id = len(questions) + 1
+    for item in PPT_CALC_QUESTIONS:
+        questions.append({
+            "id": next_id,
+            "type": "essay",
+            "category": item["category"],
+            "difficulty": item["difficulty"],
+            "question": item["question"],
+            "options": [],
+            "answer": item["answer"],
+            "explanation": item["explanation"],
+            "img": item.get("_img_path", ""),
+            "tags": [item.get("tag", "课件例题"), f"第{item['img_slide']}页"],
+        })
+        next_id += 1
+
     categories = list(dict.fromkeys(q["category"] for q in questions))
     return {
         "id": "fixture-design-ch2",
         "name": "工装夹具设计·第二章 工件定位",
-        "description": "依据《第二章》pptx 整理的工件定位原理题库，涵盖六点定位原理、典型表面定位元件、组合定位与过定位、工艺基准和定位误差分析。",
-        "version": "1.0.0",
+        "description": "依据《第二章》pptx 整理的工件定位题库：75 道概念题覆盖六点定位原理、典型表面定位元件、组合定位与过定位、工艺基准；12 道简答/计算题收录课件例题与习题（含配图与完整解题过程）。",
+        "version": "1.1.0",
         "categories": categories,
-        "tags": ["工装夹具", "工件定位", "六点定位原理", "定位误差"],
+        "tags": ["工装夹具", "工件定位", "六点定位原理", "定位误差", "定位误差计算"],
         "questions": questions,
     }
 
 
 def main():
     docx_path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_DOCX
+    pptx_path = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_PPTX
     if not docx_path.exists():
         raise SystemExit(f"找不到 docx：{docx_path}")
+    if not pptx_path.exists():
+        raise SystemExit(f"找不到 pptx：{pptx_path}")
 
     practice = build_docx_bank(docx_path)
-    chapter = build_ppt_bank()
+    chapter = build_ppt_bank(pptx_path)
 
     for bank in (practice, chapter):
         out = ROOT / "banks" / f"{bank['id']}.json"
