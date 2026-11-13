@@ -4,6 +4,8 @@ export const backupBankFiles = [
     'c-language.json',
     'c-language-2026-code.json',
     'cnc-machine.json',
+    'fixture-design-ch2.json',
+    'fixture-design-practice.json',
     'gemini-code-1780672768438.json',
     'gemini-code-1781357152489.json',
     'manufacturing-fundamentals.json',
