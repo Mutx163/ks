@@ -440,6 +440,14 @@ const API = {
             }
         }
 
+        // 设备被重新绑定过（例如后台修复、换账号）时，本地同步码会与云端不一致，
+        // 不纠正的话后续推送会继续发往旧账号
+        if (data.user?.syncCode && data.user.syncCode !== this.getSyncCode()) {
+            console.log('[API] 🔑 同步码已纠正:', this.getSyncCode(), '->', data.user.syncCode);
+            localStorage.setItem(this.KEYS.SYNC_CODE, data.user.syncCode);
+            this._syncCode = data.user.syncCode;
+        }
+
         // 保存管理员状态
         if (data.user?.is_admin !== undefined) {
             localStorage.setItem('ks_is_admin', data.user.is_admin ? '1' : '0');

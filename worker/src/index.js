@@ -872,7 +872,7 @@ async function handleGetCloudData(did, env, origin) {
     if (!userId) return json({ ok: false }, 200, origin);
 
     const user = await env.DB.prepare(
-        'SELECT initials, settings, progress, bookmarks, last_sync_at, banned FROM users WHERE id = ?'
+        'SELECT id, initials, settings, progress, bookmarks, last_sync_at, banned, is_admin FROM users WHERE id = ?'
     )
         .bind(userId)
         .first();
@@ -902,6 +902,8 @@ async function handleGetCloudData(did, env, origin) {
         {
             ok: true,
             user: {
+                // 前端据 syncCode 纠正本地可能已过期的同步码（设备被重新绑定后会不一致）
+                syncCode: user.id,
                 initials: user.initials,
                 banned: user.banned || 0,
                 is_admin: user.is_admin || 0
@@ -1083,7 +1085,7 @@ async function checkUserBanned(userId, env) {
 // 优先读 Wrangler Secret ADMIN_PASSWORD_HASH（可用 `wrangler secret put` 轮换，无需发版）；
 // 回退到内置值只为兼容尚未配置 Secret 的既有部署。
 const LEGACY_ADMIN_PASSWORD_HASH =
-    'c014d32d3686385fd8287ed5c61374fae42ab80342105ece72930d5c8f9c6065';
+    'd3d992d0cc2665e268f050a58f295082da162c4e1663f7f6ee4f0ebd8f540e2a';
 
 async function sha256(str) {
     const data = new TextEncoder().encode(str);
