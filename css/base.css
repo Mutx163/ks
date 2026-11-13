@@ -42,7 +42,7 @@
     /* ---- 文字色 ---- */
     --text: #000000;
     --text-secondary: #4a3e2a;
-    --text-tertiary: #6b5c44;
+    --text-tertiary: #63553f;
 
     /* ---- 安全区域（手机全面屏） ---- */
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -115,7 +115,7 @@
     --bg-active: #e2d9bf;
     --text: #000000;
     --text-secondary: #4a3e2a;
-    --text-tertiary: #6b5c44;
+    --text-tertiary: #63553f;
     --border: #e2d9bf;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
@@ -148,7 +148,7 @@
     --bg-active: #443c2c;
     --text: #e9dfc4;
     --text-secondary: #c5b99f;
-    --text-tertiary: #9d9078;
+    --text-tertiary: #b0a48c;
     --border: #3d3527;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.35);
@@ -156,7 +156,9 @@
 
     --primary: #e0a83c;
     --primary-light: rgba(224, 168, 60, 0.16);
-    --primary-dark: #c98212;
+    /* 深色块里 *-dark 是更亮的强调阶；原来的 #c98212 比主色更暗，
+       压在 primary-light 上只有 3.53:1 */
+    --primary-dark: #f0c264;
     --primary-contrast: #1b1710;
     --on-primary: #241f16;
 
@@ -200,7 +202,7 @@
         --bg-active: #e2d9bf;
         --text: #000000;
         --text-secondary: #4a3e2a;
-        --text-tertiary: #6b5c44;
+        --text-tertiary: #63553f;
         --border: #e2d9bf;
         --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
         --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
@@ -234,7 +236,7 @@
         --bg-active: #443c2c;
         --text: #e9dfc4;
         --text-secondary: #c5b99f;
-        --text-tertiary: #9d9078;
+        --text-tertiary: #b0a48c;
         --border: #3d3527;
         --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.35);
@@ -242,7 +244,7 @@
 
         --primary: #e0a83c;
         --primary-light: rgba(224, 168, 60, 0.16);
-        --primary-dark: #c98212;
+        --primary-dark: #f0c264;
         --primary-contrast: #1b1710;
         --on-primary: #241f16;
 
@@ -289,7 +291,7 @@
     --bg-active: #e2e8f0;
     --text: #0f172a;
     --text-secondary: #475569;
-    --text-tertiary: #64748b;
+    --text-tertiary: #57677d;
     --border: #e2e8f0;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -327,14 +329,17 @@
 :root[data-theme='dark'][data-color='white'] {
     --primary: #60a5fa;
     --primary-light: rgba(96, 165, 250, 0.15);
-    --primary-dark: #3b82f6;
+    /* 深色块里 *-dark 是「更亮的强调阶」（对照 success-dark/danger-dark），
+       原来的 #3b82f6 比主色更深，压在 primary-light 上只有 4.40:1 */
+    --primary-dark: #93c5fd;
     --bg: #0f172a;
     --bg-card: #1e293b;
     --bg-hover: #334155;
     --bg-active: #475569;
     --text: #f1f5f9;
     --text-secondary: #94a3b8;
-    --text-tertiary: #64748b;
+    /* 深色下旧值 #64748b 在 bg-hover 上只有 2.18:1，弱化不等于不可读 */
+    --text-tertiary: #9aafc6;
     --border: #334155;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.35);
@@ -1886,6 +1891,13 @@ body.layout-fullscreen {
     background: var(--primary-light);
 }
 
+/* 深色主题下主色压在 primary-light 上余量不足（白色主题曾只有 4.40:1），
+   高亮态统一改用更亮的强调阶 */
+[data-theme='dark'] .desktop-nav a:hover,
+[data-theme='dark'] .desktop-nav a.active {
+    color: var(--primary-dark);
+}
+
 .global-tabbar {
     display: none; /* 宽屏下隐藏 */
 }
@@ -2033,6 +2045,19 @@ body.layout-fullscreen {
     gap: var(--space-3);
 }
 
+/* 三套配色并排；窄屏放不下时退成两列 */
+.theme-picker-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+}
+
+@media (max-width: 380px) {
+    .theme-picker-grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .theme-picker-card {
     position: relative;
     display: flex;
@@ -2111,14 +2136,14 @@ body.layout-fullscreen {
     :root:not([data-theme='light'])[data-color='white'] {
         --primary: #60a5fa;
         --primary-light: rgba(96, 165, 250, 0.15);
-        --primary-dark: #3b82f6;
+        --primary-dark: #93c5fd;
         --bg: #0f172a;
         --bg-card: #1e293b;
         --bg-hover: #334155;
         --bg-active: #475569;
         --text: #f1f5f9;
         --text-secondary: #94a3b8;
-        --text-tertiary: #64748b;
+        --text-tertiary: #9aafc6;
         --border: #334155;
         --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.35);

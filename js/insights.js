@@ -53,6 +53,13 @@ const Insights = {
         if (settings.theme && settings.theme !== 'auto') {
             document.documentElement.setAttribute('data-theme', settings.theme);
         }
+        // 色彩风格必须一并恢复，否则独立打开分析/趋势页会退回默认配色
+        if (settings.colorScheme && settings.colorScheme !== 'parchment') {
+            document.documentElement.setAttribute('data-color', settings.colorScheme);
+        } else {
+            document.documentElement.removeAttribute('data-color');
+        }
+        Utils.updateBrowserThemeColor();
     },
 
     async loadBuiltinBanks() {

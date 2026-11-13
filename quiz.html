@@ -23,13 +23,12 @@
                 if (theme === 'auto') {
                     isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 }
-                const themeColor = isDark
-                    ? colorScheme === 'white'
-                        ? '#1e293b'
-                        : '#2a251b'
-                    : colorScheme === 'white'
-                      ? '#ffffff'
-                      : '#f9f6ec';
+                const themeColors = {
+                    parchment: isDark ? '#2a251b' : '#f9f6ec',
+                    white: isDark ? '#1e293b' : '#ffffff',
+                    modern: isDark ? '#121b2b' : '#ffffff'
+                };
+                const themeColor = themeColors[colorScheme] || themeColors.parchment;
                 const meta = document.getElementById('meta-theme-color');
                 if (meta) {
                     meta.setAttribute('content', themeColor);
@@ -44,6 +43,7 @@
 
         <link rel="stylesheet" href="css/base.css" />
         <link rel="stylesheet" href="css/quiz.css?v=3" />
+        <link rel="stylesheet" href="css/theme-modern.css?v=1" />
     </head>
     <body class="layout-fullscreen">
         <script>

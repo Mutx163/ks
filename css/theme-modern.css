@@ -1,0 +1,806 @@
+/* =====================================================================
+   第三套主题：青瓷现代（data-color="modern"）
+   ---------------------------------------------------------------------
+   与「暖色羊皮纸」「白色简洁」并列的完整视觉方案：除了配色，还重写
+   圆角、阴影、按钮、卡片、导航、表单控件与品牌字，形成独立的现代风格。
+   本文件必须在 base.css / home.css / quiz.css / insights.css /
+   leaderboard.css 之后加载，才能覆盖各页面的组件样式。
+   ===================================================================== */
+
+/* ================= 亮色：青瓷 ================= */
+:root[data-color='modern'] {
+    /* ---- 语义色 ---- */
+    --primary: #0f766e;
+    --primary-light: rgba(15, 118, 110, 0.09);
+    --primary-dark: #0b5a54;
+    --primary-contrast: #ffffff;
+    --on-primary: #ffffff;
+
+    --success: #047857;
+    --success-light: rgba(4, 120, 87, 0.09);
+    --success-dark: #065f46;
+    --on-success: #ffffff;
+
+    --warning: #b45309;
+    --warning-light: rgba(180, 83, 9, 0.09);
+    --warning-dark: #92400e;
+    --on-warning: #ffffff;
+
+    --danger: #dc2626;
+    --danger-light: rgba(220, 38, 38, 0.09);
+    --danger-dark: #b91c1c;
+    --on-danger: #ffffff;
+
+    --info: #6d28d9;
+    --info-light: rgba(109, 40, 217, 0.09);
+    --on-info: #ffffff;
+
+    /* ---- 背景与文字 ---- */
+    --bg: #f4f7f7;
+    --bg-card: #ffffff;
+    --bg-hover: #eef3f3;
+    --bg-active: #e1eae9;
+
+    --text: #0d1b1e;
+    --text-secondary: #3f5350;
+    --text-tertiary: #52627a;
+
+    --border: #dfe8e6;
+
+    /* ---- 阴影：低对比、带青瓷色晕 ---- */
+    --shadow: 0 1px 2px rgba(13, 27, 30, 0.04), 0 6px 18px -14px rgba(13, 27, 30, 0.16);
+    --shadow-md: 0 2px 6px rgba(13, 27, 30, 0.05), 0 12px 28px -16px rgba(15, 118, 110, 0.28);
+    --shadow-lg: 0 8px 24px rgba(13, 27, 30, 0.08), 0 24px 56px -24px rgba(15, 118, 110, 0.32);
+
+    /* ---- 更圆润的几何 ---- */
+    --radius-sm: 0.5rem; /* 8px */
+    --radius: 0.875rem; /* 14px */
+    --radius-lg: 1.25rem; /* 20px */
+
+    /* ---- 题型色 ---- */
+    --type-single-bg: #e6f4f1;
+    --type-single-color: #0b5a54;
+    --type-multiple-bg: #f3ecfd;
+    --type-multiple-color: #6d28d9;
+    --type-judge-bg: #e7f6ef;
+    --type-judge-color: #047857;
+    --type-fill-bg: #fdf0e3;
+    --type-fill-color: #b45309;
+    --type-code-bg: #0f172a;
+    --type-code-color: #e2e8f0;
+
+    --code-text: #b3352f;
+}
+
+/* ================= 深色：墨青 ================= */
+:root[data-theme='dark'][data-color='modern'] {
+    --primary: #2dd4bf;
+    --primary-light: rgba(45, 212, 191, 0.14);
+    --primary-dark: #5eead4;
+    --primary-contrast: #04211e;
+    --on-primary: #04211e;
+
+    --success: #34d399;
+    --success-light: rgba(52, 211, 153, 0.15);
+    --success-dark: #6ee7b7;
+    --on-success: #04211e;
+
+    --warning: #fbbf24;
+    --warning-light: rgba(251, 191, 36, 0.15);
+    --warning-dark: #fcd34d;
+    --on-warning: #1f1503;
+
+    --danger: #f87171;
+    --danger-light: rgba(248, 113, 113, 0.15);
+    --danger-dark: #fca5a5;
+    --on-danger: #1f0808;
+
+    --info: #c4b5fd;
+    --info-light: rgba(196, 181, 253, 0.15);
+    --on-info: #140b2e;
+
+    --bg: #0b1220;
+    --bg-card: #121b2b;
+    --bg-hover: #1a2537;
+    --bg-active: #233148;
+
+    --text: #e9eff7;
+    --text-secondary: #a9b8cb;
+    --text-tertiary: #93a8bf;
+
+    --border: #22304a;
+
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.55);
+
+    --type-single-bg: rgba(45, 212, 191, 0.14);
+    --type-single-color: #7dd3c8;
+    --type-multiple-bg: rgba(196, 181, 253, 0.14);
+    --type-multiple-color: #c4b5fd;
+    --type-judge-bg: rgba(52, 211, 153, 0.14);
+    --type-judge-color: #6ee7b7;
+    --type-fill-bg: rgba(251, 191, 36, 0.14);
+    --type-fill-color: #fcd34d;
+    --type-code-bg: #060c17;
+    --type-code-color: #cbd5e1;
+
+    --code-text: #fca5a5;
+}
+
+/* 跟随系统深色时的第三套主题 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light'])[data-color='modern'] {
+        --primary: #2dd4bf;
+        --primary-light: rgba(45, 212, 191, 0.14);
+        --primary-dark: #5eead4;
+        --primary-contrast: #04211e;
+        --on-primary: #04211e;
+
+        --success: #34d399;
+        --success-light: rgba(52, 211, 153, 0.15);
+        --success-dark: #6ee7b7;
+        --on-success: #04211e;
+
+        --warning: #fbbf24;
+        --warning-light: rgba(251, 191, 36, 0.15);
+        --warning-dark: #fcd34d;
+        --on-warning: #1f1503;
+
+        --danger: #f87171;
+        --danger-light: rgba(248, 113, 113, 0.15);
+        --danger-dark: #fca5a5;
+        --on-danger: #1f0808;
+
+        --info: #c4b5fd;
+        --info-light: rgba(196, 181, 253, 0.15);
+        --on-info: #140b2e;
+
+        --bg: #0b1220;
+        --bg-card: #121b2b;
+        --bg-hover: #1a2537;
+        --bg-active: #233148;
+
+        --text: #e9eff7;
+        --text-secondary: #a9b8cb;
+        --text-tertiary: #93a8bf;
+
+        --border: #22304a;
+
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
+        --shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.55);
+
+        --type-single-bg: rgba(45, 212, 191, 0.14);
+        --type-single-color: #7dd3c8;
+        --type-multiple-bg: rgba(196, 181, 253, 0.14);
+        --type-multiple-color: #c4b5fd;
+        --type-judge-bg: rgba(52, 211, 153, 0.14);
+        --type-judge-color: #6ee7b7;
+        --type-fill-bg: rgba(251, 191, 36, 0.14);
+        --type-fill-color: #fcd34d;
+        --type-code-bg: #060c17;
+        --type-code-color: #cbd5e1;
+
+        --code-text: #fca5a5;
+    }
+}
+
+/* ================= 底色：极淡的青瓷色晕 ================= */
+[data-color='modern'] body {
+    background-color: var(--bg);
+    background-image:
+        radial-gradient(
+            900px 460px at 100% -8%,
+            color-mix(in srgb, var(--primary) 10%, transparent),
+            transparent 62%
+        ),
+        radial-gradient(
+            760px 420px at -12% 4%,
+            color-mix(in srgb, var(--info) 6%, transparent),
+            transparent 60%
+        );
+    background-repeat: no-repeat;
+}
+
+@media (min-width: 769px) {
+    [data-color='modern'] body {
+        background-attachment: fixed;
+    }
+}
+
+/* ================= 品牌字：从衬线切换为无衬线黑体 ================= */
+[data-color='modern'] .title-gradient,
+[data-color='modern'] .header-brand,
+[data-color='modern'] .home-logo-text h1,
+[data-color='modern'] .skel-logo,
+[data-color='modern'] .skel-logo-glow {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+[data-color='modern'] .skel-logo,
+[data-color='modern'] .skel-logo-glow {
+    letter-spacing: 2px;
+}
+
+[data-color='modern'] h1,
+[data-color='modern'] h2,
+[data-color='modern'] h3,
+[data-color='modern'] .section-title,
+[data-color='modern'] .result-title,
+[data-color='modern'] .finish-modal-title {
+    letter-spacing: -0.015em;
+}
+
+/* 数字统一等宽，统计不跳动 */
+[data-color='modern'] .stat-value,
+[data-color='modern'] .insight-stat-value,
+[data-color='modern'] .result-stat-value,
+[data-color='modern'] .finish-modal-stat-value,
+[data-color='modern'] .custom-stat-value,
+[data-color='modern'] .lb-value,
+[data-color='modern'] .lb-me-rank {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+/* ================= 顶部导航：半透明磨砂 ================= */
+[data-color='modern'] .global-header,
+[data-color='modern'] .home-header,
+[data-color='modern'] .insight-header,
+[data-color='modern'] .quiz-header {
+    background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    box-shadow: none;
+}
+
+/* 导航项：胶囊高亮，不再用整块浅底方形 */
+[data-color='modern'] .desktop-nav a {
+    border-radius: var(--radius-pill);
+    padding: 6px 14px;
+}
+
+/* 用主色深阶而不是主色本身：主色压在 primary-light 底上只有 4.76:1，
+   落在磨砂顶栏时余量太薄 */
+[data-color='modern'] .desktop-nav a:hover,
+[data-color='modern'] .desktop-nav a.active {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+[data-color='modern'] .header-divider {
+    background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+/* ================= 按钮 ================= */
+[data-color='modern'] .btn-primary {
+    background-image: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    background-color: var(--primary);
+    border-color: transparent;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+[data-color='modern'] .btn-primary:hover {
+    background-image: linear-gradient(
+        135deg,
+        var(--primary-dark) 0%,
+        color-mix(in srgb, var(--primary-dark) 84%, #000) 100%
+    );
+    border-color: transparent;
+    box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--primary) 65%, transparent);
+}
+
+[data-color='modern'] .btn-secondary {
+    background: color-mix(in srgb, var(--bg-card) 92%, var(--bg));
+    border-color: var(--border);
+    box-shadow: none;
+}
+
+[data-color='modern'] .btn-secondary:hover {
+    background: var(--bg-hover);
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    color: var(--text);
+}
+
+[data-color='modern'] .btn-accent {
+    background: var(--warning-light);
+    border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+}
+
+[data-color='modern'] .btn-admin-entrance {
+    background-image: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: var(--radius-lg);
+}
+
+/* 顶栏图标按钮：圆形 */
+[data-color='modern'] .btn-header-icon,
+[data-color='modern'] .quiz-header .btn-header-icon {
+    border-radius: 50%;
+}
+
+[data-color='modern'] .btn-header,
+[data-color='modern'] .quiz-header .btn-header,
+[data-color='modern'] .quiz-nav-btn {
+    border-radius: var(--radius-pill);
+    border-color: transparent;
+    background: transparent;
+}
+
+[data-color='modern'] .btn-header:hover,
+[data-color='modern'] .quiz-header .btn-header:hover,
+[data-color='modern'] .quiz-nav-btn:hover {
+    background: var(--bg-hover);
+    border-color: transparent;
+}
+
+/* ================= 卡片：细边 + 轻投影 + 悬浮上浮 ================= */
+[data-color='modern'] .card,
+[data-color='modern'] .bank-card,
+[data-color='modern'] .question-card,
+[data-color='modern'] .insight-panel,
+[data-color='modern'] .insight-stat,
+[data-color='modern'] .home-insights-panel,
+[data-color='modern'] .stat-card,
+[data-color='modern'] .settings-group {
+    border-color: color-mix(in srgb, var(--border) 88%, transparent);
+    box-shadow: var(--shadow);
+}
+
+[data-color='modern'] .bank-card {
+    overflow: hidden;
+    position: relative;
+}
+
+/* 卡片顶部一条极细的渐变识别线 */
+[data-color='modern'] .bank-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--primary) 70%, transparent),
+        transparent
+    );
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+[data-color='modern'] .bank-card:hover::before {
+    opacity: 1;
+}
+
+[data-color='modern'] .bank-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+    box-shadow:
+        0 2px 6px rgba(13, 27, 30, 0.05),
+        0 18px 40px -20px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+[data-color='modern'] .bank-card-icon {
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--primary) 9%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+    color: var(--primary);
+}
+
+[data-color='modern'] .bank-card-icon.c-lang {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #e2e8f0;
+}
+
+/* ================= 标签 / 题型 / 筛选：统一胶囊 ================= */
+[data-color='modern'] .tag,
+[data-color='modern'] .question-type,
+[data-color='modern'] .bank-type-btn,
+[data-color='modern'] .bank-count,
+[data-color='modern'] .question-category {
+    border-radius: var(--radius-pill);
+}
+
+[data-color='modern'] .bank-type-btn {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-secondary);
+}
+
+[data-color='modern'] .bank-type-btn:hover,
+[data-color='modern'] .bank-type-btn.active {
+    background: var(--primary-light);
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    color: var(--primary);
+}
+
+[data-color='modern'] .tag {
+    background: var(--bg-hover);
+}
+
+/* ================= 搜索框 ================= */
+[data-color='modern'] .search-input-wrap {
+    border-radius: var(--radius-pill);
+    padding: 10px var(--space-4);
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+}
+
+[data-color='modern'] .search-input-wrap:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+    box-shadow: 0 0 0 4px var(--primary-light);
+}
+
+[data-color='modern'] .sort-select {
+    border-radius: var(--radius-pill);
+    border-color: var(--border);
+    background: var(--bg-card);
+    padding: 6px 12px;
+}
+
+/* ================= 进度条 / 环形图 ================= */
+[data-color='modern'] .progress-bar,
+[data-color='modern'] .mini-progress {
+    background: var(--bg-active);
+}
+
+[data-color='modern'] .progress-bar-fill {
+    background-image: linear-gradient(
+        90deg,
+        var(--primary),
+        color-mix(in srgb, var(--primary) 70%, #14b8a6)
+    );
+}
+
+/* ================= 表单控件 ================= */
+[data-color='modern'] .toggle-label input:checked + .toggle-slider {
+    background: linear-gradient(
+        135deg,
+        var(--primary) 0%,
+        color-mix(in srgb, var(--primary) 62%, #14b8a6) 100%
+    );
+}
+
+[data-color='modern'] .toggle-slider {
+    background: var(--bg-active);
+    box-shadow: inset 0 1px 2px rgba(13, 27, 30, 0.12);
+}
+
+[data-color='modern'] .settings-select,
+[data-color='modern'] .settings-group select,
+[data-color='modern'] .modal-body input,
+[data-color='modern'] .modal-body select,
+[data-color='modern'] .essay-input,
+[data-color='modern'] .fill-input {
+    background: var(--bg-card);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+}
+
+[data-color='modern'] .settings-select:focus,
+[data-color='modern'] .settings-group select:focus,
+[data-color='modern'] .modal-body input:focus,
+[data-color='modern'] .modal-body select:focus,
+[data-color='modern'] .essay-input:focus,
+[data-color='modern'] .fill-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+[data-color='modern'] .settings-group-header {
+    background: color-mix(in srgb, var(--primary) 5%, var(--bg-card));
+}
+
+/* ================= 刷题页：选项与侧栏 ================= */
+[data-color='modern'] .option-item,
+[data-color='modern'] .judge-option {
+    border-radius: var(--radius);
+    background: var(--bg-card);
+}
+
+[data-color='modern'] .option-item:hover,
+[data-color='modern'] .judge-option:hover {
+    background: var(--primary-light);
+    box-shadow: 0 6px 18px -14px color-mix(in srgb, var(--primary) 60%, transparent);
+}
+
+[data-color='modern'] .option-item.selected,
+[data-color='modern'] .judge-option.selected {
+    background: var(--primary-light);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+/* 选项序号：圆角方块，现代感更强 */
+[data-color='modern'] .option-marker {
+    border-radius: 9px;
+}
+
+[data-color='modern'] .sidebar-grid-item,
+[data-color='modern'] .question-nav-item {
+    border-radius: 9px;
+}
+
+[data-color='modern'] .sidebar-grid-item.current,
+[data-color='modern'] .question-nav-item.current {
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+[data-color='modern'] .quiz-sidebar {
+    background: color-mix(in srgb, var(--bg-card) 94%, var(--bg));
+}
+
+[data-color='modern'] .sidebar-legend {
+    background: transparent;
+}
+
+[data-color='modern'] .quiz-footer {
+    background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+}
+
+[data-color='modern'] .question-number {
+    letter-spacing: -0.01em;
+}
+
+[data-color='modern'] .explanation,
+[data-color='modern'] .correct-answer-card {
+    border-radius: var(--radius);
+    background: var(--bg-hover);
+}
+
+[data-color='modern'] .answer-badge {
+    border-radius: 8px;
+}
+
+[data-color='modern'] .btn-ai {
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+/* ================= 排行榜 ================= */
+[data-color='modern'] .lb-tabs {
+    background: var(--bg-hover);
+    border-radius: var(--radius-pill);
+}
+
+[data-color='modern'] .lb-tab {
+    border-radius: var(--radius-pill);
+}
+
+[data-color='modern'] .lb-me,
+[data-color='modern'] #lb-me {
+    border-radius: var(--radius-lg);
+    border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+    border-left-width: 1px;
+    background: color-mix(in srgb, var(--primary) 6%, var(--bg-card));
+}
+
+[data-color='modern'] .lb-row {
+    border-radius: var(--radius);
+}
+
+/* ================= 分析页 ================= */
+[data-color='modern'] .daily-track {
+    border-radius: var(--radius-pill);
+    background: var(--bg-active);
+}
+
+[data-color='modern'] .daily-fill {
+    border-radius: var(--radius-pill) var(--radius-pill) 0 0;
+}
+
+[data-color='modern'] .insight-row,
+[data-color='modern'] .bank-analysis-card {
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--bg) 60%, var(--bg-card));
+}
+
+/* ================= 弹窗 / Toast / 滚动条 ================= */
+[data-color='modern'] .modal-content {
+    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    box-shadow: var(--shadow-lg);
+}
+
+[data-color='modern'] .modal-header {
+    background: color-mix(in srgb, var(--primary) 4%, var(--bg-card));
+    border-bottom-color: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+[data-color='modern'] .toast {
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+}
+
+[data-color='modern'] .theme-picker-card {
+    border-radius: var(--radius);
+}
+
+[data-color='modern'] ::selection {
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+    color: var(--text);
+}
+
+[data-color='modern'] ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--primary) 38%, transparent);
+}
+
+[data-color='modern'] ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--primary) 55%, transparent);
+}
+
+/* 深色下加载遮罩跟随主题，不被 base 的硬编码 #121212 拖走 */
+@media (prefers-color-scheme: dark) {
+    [data-color='modern'] .quiz-loading-overlay {
+        background: var(--bg);
+    }
+}
+
+/* ================= 品牌与版式的独立识别点 ================= */
+/* 品牌前的小色块：青瓷→靛紫渐变，替代原主题的纯文字标志 */
+[data-color='modern'] .global-header .header-brand::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 8px;
+    border-radius: 3px;
+    background: linear-gradient(
+        135deg,
+        var(--primary),
+        color-mix(in srgb, var(--info) 85%, var(--primary))
+    );
+    vertical-align: 1px;
+}
+
+/* 区块标题前的短竖条 */
+[data-color='modern'] .section-title {
+    position: relative;
+    padding-left: 12px;
+}
+
+[data-color='modern'] .section-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 0.95em;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(
+        180deg,
+        var(--primary),
+        color-mix(in srgb, var(--primary) 40%, transparent)
+    );
+}
+
+/* 今日头条：左侧渐变描边 + 更柔和的底 */
+[data-color='modern'] .smart-banner {
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-card));
+    border-color: color-mix(in srgb, var(--primary) 26%, var(--border));
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius);
+}
+
+[data-color='modern'] .announce-banner {
+    border-left-width: 1px;
+    border-left-color: var(--border);
+    border-radius: var(--radius-pill);
+    padding-left: var(--space-3);
+    background: color-mix(in srgb, var(--primary) 5%, var(--bg-card));
+}
+
+[data-color='modern'] .announce-badge {
+    border-radius: var(--radius-pill);
+}
+
+/* 题库卡片题型筛选行与模式按钮之间加一条分隔 */
+[data-color='modern'] .bank-card-types {
+    padding-bottom: var(--space-2);
+}
+
+[data-color='modern'] .bank-card-modes {
+    border-top: 1px dashed color-mix(in srgb, var(--border) 85%, transparent);
+    margin-top: var(--space-1);
+}
+
+[data-color='modern'] .bank-card-modes .btn:not(.btn-primary) {
+    border-color: var(--border);
+    background: transparent;
+}
+
+[data-color='modern'] .bank-card-modes .btn:not(.btn-primary):hover {
+    background: var(--primary-light);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    color: var(--primary);
+}
+
+/* 错题本：改用警示色描边，弱化整块红底 */
+[data-color='modern'] .wrong-book {
+    border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+    border-left: 3px solid color-mix(in srgb, var(--danger) 70%, transparent);
+}
+
+/* 首页统计面板：卡头与内容之间加细分隔 */
+[data-color='modern'] .home-insights-header {
+    padding-bottom: var(--space-3);
+    border-bottom: 1px dashed color-mix(in srgb, var(--border) 85%, transparent);
+}
+
+/* ================= 刷题页题卡头部 ================= */
+[data-color='modern'] .question-header {
+    background: color-mix(in srgb, var(--primary) 3%, var(--bg-card));
+    border-bottom-color: color-mix(in srgb, var(--border) 85%, transparent);
+}
+
+[data-color='modern'] .question-body {
+    padding-top: var(--space-5);
+}
+
+[data-color='modern'] .result-page {
+    background:
+        radial-gradient(
+            620px 300px at 50% -30%,
+            color-mix(in srgb, var(--primary) 12%, transparent),
+            transparent 70%
+        ),
+        var(--bg-card);
+    border-radius: var(--radius-lg);
+}
+
+[data-color='modern'] .correct-answer-header,
+[data-color='modern'] .explanation-header {
+    border-bottom-style: solid;
+    border-bottom-color: color-mix(in srgb, var(--border) 75%, transparent);
+}
+
+[data-color='modern'] .memory-aid {
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-card));
+    border-left-color: var(--primary);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* ================= 分析页 / 排行榜的卡片头 ================= */
+[data-color='modern'] .insight-panel-header {
+    padding-bottom: var(--space-3);
+    border-bottom: 1px dashed color-mix(in srgb, var(--border) 85%, transparent);
+}
+
+[data-color='modern'] .insight-summary {
+    gap: var(--space-3);
+}
+
+[data-color='modern'] .lb-header h1 {
+    letter-spacing: -0.02em;
+}
+
+[data-color='modern'] .lb-row {
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        border-color 0.18s ease;
+}
+
+/* ================= 加载骨架与遮罩跟随主题 ================= */
+[data-color='modern'] #loading-skeleton {
+    background: var(--bg);
+}
+
+[data-color='modern'] .skel-logo-glow {
+    filter: blur(26px);
+    opacity: 0.22;
+}
+
+[data-color='modern'] .stat-ring-fill {
+    stroke-linecap: round;
+}

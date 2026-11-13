@@ -1191,6 +1191,13 @@ const App = {
                 primary: '#2563eb',
                 bg: '#ffffff',
                 fg: '#0f172a'
+            },
+            {
+                value: 'modern',
+                label: '青瓷现代',
+                primary: '#0f766e',
+                bg: '#f4f7f7',
+                fg: '#0d1b1e'
             }
         ];
 
@@ -1198,7 +1205,7 @@ const App = {
         const content = `
             <div class="theme-picker-section">
                 <span class="theme-picker-label">色彩风格</span>
-                <div class="theme-picker-grid-2">
+                <div class="theme-picker-grid-3">
                     ${colors
                         .map(
                             (c) => `
@@ -1210,7 +1217,7 @@ const App = {
                                 <span class="color-dot" style="background-color: ${c.fg};" title="文本色"></span>
                             </div>
                             <input type="radio" name="colorScheme" value="${c.value}" ${c.value === initialColor ? 'checked' : ''}>
-                            <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">${c.label}</span>
+                            <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500; white-space: nowrap;">${c.label}</span>
                         </div>
                     `
                         )
@@ -1246,7 +1253,8 @@ const App = {
                 document.documentElement.setAttribute('data-theme', theme);
             }
 
-            if (color === 'parchment') {
+            // 三套配色中只有 parchment 走 :root 默认值
+            if (!color || color === 'parchment') {
                 document.documentElement.removeAttribute('data-color');
             } else {
                 document.documentElement.setAttribute('data-color', color);
@@ -1627,6 +1635,8 @@ const App = {
         // 应用色彩主题
         if (settings.colorScheme && settings.colorScheme !== 'parchment') {
             document.documentElement.setAttribute('data-color', settings.colorScheme);
+        } else {
+            document.documentElement.removeAttribute('data-color');
         }
 
         // 首次访问显示快捷键提示

@@ -1019,7 +1019,8 @@ window.addEventListener('storage', (e) => {
                 document.documentElement.setAttribute('data-theme', theme);
             }
 
-            if (colorScheme === 'parchment') {
+            // 三套配色中只有 parchment 走 :root 默认值
+            if (!colorScheme || colorScheme === 'parchment') {
                 document.documentElement.removeAttribute('data-color');
             } else {
                 document.documentElement.setAttribute('data-color', colorScheme);
