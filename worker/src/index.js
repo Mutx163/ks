@@ -64,42 +64,6 @@ function getClientIp(request) {
     return '';
 }
 
-// 固定窗口计数器。**内存态、单 isolate 有效**：冷启动清零、多实例不共享，
-// 只能算近似限流，不是硬性安全边界；也别拿它当计费依据。
-function createWindowCounter() {
-    const buckets = new Map();
-    return {
-        hit(key, windowMs) {
-            const now = Date.now();
-            const rec = buckets.get(key);
-            if (!rec || now >= rec.resetAt) {
-                const created = { count: 1, resetAt: now + windowMs };
-                buckets.set(key, created);
-                // 容量保护：超过 5000 条时清掉过期项，避免内存随攻击流量无限增长
-                if (buckets.size > 5000) {
-                    for (const [k, v] of buckets) if (now >= v.resetAt) buckets.delete(k);
-                }
-                return created;
-            }
-            rec.count += 1;
-            return rec;
-        },
-        state(key) {
-            const rec = buckets.get(key);
-            if (!rec) return { count: 0, retryAfterMs: 0 };
-            const left = rec.resetAt - Date.now();
-            if (left <= 0) {
-                buckets.delete(key);
-                return { count: 0, retryAfterMs: 0 };
-            }
-            return { count: rec.count, retryAfterMs: left };
-        },
-        clear(key) {
-            buckets.delete(key);
-        }
-    };
-}
-
 // 429：保持既有 {error} 信封（前端 api.js / aiExplain.js 只读 .error），
 // 额外带 Retry-After 便于客户端退避。
 function tooMany(msg, retryAfterMs, origin) {
@@ -118,6 +82,79 @@ function tooMany(msg, retryAfterMs, origin) {
             }
         }
     );
+}
+
+// ========== 持久化限流（D1） ==========
+// 内存计数在 Cloudflare 上**线上完全不生效**：请求被分摊到不同 isolate，每个 isolate 各数一份，
+// 实测连打 20 次错误同步码一个 429 都没有。所以计数落 D1：所有 isolate、所有 PoP 看到同一份。
+// 设计三条硬约束：
+//   ① 正常请求不写库（只有失败/超额才 UPSERT），不给热路径加写；
+//   ② 单条 UPSERT 完成「窗口过期则重置、否则 +1」，用 RETURNING 一次拿到计数，避免读-改-写漏数；
+//   ③ 表不存在或写失败**降级放行**并记日志——宁可漏限流，也不能把用户登不进来。
+const RATE_TABLE_DDL = `CREATE TABLE IF NOT EXISTS rate_limits (
+    bucket TEXT PRIMARY KEY,
+    count INTEGER NOT NULL DEFAULT 0,
+    reset_at INTEGER NOT NULL
+)`;
+
+let rateTableReady = false;
+
+async function ensureRateTable(env) {
+    if (rateTableReady) return true;
+    try {
+        await env.DB.prepare(RATE_TABLE_DDL).run();
+        rateTableReady = true;
+        return true;
+    } catch (e) {
+        console.error('[RateLimit] 建表失败，降级放行:', e.message);
+        return false;
+    }
+}
+
+// 计数 +1 并返回本次窗口内的计数；失败返回 null（调用方降级放行）。
+// cap：写入封顶。计数到达 cap 后不再写库，直接返回「已封顶」状态——被 429 的请求每次
+// 仍会 UPSERT，攻击流量下是无谓写放大；封顶后写量上限 = cap/窗口，拦不拦已经和写无关。
+// 注意 WHERE 里带了窗口过期分支，否则「已封顶 + 窗口过期」会永远重置不了、变成永久封禁。
+async function bumpRateLimit(env, bucket, windowMs, cap = Infinity) {
+    const now = Date.now();
+    const resetAt = now + windowMs;
+    try {
+        if (!(await ensureRateTable(env))) return null;
+        const row = await env.DB.prepare(
+            `INSERT INTO rate_limits (bucket, count, reset_at) VALUES (?, 1, ?)
+             ON CONFLICT(bucket) DO UPDATE SET
+                count = CASE WHEN rate_limits.reset_at <= ? THEN 1 ELSE rate_limits.count + 1 END,
+                reset_at = CASE WHEN rate_limits.reset_at <= ? THEN ? ELSE rate_limits.reset_at END
+             WHERE rate_limits.count < ? OR rate_limits.reset_at <= ?
+             RETURNING count, reset_at`
+        )
+            .bind(bucket, resetAt, now, now, resetAt, cap, now)
+            .first();
+        if (!row) {
+            // 没有 RETURNING 行 = 已达封顶且窗口未过期：不再写，按「已超额」返回
+            return { count: cap, resetAt: resetAt, capped: true };
+        }
+        return { count: row.count, resetAt: row.reset_at };
+    } catch (e) {
+        console.error('[RateLimit] 计数写入失败，降级放行:', bucket, e.message);
+        return null;
+    }
+}
+
+// 只读查询，不写库：管理端在分发前判断当前 IP 是否已封禁
+async function peekRateLimit(env, bucket) {
+    try {
+        if (!(await ensureRateTable(env))) return null;
+        const row = await env.DB.prepare('SELECT count, reset_at FROM rate_limits WHERE bucket = ?')
+            .bind(bucket)
+            .first();
+        if (!row) return { count: 0, resetAt: 0 };
+        if (row.reset_at <= Date.now()) return { count: 0, resetAt: 0 };
+        return { count: row.count, resetAt: row.reset_at };
+    } catch (e) {
+        console.error('[RateLimit] 查询失败，降级放行:', bucket, e.message);
+        return null;
+    }
 }
 
 // 题库字段里存的是 JSON 文本；损坏时必须降级而不是让整个接口 500
@@ -159,17 +196,24 @@ export default {
             return new Response(null, { status: 204, headers: corsHeaders(origin) });
         }
 
-        // 管理端：按客户端 IP 限流（原来按 deviceId，换个 deviceId 就能绕过）。
-        // 命中阈值直接 429，不再落到各 handler 的 403 —— 否则攻击者无法区分
-        // 「密码错」与「被限流」，而 429 对自助排查更有用，也不泄露任何密码信息。
+        // 管理端：按客户端 IP 持久化计数（原来按 deviceId，换个 deviceId 就绕过；
+        // 后来改成内存态按 IP，线上又被 isolate 分摊掉，实测 20 次都不出 429）。
+        // 命中阈值直接 429，不再落到各 handler 的 403。
         if (path.startsWith('/api/admin')) {
             const clientIp = getClientIp(request);
-            if (clientIp && adminLoginBlocked(clientIp)) {
-                const { retryAfterMs } = ADMIN_FAILS.state(`ip:${clientIp}`);
-                return tooMany('管理员登录尝试过于频繁，请稍后再试', retryAfterMs, origin);
+            if (clientIp) {
+                const state = await peekRateLimit(env, `admin:ip:${clientIp}`);
+                const limit = await adminPerIpLimit(env);
+                if (state && limit && state.count >= limit) {
+                    return tooMany(
+                        '管理员登录尝试过于频繁，请稍后再试',
+                        Math.max(0, state.resetAt - Date.now()),
+                        origin
+                    );
+                }
+                // requireAdmin 拿不到 request，把 IP 通过 env 传下去，避免改 36 个调用点
+                env = { ...env, __clientIp: clientIp };
             }
-            // requireAdmin 拿不到 request，把 IP 通过 env 传下去，避免改 36 个调用点
-            if (clientIp) env = { ...env, __clientIp: clientIp };
         }
 
         try {
@@ -719,20 +763,12 @@ async function handleBind(request, env, origin) {
     }
 
     // 同步码是 6 位唯一凭证，/api/bind 的 404 会直接告诉攻击者"这个码不存在"，
-    // 不限流等于开放爆破。IP 与 deviceId 双计数，用尽即 429。
+    // 不限流等于开放爆破。IP 与 deviceId 双计数（D1 持久化，跨 isolate 共享），用尽即 429。
     //
-    // 注意顺序：**先算限流状态，再查码**——被限流时也要查一次码，让正确码仍能绑成功。
+    // 注意顺序：**先查码、只有猜错才计数**——正确码永远放行。
     // 失败计数只惩罚「猜错」；一次猜对就已经是账号归属的终点，拦它不增加安全性，
     // 只会把「手滑 10 次后终于输对」的正常用户关在门外 15 分钟。
     const bindIp = getClientIp(request);
-    const bindKeys = [];
-    if (bindIp) bindKeys.push(`ip:${bindIp}`);
-    if (typeof deviceId === 'string' && deviceId) bindKeys.push(`dev:${deviceId}`);
-    let bindRetryMs = 0;
-    for (const key of bindKeys) {
-        const { count, retryAfterMs } = BIND_FAILS.state(key);
-        if (count >= BIND_MAX_FAILS) bindRetryMs = Math.max(bindRetryMs, retryAfterMs);
-    }
 
     const code = syncCode.trim().toUpperCase();
 
@@ -742,10 +778,28 @@ async function handleBind(request, env, origin) {
         .first();
 
     if (!user) {
-        if (bindRetryMs > 0) {
-            return tooMany('同步码尝试过于频繁，请 15 分钟后再试', bindRetryMs, origin);
+        // 猜错才计数：IP 与 deviceId 各一条，任一超额即 429。
+        // 单条 UPSERT 原子 +1，RETURNING 直接回本次计数，不做读-改-写。
+        const keys = [];
+        if (bindIp) keys.push(`bind:ip:${bindIp}`);
+        if (typeof deviceId === 'string' && deviceId) keys.push(`bind:dev:${deviceId}`);
+        const states = await Promise.all(
+            keys.map((k) =>
+                bumpRateLimit(env, k, BIND_WINDOW_MS, BIND_MAX_FAILS * 2).then((s) => ({
+                    k,
+                    s
+                }))
+            )
+        );
+        let retryMs = 0;
+        for (const { s } of states) {
+            if (s && s.count > BIND_MAX_FAILS) {
+                retryMs = Math.max(retryMs, s.resetAt - Date.now());
+            }
         }
-        for (const key of bindKeys) BIND_FAILS.hit(key, BIND_WINDOW_MS);
+        if (retryMs > 0) {
+            return tooMany('同步码尝试过于频繁，请 15 分钟后再试', retryMs, origin);
+        }
         return error('同步码不存在，请检查后重试', 404, origin);
     }
 
@@ -756,7 +810,6 @@ async function handleBind(request, env, origin) {
 
     // 已经绑到同一个账号：幂等返回，绝不能再次累加 localStats
     if (existing && existing.user_id === code) {
-        for (const key of bindKeys) BIND_FAILS.clear(key);
         return json(
             { ok: true, syncCode: code, initials: user.initials, alreadyBound: true },
             200,
@@ -816,7 +869,7 @@ async function handleBind(request, env, origin) {
         if (batch.length) await env.DB.batch(batch);
     }
 
-    for (const key of bindKeys) BIND_FAILS.clear(key);
+    // 成功路径不写库（限流表的读写只发生在失败/超额时）；计数随窗口自然过期。
     return json({ ok: true, syncCode: code, initials: user.initials }, 200, origin);
 }
 
@@ -1215,52 +1268,41 @@ function timingSafeEqual(a, b) {
     return diff === 0;
 }
 
-// 管理员登录限速：按客户端 IP 计数（原来按 deviceId，攻击者换个 deviceId 就全新计数）。
+// 管理员登录限速：按客户端 IP 计数（原来按 deviceId，换个 deviceId 就全新计数），
+// 计数落在 D1（内存版线上被 isolate 分摊，实测不生效）。
 // 全局失败量仍然统计，但**不用来全站封锁**（那会被拿来打后台 DoS），而是用来收紧单 IP 阈值：
-// 全站失败量异常时单 IP 阈值从 8 降到 3，干净 IP 仍然看到 8，不存在锁死后台的风险。
-const ADMIN_FAILS = createWindowCounter();
+// 全站失败量异常时单 IP 阈值从 8 收紧到 5，干净 IP 仍然看到 8，不存在锁死后台的风险。
 const ADMIN_MAX_FAILS = 8;
 const ADMIN_GLOBAL_MAX_FAILS = 300;
+const ADMIN_ATTACK_MAX_FAILS = 5;
 const ADMIN_COOLDOWN_MS = 15 * 60 * 1000;
 
-function adminGlobalFailures() {
-    return ADMIN_FAILS.state('global').count;
+// 单 IP 阈值：读全局桶（只读，不写库）
+async function adminPerIpLimit(env) {
+    const global = await peekRateLimit(env, 'admin:global');
+    if (global && global.count >= ADMIN_GLOBAL_MAX_FAILS) return ADMIN_ATTACK_MAX_FAILS;
+    return ADMIN_MAX_FAILS;
 }
 
-function adminPerIpLimit() {
-    // 全站失败量异常（疑似分布式爆破）时把单 IP 阈值从 8 收紧到 5。
-    // 不用 3：本站只有一个管理员账号，弱网/键盘布局不对连错三次很常见，
-    // 收紧过头会让真正的管理员失去题库管理能力。5 次/15 分钟 ≈ 480 次/天，
-    // 对强密码没有实质威胁。
-    return adminGlobalFailures() >= ADMIN_GLOBAL_MAX_FAILS ? 5 : ADMIN_MAX_FAILS;
+// 失败才写库：全局桶 + IP 桶 + 设备桶（设备桶只用于取证，判定用 IP）
+async function recordAdminLoginFail(env, ip, deviceId) {
+    const jobs = [
+        bumpRateLimit(env, 'admin:global', ADMIN_COOLDOWN_MS, ADMIN_GLOBAL_MAX_FAILS * 2)
+    ];
+    if (ip) jobs.push(bumpRateLimit(env, `admin:ip:${ip}`, ADMIN_COOLDOWN_MS, ADMIN_MAX_FAILS * 2));
+    if (deviceId) jobs.push(bumpRateLimit(env, `admin:dev:${deviceId}`, ADMIN_COOLDOWN_MS));
+    await Promise.all(jobs);
 }
 
-function adminLoginBlocked(ip) {
-    if (!ip) return false;
-    return ADMIN_FAILS.state(`ip:${ip}`).count >= adminPerIpLimit();
-}
-
-function recordAdminLoginFail(ip, deviceId) {
-    ADMIN_FAILS.hit('global', ADMIN_COOLDOWN_MS);
-    if (ip) ADMIN_FAILS.hit(`ip:${ip}`, ADMIN_COOLDOWN_MS);
-    if (deviceId) ADMIN_FAILS.hit(`dev:${deviceId}`, ADMIN_COOLDOWN_MS);
-}
-
-function clearAdminLoginFail(ip, deviceId) {
-    if (ip) ADMIN_FAILS.clear(`ip:${ip}`);
-    if (deviceId) ADMIN_FAILS.clear(`dev:${deviceId}`);
-}
-
-// /api/bind 的同步码爆破防护：IP 与 deviceId 双计数，15 分钟内累计失败 10 次即 429。
-// 只累计**失败**（码不存在）；任何一次成功绑定都会清空该 IP/设备的计数，正常用户无感。
-const BIND_FAILS = createWindowCounter();
+// /api/bind 的同步码爆破防护（D1 持久计数）：IP 与 deviceId 双桶，15 分钟内累计失败 10 次即 429。
+// 只累计**失败**（码不存在）；成功路径不写库。
 const BIND_MAX_FAILS = 10;
 const BIND_WINDOW_MS = 15 * 60 * 1000;
 
-// /api/ai/explain 配额：IP 每小时 20 次；如果请求体带了 deviceId 再叠一层每设备 10 次。
+// /api/ai/explain 配额（D1 持久计数）：IP 每小时 300 次；请求体带 deviceId 时再叠一层每设备 10 次。
 // 仓库里的前端（aiExplain.js:642-657）目前不带 deviceId，所以**不强制**，旧前端不会被拒。
-// 目的只是让白刷服务端 Key 有成本，不是精确计费。
-const AI_QUOTA = createWindowCounter();
+// 注意：这是唯一「成功也计数」的限流——它限的就是成功调用（每次成功都花上游的钱），
+// 不能套用「成功不写库」，否则配额永远不会触发。
 const AI_MAX_PER_HOUR_IP = 300;
 const AI_MAX_PER_HOUR_DEVICE = 10;
 const AI_QUOTA_WINDOW_MS = 60 * 60 * 1000;
@@ -1269,15 +1311,13 @@ const AI_QUOTA_WINDOW_MS = 60 * 60 * 1000;
 async function requireAdmin(deviceId, password, env) {
     if (!deviceId || !password) return null;
     const ip = env?.__clientIp || '';
-    if (adminLoginBlocked(ip)) return null;
-    if (ADMIN_FAILS.state(`dev:${deviceId}`).count >= ADMIN_MAX_FAILS) return null;
 
     const expected = env?.ADMIN_PASSWORD_HASH || LEGACY_ADMIN_PASSWORD_HASH;
     if (!timingSafeEqual(await sha256(password), expected)) {
-        recordAdminLoginFail(ip, deviceId);
+        await recordAdminLoginFail(env, ip, deviceId);
         return null;
     }
-    clearAdminLoginFail(ip, deviceId);
+    // 密码正确即放行：成功请求不写库（IP 桶由路由层的 peek 判定）
 
     const userId = await resolveUser(deviceId, env);
     if (!userId) return null;
@@ -2752,23 +2792,31 @@ async function handleAIExplain(request, env, origin) {
         return error('question 过长（上限 8000 字符）', 400, origin);
     }
 
-    // 白刷防护：IP 每小时 20 次；请求体带 deviceId 时再叠一层每设备 10 次。
+    // 白刷防护（D1 持久计数）：IP 每小时 300 次；请求体带 deviceId 时再叠一层每设备 10 次。
     // **不强制 deviceId**——仓库里的前端（aiExplain.js:642-657）本来就不带，
     // 强制会让所有未刷新前端直接不可用。计数放在 enabled 判断之前，
     // 这样即使 AI 未启用，反复刷也会先被配额挡住。
     const aiIp = getClientIp(request) || 'unknown';
-    const aiKeys = [`ip:${aiIp}`];
+    const aiBuckets = [{ key: `ai:ip:${aiIp}`, limit: AI_MAX_PER_HOUR_IP }];
     if (typeof body.deviceId === 'string' && body.deviceId) {
-        aiKeys.push(`dev:${body.deviceId.slice(0, 64)}`);
+        aiBuckets.push({
+            key: `ai:dev:${body.deviceId.slice(0, 64)}`,
+            limit: AI_MAX_PER_HOUR_DEVICE
+        });
     }
-    for (const key of aiKeys) {
-        const limit = key.startsWith('dev:') ? AI_MAX_PER_HOUR_DEVICE : AI_MAX_PER_HOUR_IP;
-        const { count, retryAfterMs } = AI_QUOTA.state(key);
-        if (count >= limit) {
-            return tooMany('AI 解读请求过于频繁，请稍后再试', retryAfterMs, origin);
-        }
+    // 原子 +1 后取回计数再判定：第 N+1 次超额即 429
+    const aiStates = await Promise.all(
+        aiBuckets.map((b) =>
+            bumpRateLimit(env, b.key, AI_QUOTA_WINDOW_MS, b.limit * 2).then((s) => ({ ...b, s }))
+        )
+    );
+    let aiRetryMs = 0;
+    for (const { limit, s } of aiStates) {
+        if (s && s.count > limit) aiRetryMs = Math.max(aiRetryMs, s.resetAt - Date.now());
     }
-    for (const key of aiKeys) AI_QUOTA.hit(key, AI_QUOTA_WINDOW_MS);
+    if (aiRetryMs > 0) {
+        return tooMany('AI 解读请求过于频繁，请稍后再试', aiRetryMs, origin);
+    }
 
     const userProvider = override?.provider;
     const userBaseUrl = override?.baseUrl;
