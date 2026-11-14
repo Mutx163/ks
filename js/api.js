@@ -85,6 +85,9 @@ const API = {
      */
     _classifyPushResult(data) {
         if (data && data.disabled) return 'disabled';
+        // 429 被 request() 透传成对象，这里必须按失败处理：
+        // 让它进失败队列稍后重发，而不是当成“已上报”把增量丢掉。
+        if (data && data.rateLimited) return 'fail';
         if (data !== null && data !== undefined) return 'ok';
         return 'fail';
     },
@@ -222,6 +225,18 @@ const API = {
                 // 403 表示资源被禁用，返回特殊标记以区分网络错误
                 if (res.status === 403)
                     return { ok: false, disabled: true, error: data?.error || '资源不可用' };
+                // 429 限流：把后端文案与等待时间透传给调用方（绑定页要能显示
+                // “试太多次、等 15 分钟”，否则限流功能对用户等于“点了没反应”）。
+                // 必须带 rateLimited 标记：_classifyPushResult 会把任何非空响应体
+                // 当成功，不标记的话 /api/sync 的增量会被当成已上报而丢掉。
+                if (res.status === 429) {
+                    return {
+                        ok: false,
+                        rateLimited: true,
+                        error: data?.error || '请求过于频繁，请稍后再试',
+                        retryAfter: data?.retryAfter ?? data?.retryAfterSeconds ?? null
+                    };
+                }
                 return null;
             }
             return data;
