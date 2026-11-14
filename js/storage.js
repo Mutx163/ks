@@ -375,23 +375,31 @@ const Storage = {
 
     getBankBookmarks(bankId) {
         const bookmarks = this.getBookmarks();
-        return bookmarks[bankId] || [];
+        const ids = bookmarks[bankId];
+        if (!Array.isArray(ids)) return [];
+        // 严格归一成字符串：题库 JSON 的 question.id 是数字（Int64），
+        // 而 onload/inline 事件与云端同步带回来的多是字符串，
+        // 不归一就会出现「已收藏但高亮不亮、收藏模式 0 题」。
+        return ids.map((id) => String(id));
     },
 
     toggleBookmark(bankId, questionId) {
+        // 读写两端必须是同一种类型，否则同一个题会在数组里出现 "1" 和 1 两份
+        const id = String(questionId);
         const bookmarks = this.getBookmarks();
-        if (!bookmarks[bankId]) bookmarks[bankId] = [];
+        const ids = Array.isArray(bookmarks[bankId]) ? bookmarks[bankId].map((v) => String(v)) : [];
 
-        const index = bookmarks[bankId].indexOf(questionId);
-        if (index >= 0) bookmarks[bankId].splice(index, 1);
-        else bookmarks[bankId].push(questionId);
+        const index = ids.indexOf(id);
+        if (index >= 0) ids.splice(index, 1);
+        else ids.push(id);
 
+        bookmarks[bankId] = ids;
         this.set(this.KEYS.BOOKMARKS, bookmarks);
         return index < 0;
     },
 
     isBookmarked(bankId, questionId) {
-        return this.getBankBookmarks(bankId).includes(questionId);
+        return this.getBankBookmarks(bankId).includes(String(questionId));
     },
 
     getBookmarkCount(bankId) {

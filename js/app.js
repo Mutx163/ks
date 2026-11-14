@@ -1130,7 +1130,10 @@ const App = {
             document.documentElement.setAttribute('data-theme', theme);
         }
 
-        Storage.updateSettings({ theme });
+        // themeUpdatedAt 用于跨设备合并时判断哪一端更新，避免云端旧值覆盖本地
+        Storage.updateSettings({ theme, themeUpdatedAt: Date.now() });
+        // 主题切换必须推送云端，否则下次自动同步会把选择改回旧值
+        API.pushSettings(Storage.getSettings());
         Utils.updateBrowserThemeColor();
 
         // 旋转动效增强
@@ -1285,9 +1288,12 @@ const App = {
                             ? activeColorCard.dataset.value
                             : 'parchment';
 
-                        // 持久化保存
-                        Storage.updateSettings({ theme, colorScheme });
+                        // 持久化保存（含时间戳，供跨设备合并判定新旧）
+                        Storage.updateSettings({ theme, colorScheme, themeUpdatedAt: Date.now() });
                         applyTempState(theme, colorScheme);
+                        // 主题与配色要能跨设备，必须显式推一次云端；
+                        // 不推的话下次 autoSync 拉取会用云端旧值把本地选择改回去
+                        API.pushSettings(Storage.getSettings());
 
                         Utils.showToast('主题已更新', 'success');
                         overlay.remove();

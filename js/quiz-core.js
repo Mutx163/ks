@@ -410,8 +410,9 @@ const Core = {
                 break;
             }
             case 'bookmark': {
+                // getBankBookmarks 已统一成字符串 id，这里必须同样按字符串比
                 const bookmarkIds = Storage.getBankBookmarks(state.bankId);
-                questions = questions.filter((q) => bookmarkIds.includes(q.id));
+                questions = questions.filter((q) => bookmarkIds.includes(String(q.id)));
                 break;
             }
             case 'exam':

@@ -53,22 +53,49 @@ const SyncQueue = {
         return n;
     },
 
+    /**
+     * 归一单条 stats 增量：后端要求 correct ≤ answered，
+     * 非法增量会导致 400 并在队列里永久残留，所以入队与发送前都夹一遍。
+     * 已知限制（本批不修）：HEAD 版 Worker 对单次增量用
+     * Math.min(...,500) / Math.min(...,36000) 静默截断（worker/src/index.js:753-761），
+     * 超出的积压部分会被服务端丢弃且客户端拿到 200 后不重试，也就是永久不入账。
+     * 不做分片是有意的：队列没有幂等键，分片会出现「部分成功」，
+     * 重发时重复计数；精确记账留给 F-2 的 roundId 幂等改造。
+     * @returns {object|null} 归一后的条目；全零则返回 null（没有可发的量）
+     */
+    _normalizeStats(stat) {
+        if (!stat || !stat.bankId) return null;
+        const toDelta = (v) => {
+            const n = Number(v);
+            if (!Number.isFinite(n) || n <= 0) return 0;
+            return Math.trunc(n);
+        };
+        const answered = toDelta(stat.answered);
+        const correct = Math.min(toDelta(stat.correct), answered);
+        const duration = toDelta(stat.duration);
+        if (answered === 0 && correct === 0 && duration === 0) return null;
+        return { ...stat, answered, correct, duration };
+    },
+
     enqueueStats(payload) {
-        if (!payload?.bankId) return;
+        const normalized = this._normalizeStats(payload);
+        if (!normalized) return;
         const state = this._load();
-        const existing = state.stats.find((s) => s.bankId === payload.bankId);
+        const existing = state.stats.find((s) => s.bankId === normalized.bankId);
         if (existing) {
-            existing.answered = (existing.answered || 0) + (payload.answered || 0);
-            existing.correct = (existing.correct || 0) + (payload.correct || 0);
-            existing.duration = (existing.duration || 0) + (payload.duration || 0);
-            existing.bankName = payload.bankName || existing.bankName;
+            existing.answered = (existing.answered || 0) + normalized.answered;
+            existing.correct = (existing.correct || 0) + normalized.correct;
+            existing.duration = (existing.duration || 0) + normalized.duration;
+            // 累加后仍要保证 correct ≤ answered，别把两条合法的拼成一条非法的
+            existing.correct = Math.min(existing.correct, existing.answered);
+            existing.bankName = normalized.bankName || existing.bankName;
         } else {
             state.stats.push({
-                bankId: payload.bankId,
-                bankName: payload.bankName || '',
-                answered: payload.answered || 0,
-                correct: payload.correct || 0,
-                duration: payload.duration || 0
+                bankId: normalized.bankId,
+                bankName: normalized.bankName || '',
+                answered: normalized.answered,
+                correct: normalized.correct,
+                duration: normalized.duration
             });
         }
         this._save(state);
@@ -101,19 +128,25 @@ const SyncQueue = {
         const remaining = { stats: [], progress: null, settings: null, bookmarks: null };
 
         for (const stat of state.stats) {
+            // 发送前再归一：旧版本残留的非法条目（负数 / correct>answered）在这一步被修正，
+            // 全零条目直接丢弃，避免永久残留。
+            // 注意：这里整条发送、不分片 —— HEAD 版 Worker 对超限只静默截断（返 200），
+            // 分片会在没有幂等键的情况下引入「部分成功→重发重复计数」，留待 F-2。
+            const payload = this._normalizeStats(stat);
+            if (!payload) continue;
             if (disabled) {
-                remaining.stats.push(stat);
+                remaining.stats.push(payload);
                 failed++;
                 continue;
             }
-            const result = await send('stats', stat);
+            const result = await send('stats', payload);
             if (result === 'ok') flushed++;
             else if (result === 'disabled') {
                 disabled = true;
-                remaining.stats.push(stat);
+                remaining.stats.push(payload);
                 failed++;
             } else {
-                remaining.stats.push(stat);
+                remaining.stats.push(payload);
                 failed++;
             }
         }

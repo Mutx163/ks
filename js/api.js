@@ -457,8 +457,25 @@ const API = {
         if (data.settings && Object.keys(data.settings).length > 0) {
             const localSettings = Storage.getSettings();
             const merged = { ...localSettings, ...data.settings };
+            // theme/colorScheme 是「本设备偏好」，不能被云端旧值覆盖。
+            // 只有云端带更新的 themeUpdatedAt 时才采纳（老数据没有该字段 → 0，
+            // 一律保持本地），否则多设备永远同步不了主题。
+            const localStamp = Number(localSettings.themeUpdatedAt) || 0;
+            const cloudStamp = Number(data.settings.themeUpdatedAt) || 0;
+            const adoptCloudTheme = cloudStamp > localStamp;
+            merged.theme = adoptCloudTheme
+                ? (data.settings.theme ?? localSettings.theme)
+                : localSettings.theme;
+            merged.colorScheme = adoptCloudTheme
+                ? (data.settings.colorScheme ?? localSettings.colorScheme)
+                : localSettings.colorScheme;
+            merged.themeUpdatedAt = adoptCloudTheme ? cloudStamp : localStamp;
             Storage.updateSettings(merged);
-            console.log('[API] ⚙️ 设置已合并');
+            if (adoptCloudTheme) this._applyThemeToDom(merged);
+            console.log(
+                '[API] ⚙️ 设置已合并',
+                adoptCloudTheme ? '(采纳云端主题)' : '(保留本地主题)'
+            );
         }
 
         // 合并进度（取各 bankId 的最大值）
@@ -603,31 +620,57 @@ const API = {
      * @param {object} stats - { bankId, bankName, answered, correct, duration }
      * @returns {Promise|null} 请求结果，异常时不会抛出（内部 catch）
      */
-    pushStats(stats) {
+    async pushStats(stats) {
         // 必须始终返回 Promise：调用方会直接 .then，返回 null 会抛 TypeError
-        if (!this.isRegistered()) return Promise.resolve(null);
-        return this.request('/api/sync', {
-            method: 'POST',
-            body: JSON.stringify({
-                deviceId: this.getDeviceId(),
-                ...stats
-            })
-        })
-            .then((data) => {
-                const result = this._classifyPushResult(data);
-                if (result === 'disabled') this._showBanNotice();
-                if (result === 'fail') {
-                    // 已转交给失败队列，调用方应推进游标，否则会重复入队
-                    SyncQueue.enqueueStats(stats);
-                    return { queued: true };
-                }
-                return data;
-            })
-            .catch((e) => {
-                console.warn('[API] pushStats 失败:', e.message);
-                SyncQueue.enqueueStats(stats);
-                return { queued: true };
+        if (!this.isRegistered()) return null;
+
+        // 增量归一：后端要求 correct ≤ answered（worker/src/index.js:765-767），
+        // 而游标错位时前端会算出 answered ≤ 0 且 correct > 0。
+        // 不归一就会 400 → 进失败队列永久残留，所以发之前先夹紧。
+        const toDelta = (v) => {
+            const n = Number(v);
+            if (!Number.isFinite(n) || n <= 0) return 0;
+            return Math.trunc(n);
+        };
+        const answered = toDelta(stats.answered);
+        const correct = Math.min(toDelta(stats.correct), answered);
+        const duration = toDelta(stats.duration);
+        if (answered === 0 && correct === 0 && duration === 0) {
+            // 没有可上报的增量：不请求、不入队，调用方按成功处理即可推进游标
+            return { ok: true, skipped: true };
+        }
+        const payload = { ...stats, answered, correct, duration };
+
+        // 已知限制（本批不修）：HEAD 版 Worker 对单次增量用
+        // Math.min(...,500) / Math.min(...,36000) 静默截断（worker/src/index.js:753-761），
+        // 超出部分不入账、客户端拿到 200 也不会重试。这里刻意整条发送不分片：
+        // 队列没有幂等键，分片会出现「部分成功」，重发即重复计数；
+        // 精确记账留给 F-2 的 roundId 幂等改造。
+        try {
+            const data = await this.request('/api/sync', {
+                method: 'POST',
+                body: JSON.stringify({
+                    deviceId: this.getDeviceId(),
+                    ...payload
+                })
             });
+            const result = this._classifyPushResult(data);
+            if (result === 'disabled') {
+                this._showBanNotice();
+                SyncQueue.enqueueStats(payload);
+                return { queued: true };
+            }
+            if (result === 'fail') {
+                // 已转交给失败队列，调用方应推进游标，否则会重复入队
+                SyncQueue.enqueueStats(payload);
+                return { queued: true };
+            }
+            return data;
+        } catch (e) {
+            console.warn('[API] pushStats 失败:', e.message);
+            SyncQueue.enqueueStats(payload);
+            return { queued: true };
+        }
     },
 
     // 显示封禁通知
@@ -677,6 +720,29 @@ const API = {
         return await this.request(
             `/api/leaderboard?sort=${sort}&limit=${limit}&deviceId=${this.getDeviceId()}${stats ? '&stats=1' : ''}`
         );
+    },
+
+    /**
+     * 把设置里的主题/配色应用到 DOM（云端主题更新时调用）
+     */
+    _applyThemeToDom(settings) {
+        try {
+            const root = document.documentElement;
+            const theme = settings.theme || 'auto';
+            if (theme === 'auto') root.removeAttribute('data-theme');
+            else root.setAttribute('data-theme', theme);
+
+            // 三套配色中只有 parchment 走 :root 默认值
+            const colorScheme = settings.colorScheme || 'parchment';
+            if (!colorScheme || colorScheme === 'parchment') root.removeAttribute('data-color');
+            else root.setAttribute('data-color', colorScheme);
+
+            if (window.Utils && typeof window.Utils.updateBrowserThemeColor === 'function') {
+                window.Utils.updateBrowserThemeColor();
+            }
+        } catch (e) {
+            console.warn('[API] 应用云端主题失败:', e.message);
+        }
     },
 
     // ==================== 内部工具 ====================
