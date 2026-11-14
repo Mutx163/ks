@@ -4,6 +4,16 @@
 
 城科卷王 - 支持多题库、代码高亮、数学公式
 
+## 并发与资源纪律（强制）
+
+本机 32GB 内存，曾因 16 个残留 `wrangler dev` 占满。所有代理必须遵守：
+
+1. **一次只开一个**：同一时刻只允许一个开发任务、一个 Agent 动手；多任务排队串行，禁止并行开多路。
+2. **本地服务只留一个**：`wrangler dev`、`vite`、`node`、`workerd`、`esbuild` 等开发服务，同一时刻最多一个实例，用完立即关闭；禁止后台常驻、禁止一个任务起多个实例。
+3. **收工三件事**：关闭自己起的进程与后台 job、贴一次进程清单核对、报告剩余内存。看到别人的残留进程一并上报并清理。
+4. **生产写操作一步一停**：迁移、导入、部署分开做，每步做完停下等验收，不并发、不叠加。
+5. **测试最小化**：能只读就不写，能单实例就不多开，跑完立刻清理临时服务与 `.tmp/` 目录。
+
 ## 技术栈
 
 - 前端：原生HTML/CSS/JavaScript（无框架）
@@ -49,6 +59,23 @@ npm run dev
 # 构建生产版本
 npm run build
 ```
+
+### 共享测试服务（强制）
+
+本地 `wrangler dev` / `vite` 一律走统一入口，禁止裸跑：
+
+```powershell
+pwsh -File scripts/dev-services.ps1 -Action start -Owner "<你的名字>" -Task "<任务>"
+pwsh -File scripts/dev-services.ps1 -Action status
+pwsh -File scripts/dev-services.ps1 -Action stop
+```
+
+- 固定端口：api=8787、web=3000；端口被占**拒绝启动**，不自动换端口。
+- 同一时刻最多一个实例；第二次 start 会被互斥锁 / lease 拒绝。
+- 健康检查以 HTTP 为准（api `/api/banks` 200 且 `ok:true`；web `/` 200 且含页面标题）。
+- 测试脚本先 `status` 探测，活着就复用，不要重复启动。
+- 收工必须 `stop`，再贴 `status` 与进程核对。
+- 涉及后台登录的测试必须传 `-ApiVar 'ADMIN_PASSWORD_HASH=<hash>'`（可多次，`KEY=VALUE` 或 `KEY:VALUE`）；不传时行为不变，脚本不保存、不打印任何值。admin 用例 403 时先核对 hash 与明文密码是否匹配。
 
 ## 添加新题库
 
@@ -129,6 +156,7 @@ git push origin main
 3. **JSON规范**：题库JSON必须合法（可用 https://jsonlint.com 验证），引号要转义为 `\"`，换行用 `\n`
 4. **不要盲目移除依赖**：`package.json` 中未在项目源码中 `import` 的依赖，不一定是死依赖——可能是 agent 工具链的运行时依赖（如 `@ff-labs/pi-fff` 是 pi 的搜索扩展）。移除前先确认其用途
 5. **审查完成后询问下一步**：代码审查结束后，不要自行决定如何处理，应询问用户希望如何进行（如：自动修复、生成报告、手动确认后再改等）
+6. **禁止并发堆放进程**：一次只跑一个任务，dev server 用完必关，收工前必须确认没有遗留的 node/workerd/esbuild 进程。
 
 ## 常见问题
 
