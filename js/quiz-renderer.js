@@ -69,7 +69,8 @@ const Renderer = {
         const current = Math.min(state.currentIndex + 1, total);
         // 进度条元素在 quiz.html 中并不存在（只有文字），保留兼容但不强依赖
         const progressFill = document.getElementById('quiz-progress-fill');
-        if (progressFill) progressFill.style.width = Math.round((current / total) * 100) + '%';
+        // 用 --p + scaleX 推进，避免写 width 触发 layout
+        if (progressFill) progressFill.style.setProperty('--p', String(current / total));
         if (progressText) progressText.textContent = `${current} / ${total}`;
     },
 
@@ -129,8 +130,18 @@ const Renderer = {
 
         const canUseAI = isSubmitted && AIExplain.isEnabled();
 
+        // 切题方向：上一题从左侧进、下一题从右侧进；只有导航会设置方向，
+        // 提交判题导致的重渲染不带方向，仍走默认 slideUp，避免"同一题又滑一次"。
+        const enterClass =
+            state._enterDirection === 'prev'
+                ? 'enter-from-left'
+                : state._enterDirection === 'next'
+                  ? 'enter-from-right'
+                  : '';
+        state._enterDirection = null;
+
         let html = `
-            <div class="question-card" data-question-id="${Utils.escapeHtml(question.id)}">
+            <div class="question-card ${enterClass}" data-question-id="${Utils.escapeHtml(question.id)}">
                 <div class="question-header">
                     <div class="question-meta">
                         <span class="question-number">第 ${state.currentIndex + 1} 题</span>

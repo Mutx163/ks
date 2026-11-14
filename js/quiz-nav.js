@@ -29,6 +29,8 @@ const Nav = {
         }
         state.isNavigating = true;
         Quiz.recordQuestionTime();
+        // 先记方向再改下标，供 renderer 决定题目卡从哪一侧滑入
+        state._enterDirection = index > state.currentIndex ? 'next' : 'prev';
         state.currentIndex = index;
         state.questionStartTime = Date.now();
         Quiz.saveSession();

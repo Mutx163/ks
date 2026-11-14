@@ -809,7 +809,7 @@ const App = {
                         </div>
                         <div class="progress-bar">
                             <div class="progress-bar-fill ${stats.progress === 100 ? 'success' : 'warning'}"
-                                 style="width: ${stats.progress}%"></div>
+                                 style="--p: ${Math.min(1, Math.max(0, stats.progress / 100))}"></div>
                         </div>
                     </div>`
                             : ''

@@ -903,6 +903,12 @@
     transform: translateY(-1px);
 }
 
+/* 按压反馈：只动 transform（transition 已在 .bank-card 上声明），命中即回弹，不触发重排 */
+.bank-card:active {
+    transform: scale(0.992);
+    box-shadow: var(--shadow);
+}
+
 .bank-card-header {
     padding: var(--space-4) var(--space-4) 0;
     display: flex;

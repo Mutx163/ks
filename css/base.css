@@ -645,9 +645,14 @@ a:focus:not(:focus-visible) {
 
 .progress-bar-fill {
     height: 100%;
+    width: 100%;
     background: var(--primary);
     border-radius: var(--radius-pill);
-    transition: width 0.3s ease;
+    /* 进度推进用 transform 而不是 width：改 width 每帧都会触发 layout，
+       手机上一整条列表都要重排。--p 由 JS 写入（0~1）。 */
+    transform-origin: left center;
+    transform: scaleX(var(--p, 0));
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .progress-bar-fill.success {
