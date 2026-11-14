@@ -54,6 +54,72 @@ function error(msg, status = 400, origin = '*') {
     return json({ error: msg }, status, origin);
 }
 
+// 客户端 IP：Cloudflare 在边缘注入 CF-Connecting-IP，本地 wrangler dev 没有该头，
+// 回落到 X-Forwarded-For；都没有时返回空串（调用方需要自己决定降级键）。
+function getClientIp(request) {
+    const direct = request.headers.get('CF-Connecting-IP');
+    if (direct) return direct.trim();
+    const forwarded = request.headers.get('X-Forwarded-For');
+    if (forwarded) return forwarded.split(',')[0].trim();
+    return '';
+}
+
+// 固定窗口计数器。**内存态、单 isolate 有效**：冷启动清零、多实例不共享，
+// 只能算近似限流，不是硬性安全边界；也别拿它当计费依据。
+function createWindowCounter() {
+    const buckets = new Map();
+    return {
+        hit(key, windowMs) {
+            const now = Date.now();
+            const rec = buckets.get(key);
+            if (!rec || now >= rec.resetAt) {
+                const created = { count: 1, resetAt: now + windowMs };
+                buckets.set(key, created);
+                // 容量保护：超过 5000 条时清掉过期项，避免内存随攻击流量无限增长
+                if (buckets.size > 5000) {
+                    for (const [k, v] of buckets) if (now >= v.resetAt) buckets.delete(k);
+                }
+                return created;
+            }
+            rec.count += 1;
+            return rec;
+        },
+        state(key) {
+            const rec = buckets.get(key);
+            if (!rec) return { count: 0, retryAfterMs: 0 };
+            const left = rec.resetAt - Date.now();
+            if (left <= 0) {
+                buckets.delete(key);
+                return { count: 0, retryAfterMs: 0 };
+            }
+            return { count: rec.count, retryAfterMs: left };
+        },
+        clear(key) {
+            buckets.delete(key);
+        }
+    };
+}
+
+// 429：保持既有 {error} 信封（前端 api.js / aiExplain.js 只读 .error），
+// 额外带 Retry-After 便于客户端退避。
+function tooMany(msg, retryAfterMs, origin) {
+    const seconds = Math.max(1, Math.ceil((retryAfterMs || 0) / 1000));
+    return new Response(
+        JSON.stringify({ ok: false, error: msg, retryAfterSeconds: seconds, retryAfter: seconds }),
+        {
+            status: 429,
+            headers: {
+                ...corsHeaders(origin),
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                Pragma: 'no-cache',
+                Expires: '0',
+                'Retry-After': String(seconds)
+            }
+        }
+    );
+}
+
 // 题库字段里存的是 JSON 文本；损坏时必须降级而不是让整个接口 500
 function safeParseJson(text, fallback = null) {
     if (!text) return fallback;
@@ -91,6 +157,19 @@ export default {
 
         if (method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: corsHeaders(origin) });
+        }
+
+        // 管理端：按客户端 IP 限流（原来按 deviceId，换个 deviceId 就能绕过）。
+        // 命中阈值直接 429，不再落到各 handler 的 403 —— 否则攻击者无法区分
+        // 「密码错」与「被限流」，而 429 对自助排查更有用，也不泄露任何密码信息。
+        if (path.startsWith('/api/admin')) {
+            const clientIp = getClientIp(request);
+            if (clientIp && adminLoginBlocked(clientIp)) {
+                const { retryAfterMs } = ADMIN_FAILS.state(`ip:${clientIp}`);
+                return tooMany('管理员登录尝试过于频繁，请稍后再试', retryAfterMs, origin);
+            }
+            // requireAdmin 拿不到 request，把 IP 通过 env 传下去，避免改 36 个调用点
+            if (clientIp) env = { ...env, __clientIp: clientIp };
         }
 
         try {
@@ -639,6 +718,22 @@ async function handleBind(request, env, origin) {
         return error('缺少必要参数', 400, origin);
     }
 
+    // 同步码是 6 位唯一凭证，/api/bind 的 404 会直接告诉攻击者"这个码不存在"，
+    // 不限流等于开放爆破。IP 与 deviceId 双计数，用尽即 429。
+    //
+    // 注意顺序：**先算限流状态，再查码**——被限流时也要查一次码，让正确码仍能绑成功。
+    // 失败计数只惩罚「猜错」；一次猜对就已经是账号归属的终点，拦它不增加安全性，
+    // 只会把「手滑 10 次后终于输对」的正常用户关在门外 15 分钟。
+    const bindIp = getClientIp(request);
+    const bindKeys = [];
+    if (bindIp) bindKeys.push(`ip:${bindIp}`);
+    if (typeof deviceId === 'string' && deviceId) bindKeys.push(`dev:${deviceId}`);
+    let bindRetryMs = 0;
+    for (const key of bindKeys) {
+        const { count, retryAfterMs } = BIND_FAILS.state(key);
+        if (count >= BIND_MAX_FAILS) bindRetryMs = Math.max(bindRetryMs, retryAfterMs);
+    }
+
     const code = syncCode.trim().toUpperCase();
 
     // 验证同步码存在
@@ -647,6 +742,10 @@ async function handleBind(request, env, origin) {
         .first();
 
     if (!user) {
+        if (bindRetryMs > 0) {
+            return tooMany('同步码尝试过于频繁，请 15 分钟后再试', bindRetryMs, origin);
+        }
+        for (const key of bindKeys) BIND_FAILS.hit(key, BIND_WINDOW_MS);
         return error('同步码不存在，请检查后重试', 404, origin);
     }
 
@@ -657,6 +756,7 @@ async function handleBind(request, env, origin) {
 
     // 已经绑到同一个账号：幂等返回，绝不能再次累加 localStats
     if (existing && existing.user_id === code) {
+        for (const key of bindKeys) BIND_FAILS.clear(key);
         return json(
             { ok: true, syncCode: code, initials: user.initials, alreadyBound: true },
             200,
@@ -716,6 +816,7 @@ async function handleBind(request, env, origin) {
         if (batch.length) await env.DB.batch(batch);
     }
 
+    for (const key of bindKeys) BIND_FAILS.clear(key);
     return json({ ok: true, syncCode: code, initials: user.initials }, 200, origin);
 }
 
@@ -750,21 +851,29 @@ async function handleSync(request, env, origin) {
     }
     if (bankId.length > 64) return error('bankId 过长', 400, origin);
 
-    // 数值必须是非负整数且有上限，否则排行榜可被一次请求刷到任意值
+    // 数值必须能转成数字且有上限，否则排行榜可被一次请求刷到任意值。
+    // 负数不再单独判非法（见下方 clamp），统一按 0 处理。
     const toCount = (v, max) => {
         const n = Number(v);
-        if (!Number.isFinite(n) || n < 0) return null;
+        if (!Number.isFinite(n)) return null;
         return Math.min(Math.trunc(n), max);
     };
-    const answeredDelta = toCount(answered ?? 0, 500);
-    const correctDelta = toCount(correct ?? 0, 500);
-    const durationDelta = toCount(duration ?? 0, 36000);
-    if (answeredDelta === null || correctDelta === null || durationDelta === null) {
+    const answeredRaw = toCount(answered ?? 0, 500);
+    const correctRaw = toCount(correct ?? 0, 500);
+    const durationRaw = toCount(duration ?? 0, 36000);
+    if (answeredRaw === null || correctRaw === null || durationRaw === null) {
         return error('统计数据必须是非负数字', 400, origin);
     }
-    if (correctDelta > answeredDelta) {
-        return error('正确数不能大于答题数', 400, origin);
-    }
+    // 前端删除错题后游标不重置，会算出 answered<=0 而 correct>0 的增量。
+    // 旧逻辑在这里返回 400，前端失败队列因此永久卡住（F-3：失败条目每次同步重发、永不消亡）。
+    // 改为夹到「不会产生非法累加」的最小增量并照常 200：非法部分不落库（0/0），
+    // 客户端拿到 200 就能把这条增量从队列里消费掉。
+    // 正常增量（三项非负且 correct<=answered）的落库值与旧行为完全一致。
+    const clamped =
+        answeredRaw < 0 || correctRaw < 0 || durationRaw < 0 || correctRaw > answeredRaw;
+    const answeredDelta = Math.max(0, answeredRaw);
+    const correctDelta = Math.min(Math.max(0, correctRaw), answeredDelta);
+    const durationDelta = Math.max(0, durationRaw);
 
     const userId = await resolveUser(deviceId, env);
     if (!userId) return error('设备未注册', 400, origin);
@@ -797,7 +906,8 @@ async function handleSync(request, env, origin) {
         )
         .run();
 
-    return json({ ok: true }, 200, origin);
+    // clamped 只是可观测标记：老客户端只判断响应非空，不受影响
+    return json(clamped ? { ok: true, clamped: true } : { ok: true }, 200, origin);
 }
 
 // ========== 同步设置 ==========
@@ -1105,42 +1215,69 @@ function timingSafeEqual(a, b) {
     return diff === 0;
 }
 
-// 登录失败限速：同一设备连续失败后的冷却（内存态，单实例内有效）
-const LOGIN_FAILS = new Map();
-const LOGIN_MAX_FAILS = 8;
-const LOGIN_COOLDOWN_MS = 15 * 60 * 1000;
+// 管理员登录限速：按客户端 IP 计数（原来按 deviceId，攻击者换个 deviceId 就全新计数）。
+// 全局失败量仍然统计，但**不用来全站封锁**（那会被拿来打后台 DoS），而是用来收紧单 IP 阈值：
+// 全站失败量异常时单 IP 阈值从 8 降到 3，干净 IP 仍然看到 8，不存在锁死后台的风险。
+const ADMIN_FAILS = createWindowCounter();
+const ADMIN_MAX_FAILS = 8;
+const ADMIN_GLOBAL_MAX_FAILS = 300;
+const ADMIN_COOLDOWN_MS = 15 * 60 * 1000;
 
-function loginBlocked(deviceId) {
-    const rec = LOGIN_FAILS.get(deviceId);
-    if (!rec) return false;
-    if (Date.now() - rec.at > LOGIN_COOLDOWN_MS) {
-        LOGIN_FAILS.delete(deviceId);
-        return false;
-    }
-    return rec.count >= LOGIN_MAX_FAILS;
+function adminGlobalFailures() {
+    return ADMIN_FAILS.state('global').count;
 }
 
-function recordLoginFail(deviceId) {
-    const rec = LOGIN_FAILS.get(deviceId);
-    if (!rec || Date.now() - rec.at > LOGIN_COOLDOWN_MS) {
-        LOGIN_FAILS.set(deviceId, { count: 1, at: Date.now() });
-    } else {
-        rec.count += 1;
-        rec.at = Date.now();
-    }
+function adminPerIpLimit() {
+    // 全站失败量异常（疑似分布式爆破）时把单 IP 阈值从 8 收紧到 5。
+    // 不用 3：本站只有一个管理员账号，弱网/键盘布局不对连错三次很常见，
+    // 收紧过头会让真正的管理员失去题库管理能力。5 次/15 分钟 ≈ 480 次/天，
+    // 对强密码没有实质威胁。
+    return adminGlobalFailures() >= ADMIN_GLOBAL_MAX_FAILS ? 5 : ADMIN_MAX_FAILS;
 }
+
+function adminLoginBlocked(ip) {
+    if (!ip) return false;
+    return ADMIN_FAILS.state(`ip:${ip}`).count >= adminPerIpLimit();
+}
+
+function recordAdminLoginFail(ip, deviceId) {
+    ADMIN_FAILS.hit('global', ADMIN_COOLDOWN_MS);
+    if (ip) ADMIN_FAILS.hit(`ip:${ip}`, ADMIN_COOLDOWN_MS);
+    if (deviceId) ADMIN_FAILS.hit(`dev:${deviceId}`, ADMIN_COOLDOWN_MS);
+}
+
+function clearAdminLoginFail(ip, deviceId) {
+    if (ip) ADMIN_FAILS.clear(`ip:${ip}`);
+    if (deviceId) ADMIN_FAILS.clear(`dev:${deviceId}`);
+}
+
+// /api/bind 的同步码爆破防护：IP 与 deviceId 双计数，15 分钟内累计失败 10 次即 429。
+// 只累计**失败**（码不存在）；任何一次成功绑定都会清空该 IP/设备的计数，正常用户无感。
+const BIND_FAILS = createWindowCounter();
+const BIND_MAX_FAILS = 10;
+const BIND_WINDOW_MS = 15 * 60 * 1000;
+
+// /api/ai/explain 配额：IP 每小时 20 次；如果请求体带了 deviceId 再叠一层每设备 10 次。
+// 仓库里的前端（aiExplain.js:642-657）目前不带 deviceId，所以**不强制**，旧前端不会被拒。
+// 目的只是让白刷服务端 Key 有成本，不是精确计费。
+const AI_QUOTA = createWindowCounter();
+const AI_MAX_PER_HOUR_IP = 300;
+const AI_MAX_PER_HOUR_DEVICE = 10;
+const AI_QUOTA_WINDOW_MS = 60 * 60 * 1000;
 
 // ========== 工具函数：验证管理员 ==========
 async function requireAdmin(deviceId, password, env) {
     if (!deviceId || !password) return null;
-    if (loginBlocked(deviceId)) return null;
+    const ip = env?.__clientIp || '';
+    if (adminLoginBlocked(ip)) return null;
+    if (ADMIN_FAILS.state(`dev:${deviceId}`).count >= ADMIN_MAX_FAILS) return null;
 
     const expected = env?.ADMIN_PASSWORD_HASH || LEGACY_ADMIN_PASSWORD_HASH;
     if (!timingSafeEqual(await sha256(password), expected)) {
-        recordLoginFail(deviceId);
+        recordAdminLoginFail(ip, deviceId);
         return null;
     }
-    LOGIN_FAILS.delete(deviceId);
+    clearAdminLoginFail(ip, deviceId);
 
     const userId = await resolveUser(deviceId, env);
     if (!userId) return null;
@@ -2614,6 +2751,24 @@ async function handleAIExplain(request, env, origin) {
     if (typeof question !== 'string' || question.length > 8000) {
         return error('question 过长（上限 8000 字符）', 400, origin);
     }
+
+    // 白刷防护：IP 每小时 20 次；请求体带 deviceId 时再叠一层每设备 10 次。
+    // **不强制 deviceId**——仓库里的前端（aiExplain.js:642-657）本来就不带，
+    // 强制会让所有未刷新前端直接不可用。计数放在 enabled 判断之前，
+    // 这样即使 AI 未启用，反复刷也会先被配额挡住。
+    const aiIp = getClientIp(request) || 'unknown';
+    const aiKeys = [`ip:${aiIp}`];
+    if (typeof body.deviceId === 'string' && body.deviceId) {
+        aiKeys.push(`dev:${body.deviceId.slice(0, 64)}`);
+    }
+    for (const key of aiKeys) {
+        const limit = key.startsWith('dev:') ? AI_MAX_PER_HOUR_DEVICE : AI_MAX_PER_HOUR_IP;
+        const { count, retryAfterMs } = AI_QUOTA.state(key);
+        if (count >= limit) {
+            return tooMany('AI 解读请求过于频繁，请稍后再试', retryAfterMs, origin);
+        }
+    }
+    for (const key of aiKeys) AI_QUOTA.hit(key, AI_QUOTA_WINDOW_MS);
 
     const userProvider = override?.provider;
     const userBaseUrl = override?.baseUrl;
