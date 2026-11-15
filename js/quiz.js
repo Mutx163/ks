@@ -4,10 +4,9 @@
  */
 
 // 导入 vendor 模块（打包进构建）
-import './vendor/prism.js';
+// KaTeX / Prism / marked 已改为按需加载（见 js/lazyAssets.js）：
+// 题库里没有公式或代码块时不再付 258 KB + 33 KB + 39 KB 的代价。
 import './vendor/lucide.js';
-import './vendor/katex.js';
-import './vendor/marked.js';
 
 import Core from './quiz-core.js';
 import Renderer from './quiz-renderer.js';

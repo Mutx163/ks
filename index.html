@@ -393,10 +393,15 @@
                 lucide.createIcons();
             }
         </script>
-        <!-- 51.la 统计：首屏完成后空闲加载，避免参与 LCP 关键路径 -->
+        <!-- 51.la 统计：不参与首屏关键路径。
+             基线实测它两个文件约 110 KB（Fast 4G 下竞争带宽、挤 LCP），
+             所以改成「首次用户交互后加载，或无交互 8 秒后兜底加载」。 -->
         <script>
             (function () {
+                var loaded = false;
                 function loadAnalytics() {
+                    if (loaded) return;
+                    loaded = true;
                     if (document.getElementById('LA_COLLECT')) return;
                     var script = document.createElement('script');
                     script.charset = 'UTF-8';
@@ -415,16 +420,18 @@
                     document.head.appendChild(script);
                 }
 
-                function scheduleAnalytics() {
-                    if ('requestIdleCallback' in window) {
-                        requestIdleCallback(loadAnalytics, { timeout: 5000 });
-                    } else {
-                        setTimeout(loadAnalytics, 3000);
-                    }
+                var events = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'mousemove'];
+                function onFirstInteraction() {
+                    events.forEach(function (t) {
+                        window.removeEventListener(t, onFirstInteraction, { passive: true });
+                    });
+                    loadAnalytics();
                 }
-
-                if (document.readyState === 'complete') scheduleAnalytics();
-                else window.addEventListener('load', scheduleAnalytics, { once: true });
+                events.forEach(function (t) {
+                    window.addEventListener(t, onFirstInteraction, { passive: true, once: true });
+                });
+                // 无交互用户（只知道停留）也要计入统计，但不许抢首屏带宽
+                setTimeout(loadAnalytics, 8000);
             })();
         </script>
 

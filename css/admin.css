@@ -1,8 +1,8 @@
 /* ================= 专业管理后台样式 ================= */
 
-/* 字体导入 - Geist (Vercel) */
-@import url('https://cdn.jsdelivr.net/npm/geist@1.2.2/dist/fonts/geist-sans/style.css');
-@import url('https://cdn.jsdelivr.net/npm/geist@1.2.2/dist/fonts/geist-mono/style.css');
+/* 字体导入已移到 admin.html 的非阻塞 <link>：
+   原来这两条 @import 是第三方 CDN 的渲染阻塞请求，直接压在 FCP 上，
+   现在改为 media="print" → onload 切回 all，字体加载完再应用（--font-sans 已有系统字体兜底）。 */
 
 :root {
     /* 字体系统 */

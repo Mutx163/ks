@@ -3,19 +3,46 @@
  */
 
 // 导入 vendor 模块（打包进构建）
-import './vendor/lucide.js';
+// lucide 改成登录后再加载：登录页 0 个 data-lucide，首屏不该为 21.6 KB 付费
+let lucidePromise = null;
+function ensureLucide() {
+    if (!lucidePromise) lucidePromise = import('./vendor/lucide.js');
+    return lucidePromise;
+}
 
 import API from './api.js';
 import Utils from './utils.js';
 import Perf from './perf.js';
-import { initUsers } from './admin-users.js';
-import { initBanks } from './admin-banks.js';
-import { initEditor } from './admin-editor.js';
-import { initAnnounce } from './admin-announce.js';
-import { initAI } from './admin-ai.js';
-import { initLogs } from './admin-logs.js';
-import { initClientLogs } from './admin-client-logs.js';
-import { initStatus } from './admin-status.js';
+
+/**
+ * 子模块按需加载（基线瓶颈③：admin 单包 148 KB、FCP 2136ms）
+ *
+ * 首屏只需要「登录表单 + 概览」，9 个 tab 里只有 overview 在首屏渲染；
+ * 其余 tab 的逻辑改成切到该 tab 时才 import，首屏不再为 8 个 tab 付费。
+ * 注意：initX(Admin) 只是把方法挂到 Admin 对象上，不加载就会缺对应 renderX，
+ * 所以 renderTab / 详情路由都先 ensure 再渲染。
+ */
+const LAZY_MODULES = {
+    users: { load: () => import('./admin-users.js'), init: 'initUsers' },
+    banks: { load: () => import('./admin-banks.js'), init: 'initBanks' },
+    editor: { load: () => import('./admin-editor.js'), init: 'initEditor' },
+    announce: { load: () => import('./admin-announce.js'), init: 'initAnnounce' },
+    ai: { load: () => import('./admin-ai.js'), init: 'initAI' },
+    logs: { load: () => import('./admin-logs.js'), init: 'initLogs' },
+    'client-logs': { load: () => import('./admin-client-logs.js'), init: 'initClientLogs' },
+    status: { load: () => import('./admin-status.js'), init: 'initStatus' }
+};
+
+// tab → 需要的模块（banks 里的题目编辑依赖 editor）
+const TAB_MODULES = {
+    users: ['users'],
+    banks: ['banks', 'editor'],
+    announce: ['announce'],
+    ai: ['ai'],
+    logs: ['logs'],
+    'client-logs': ['client-logs'],
+    status: ['status']
+};
 
 const Admin = {
     users: [],
@@ -26,6 +53,46 @@ const Admin = {
     tab: 'overview',
     _loginVerified: false, // 标记是否已验证过密码
     _routeBound: false,
+    _lazyState: { loaded: new Set(), loading: new Map() },
+
+    /**
+     * 按需加载并初始化一个子模块（并发安全，重复调用只加载一次）
+     */
+    async _ensureModule(name) {
+        const def = LAZY_MODULES[name];
+        if (!def) return;
+        if (this._lazyState.loaded.has(name)) return;
+        if (this._lazyState.loading.has(name)) return this._lazyState.loading.get(name);
+
+        // 必须是可静态分析的 import()：`import(def.path)` 会让 Rollup 无法产出 chunk，
+        // 打包后子模块直接消失（tab 点了没反应），所以我用 load: () => import('./x.js')
+        const p = def
+            .load()
+            .then((mod) => {
+                const init = mod[def.init];
+                if (typeof init === 'function') init(this);
+                this._lazyState.loaded.add(name);
+            })
+            .catch((e) => {
+                console.error(`[Admin] 子模块 ${name} 加载失败:`, e.message);
+                throw e;
+            })
+            .finally(() => this._lazyState.loading.delete(name));
+
+        this._lazyState.loading.set(name, p);
+        return p;
+    },
+
+    /**
+     * 按 tab 加载所需模块（overview/activity 在主包里，无需加载）
+     */
+    async _ensureTabModules(tab) {
+        const list = TAB_MODULES[tab] || [];
+        for (const name of list) {
+            // 单个模块失败不应让别的 tab 一起白屏：记录后继续
+            await this._ensureModule(name).catch(() => {});
+        }
+    },
 
     logAction(action, detail = {}, level = 'info') {
         const time = new Date().toISOString();
@@ -322,16 +389,19 @@ const Admin = {
         const main = parts[0] || fallback;
         if (main === 'users' && parts[1]) {
             this.activateTab('users');
+            await this._ensureModule('users');
             await this.showUserDetail(parts[1], { pushHash: false });
             return;
         }
         if (main === 'banks' && parts[1] && parts[2] === 'questions') {
             this.activateTab('banks');
+            await this._ensureTabModules('banks');
             await this.showQuestionList(parts[1], '', { pushHash: false });
             return;
         }
         if (main === 'banks' && parts[1]) {
             this.activateTab('banks');
+            await this._ensureTabModules('banks');
             await this.showBankDetail(parts[1], { pushHash: false });
             return;
         }
@@ -350,6 +420,10 @@ const Admin = {
             'client-logs': 'renderClientLogs',
             status: 'renderStatus'
         };
+        // 切到哪个 tab 就先把它依赖的模块加载好，再渲染
+        await this._ensureTabModules(this.tab);
+        // 图标只在后台内部用到（登录页 0 个），所以放在登录之后按需加载
+        await ensureLucide().catch(() => {});
         if (map[this.tab]) await this[map[this.tab]]();
     },
 
@@ -954,15 +1028,7 @@ const Admin = {
     }
 };
 
-// 注册子模块
-initUsers(Admin);
-initBanks(Admin);
-initEditor(Admin);
-initAnnounce(Admin);
-initAI(Admin);
-initLogs(Admin);
-initClientLogs(Admin);
-initStatus(Admin);
+// 子模块不再在这里全量注册：由 _ensureModule 在切到对应 tab 时按需 import + init
 
 // 挂载全局
 window.Admin = Admin;

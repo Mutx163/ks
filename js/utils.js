@@ -2,6 +2,8 @@
  * 工具函数模块
  */
 
+import { ensureKatex, ensurePrism, ensureMarked } from './lazyAssets.js';
+
 const Utils = {
     /**
      * 创建 Lucide 图标 HTML
@@ -378,9 +380,33 @@ const Utils = {
     },
 
     /**
-     * 渲染数学公式
+     * 渲染数学公式（无公式则不加载 KaTeX）
+     * 题库里没有 $…$ 时完全不会下载这 258 KB + CSS，内容出现后按需加载并补渲染。
      */
     renderMath(container) {
+        if (!container) return Promise.resolve();
+        let targets;
+        try {
+            targets = container.querySelectorAll('.math-inline, .math-block');
+        } catch {
+            return Promise.resolve();
+        }
+        if (!targets.length) return Promise.resolve();
+        if (typeof window.katex !== 'undefined' && window.katex) {
+            this._renderMathNow(container);
+            return Promise.resolve();
+        }
+        return ensureKatex()
+            .then(() => this._renderMathNow(container))
+            .catch((e) => {
+                console.warn('KaTeX 懒加载失败:', e.message);
+            });
+    },
+
+    /**
+     * 真正的公式渲染（KaTeX 已就绪时调用）
+     */
+    _renderMathNow(container) {
         if (!container) return;
         try {
             if (typeof window.katex === 'undefined' || !window.katex) return;
@@ -420,9 +446,33 @@ const Utils = {
     },
 
     /**
-     * 高亮代码块
+     * 高亮代码块（无代码块则不加载 Prism）
+     * 只有出现 <pre><code> 时才下载 Prism 与语言包 + 主题 CSS。
      */
     highlightCode(container) {
+        if (!container) return Promise.resolve();
+        let targets;
+        try {
+            targets = container.querySelectorAll('pre code');
+        } catch {
+            return Promise.resolve();
+        }
+        if (!targets.length) return Promise.resolve();
+        if (typeof window.Prism !== 'undefined' && window.Prism) {
+            this._highlightCodeNow(container);
+            return Promise.resolve();
+        }
+        return ensurePrism()
+            .then(() => this._highlightCodeNow(container))
+            .catch((e) => {
+                console.warn('Prism 懒加载失败:', e.message);
+            });
+    },
+
+    /**
+     * 真正的高亮（Prism 已就绪时调用）
+     */
+    _highlightCodeNow(container) {
         if (!container) return;
         try {
             if (typeof window.Prism === 'undefined' || !window.Prism) return;
@@ -1033,5 +1083,9 @@ window.addEventListener('storage', (e) => {
 });
 
 // 导出
+// ensure* 供个别模块（如 aiExplain 自行 highlightElement）按需加载重资源
+Utils.ensureKatex = ensureKatex;
+Utils.ensurePrism = ensurePrism;
+Utils.ensureMarked = ensureMarked;
 window.Utils = Utils;
 export default Utils;

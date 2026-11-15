@@ -391,7 +391,7 @@ const AIExplain = {
             return `%%MATH_BLOCK_${mathBlocks.length - 1}%%`;
         });
 
-        // 2. Markdown → HTML
+        // 2. Markdown → HTML（marked 按需加载：AI 解读里才用得上，别为它让刷题页首屏付费）
         let html;
         try {
             const m = globalThis.marked;
@@ -430,12 +430,25 @@ const AIExplain = {
         // 5. 写入 DOM
         target.innerHTML = html;
 
-        // 5. 代码高亮（Prism.js）
+        // 5. 代码高亮（Prism.js）：有代码块才加载，加载完再高亮
         try {
-            if (typeof Prism !== 'undefined') {
-                target.querySelectorAll('pre code').forEach((block) => {
-                    Prism.highlightElement(block);
-                });
+            const blocks = target.querySelectorAll('pre code');
+            if (blocks.length) {
+                const run = () => {
+                    if (typeof Prism === 'undefined') return;
+                    blocks.forEach((block) => {
+                        try {
+                            Prism.highlightElement(block);
+                        } catch {
+                            /* ignore */
+                        }
+                    });
+                };
+                if (typeof Prism !== 'undefined') run();
+                else if (Utils.ensurePrism)
+                    Utils.ensurePrism()
+                        .then(run)
+                        .catch(() => {});
             }
         } catch {
             /* ignore */

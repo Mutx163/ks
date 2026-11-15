@@ -12,6 +12,20 @@
 
         <link rel="stylesheet" href="css/base.css" />
         <link rel="stylesheet" href="css/admin.css" />
+        <!-- Geist 字体（第三方 CDN）：不阻塞首屏，加载完再切回样式表。
+             原来写在 admin.css 里的 @import 会阻塞渲染，是 admin FCP 的主要成本之一。 -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/geist@1.2.2/dist/fonts/geist-sans/style.css"
+            media="print"
+            onload="this.media='all'"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/geist@1.2.2/dist/fonts/geist-mono/style.css"
+            media="print"
+            onload="this.media='all'"
+        />
     </head>
     <body class="layout-fullscreen">
         <!-- 登录页 -->
