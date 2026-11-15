@@ -1,3 +1,10 @@
+-- ⚠️ 本文件是「当前生产结构快照」，**不是从零建库入口**。
+--   ① 用途：阅读与比对线上结构；它不表达可重放的建库顺序。
+--   ② 从零建库只走 `worker/migrations/0001→0005`（或 `scripts/apply-migrations.ps1`）。
+--   ③ 直接拿本文件建库再跑 0003 会撞 `duplicate column name: bookmarks`（bookmarks 已含在本文件里）。
+--      实测：这样建出来的库没有 `d1_migrations` 表，`users.bookmarks` 的 cid=6；
+--      而生产库该列是 0003 的 ALTER 追加的，cid=9。两者结构不等价。
+
 -- 用户表（同步码为核心标识）
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,                -- 同步码（6位，如 KW3A7F）

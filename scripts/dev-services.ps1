@@ -206,38 +206,91 @@ function Write-Tail([string]$Name) {
     }
 }
 
-function Ensure-LocalSchema {
-    # 本地 D1 空库没有 banks 表，/api/banks 会 500；先跑一次幂等 schema。
-    # 只写 .tmp-services/d1 本地 sqlite，不碰生产。
-    # 成功后落标记，后续 start 跳过（schema.sql 改了要删标记重跑）。
-    $marker = Join-Path $D1Dir '.schema-ok'
-    if (Test-Path $marker) { return }
-
-    $schema = Join-Path $Root 'worker/schema.sql'
-    $config = Join-Path $Root 'worker/wrangler.toml'
-    if (-not (Test-Path $schema)) { throw "缺少 worker/schema.sql，无法初始化本地 D1" }
-    $outLog = Join-Path $StateDir 'api.schema.log'
-    $errLog = Join-Path $StateDir 'api.schema.err.log'
-    Write-Log '初始化本地 D1（幂等 schema.sql）...'
+function Invoke-LocalD1Sql {
+    param(
+        [Parameter(Mandatory = $true)][string]$SqlFile,
+        [switch]$Json,
+        [int]$TimeoutSec = 120
+    )
     $argList = @('--yes', 'wrangler', 'd1', 'execute', 'ks-leaderboard', '--local',
-        '--persist-to', $D1Dir, '--file', $schema, '-c', $config)
+        '--persist-to', $D1Dir, '--file', $SqlFile, '-c', (Join-Path $Root 'worker/wrangler.toml'))
+    if ($Json) { $argList += '--json' }
+    $outLog = Join-Path $StateDir 'local-d1.out.log'
+    $errLog = Join-Path $StateDir 'local-d1.err.log'
     $p = Start-Process -FilePath 'npx.cmd' -ArgumentList $argList -WorkingDirectory $Root `
         -WindowStyle Hidden -PassThru -RedirectStandardOutput $outLog -RedirectStandardError $errLog
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    while (-not $p.HasExited -and $sw.Elapsed.TotalSeconds -lt 120) {
+    while (-not $p.HasExited -and $sw.Elapsed.TotalSeconds -lt $TimeoutSec) {
         Start-Sleep -Milliseconds 250
         $p.Refresh()
     }
     if (-not $p.HasExited) {
         & taskkill.exe /PID $p.Id /T /F *> $null
-        throw '本地 D1 schema 初始化超时（120s），可能有其他 wrangler 进程占用本地库'
+        throw "本地 D1 命令超时（${TimeoutSec}s）：$SqlFile；可能有其他 wrangler 进程占用本地库"
     }
     if ($p.ExitCode -ne 0) {
-        Write-Tail 'api'
-        throw "本地 D1 schema 初始化失败（exit=$($p.ExitCode)），见 .tmp-services/api.schema.log"
+        $tail = Get-Content $errLog -Tail 10 -ErrorAction SilentlyContinue
+        throw "本地 D1 命令失败（exit=$($p.ExitCode)）：$SqlFile`n$($tail -join "`n")"
     }
-    Set-Content -Path $marker -Value (Get-Date).ToString('o') -Encoding UTF8
-    Write-Log '本地 D1 schema 初始化完成'
+    return (Get-Content $outLog -Raw -ErrorAction SilentlyContinue)
+}
+
+function Get-LocalMigrationCount {
+    $sql = Join-Path $StateDir 'local-migrations-count.sql'
+    Set-Content -Path $sql -Value 'SELECT COUNT(*) AS n FROM d1_migrations;' -Encoding UTF8
+    try {
+        $raw = Invoke-LocalD1Sql -SqlFile $sql -Json
+        $parsed = $raw | ConvertFrom-Json
+        return [int]$parsed[-1].results[0].n
+    } catch {
+        return 0
+    }
+}
+
+function Ensure-LocalMigrations {
+    # 本地 D1 必须由 wrangler 自己的迁移账本建出来（d1_migrations 由 wrangler 写）。
+    # 账本条数不足或表不存在 ⇒ 整个删库重建：本地 dev 库可丢弃，重建成本远低于
+    # 维护一条“手工补账本”的旁路。重建后 bookmarks 由 0003 的 ALTER 追加，cid=9，与生产一致。
+    # 注意：scripts/apply-migrations.ps1 只是“逐条执行 SQL”的工具（用于生产补 0001 这类场景），
+    #       不再是本地初始化入口，不要绕回去。
+    $marker = Join-Path $D1Dir '.migrations-ok'
+    $count = Get-LocalMigrationCount
+    if ($count -ge 5) {
+        if (-not (Test-Path $marker)) {
+            Set-Content -Path $marker -Value "wrangler; count=$count; $(Get-Date -Format 'o')" -Encoding UTF8
+        }
+        return
+    }
+
+    Write-Log "d1_migrations 只有 $count 条（或表不存在），删除本地库并用 wrangler 迁移链重建"
+    if (Test-Path $D1Dir) { Remove-Item $D1Dir -Recurse -Force }
+    New-Item -ItemType Directory -Path $D1Dir -Force | Out-Null
+
+    $outLog = Join-Path $StateDir 'api.migrations.log'
+    $errLog = Join-Path $StateDir 'api.migrations.err.log'
+    $argList = @('--yes', 'wrangler', 'd1', 'migrations', 'apply', 'ks-leaderboard',
+        '--local', '--persist-to', $D1Dir, '-c', (Join-Path $Root 'worker/wrangler.toml'))
+    Write-Log 'wrangler d1 migrations apply（0001→0005，仅本地）...'
+    $p = Start-Process -FilePath 'npx.cmd' -ArgumentList $argList -WorkingDirectory $Root `
+        -WindowStyle Hidden -PassThru -RedirectStandardOutput $outLog -RedirectStandardError $errLog
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    while (-not $p.HasExited -and $sw.Elapsed.TotalSeconds -lt 300) {
+        Start-Sleep -Milliseconds 250
+        $p.Refresh()
+    }
+    if (-not $p.HasExited) {
+        & taskkill.exe /PID $p.Id /T /F *> $null
+        throw '本地 D1 迁移超时（300s）；见 .tmp-services/api.migrations.log'
+    }
+    if ($p.ExitCode -ne 0) {
+        $tail = Get-Content $errLog -Tail 10 -ErrorAction SilentlyContinue
+        throw "本地 D1 迁移失败（exit=$($p.ExitCode)）：$($tail -join ' ')"
+    }
+
+    $count = Get-LocalMigrationCount
+    if ($count -lt 5) { throw "重建后 d1_migrations 只有 $count 条，应为 5 条（0001→0005）" }
+    Set-Content -Path $marker -Value "wrangler; count=$count; $(Get-Date -Format 'o')" -Encoding UTF8
+    Write-Log "本地 D1 重建完成：wrangler 账本 d1_migrations=$count 条"
 }
 
 function Write-ViteConfig {
@@ -462,7 +515,7 @@ function Start-Core {
     }
 
     $targets = Get-Targets
-    if ($targets -contains 'api') { Ensure-LocalSchema }
+    if ($targets -contains 'api') { Ensure-LocalMigrations }
 
     foreach ($name in $targets) { Start-One $name }
     Write-Lease
