@@ -8,11 +8,13 @@
  *   进度变更 → 定时推送进度到云端（防抖 5 秒）
  */
 
+import API_BASE from './apiBase.js';
 import StorageMod from './storage.js';
 import SyncQueue from './syncQueue.js';
 
 const API = {
-    BASE_URL: 'https://ks-api.mutx.ccwu.cc',
+    // 基址来自 apiBase.js：dev 读 VITE_API_BASE，未配置时兜底生产域名
+    BASE_URL: API_BASE,
 
     // localStorage 键名
     KEYS: {

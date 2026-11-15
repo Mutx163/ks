@@ -14,6 +14,11 @@
  * - 用户可在设置中关闭此功能
  */
 
+import API_BASE from './apiBase.js';
+
+// 与 api.js 同源，避免日志上报单独写死一份地址（最容易在换环境时漏掉）
+const LOGS_URL = `${API_BASE}/api/logs`;
+
 const LogCollector = {
     /** 配置 */
     config: {
@@ -240,10 +245,7 @@ const LogCollector = {
         const sendRemaining = () => {
             if (self._buffer.length > 0 && self.config.enabled) {
                 const logs = self._buffer.splice(0);
-                navigator.sendBeacon(
-                    'https://ks-api.mutx.ccwu.cc/api/logs',
-                    JSON.stringify({ logs, deviceId: self._deviceId })
-                );
+                navigator.sendBeacon(LOGS_URL, JSON.stringify({ logs, deviceId: self._deviceId }));
             }
         };
 
@@ -372,7 +374,7 @@ const LogCollector = {
 
         try {
             const payload = JSON.stringify({ logs: batch, deviceId: this._deviceId });
-            await fetch('https://ks-api.mutx.ccwu.cc/api/logs', {
+            await fetch(LOGS_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: payload,
@@ -414,7 +416,7 @@ const LogCollector = {
         };
 
         try {
-            await fetch('https://ks-api.mutx.ccwu.cc/api/logs', {
+            await fetch(LOGS_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ logs: [entry], deviceId: this._deviceId })

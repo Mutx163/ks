@@ -3,6 +3,8 @@
  * 统计用户学习行为
  */
 
+import { IS_DEV } from './apiBase.js';
+
 const Tracker = {
     /**
      * 检查 LA 是否可用
@@ -18,11 +20,11 @@ const Tracker = {
         if (!this._isReady()) return;
         try {
             LA.track(eventName, props);
-            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+            if (IS_DEV) {
                 console.log('[Tracker]', eventName, props);
             }
         } catch (e) {
-            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+            if (IS_DEV) {
                 console.warn('[Tracker] error:', e);
             }
         }
