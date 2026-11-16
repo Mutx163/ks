@@ -30,7 +30,8 @@ const LAZY_MODULES = {
     ai: { load: () => import('./admin-ai.js'), init: 'initAI' },
     logs: { load: () => import('./admin-logs.js'), init: 'initLogs' },
     'client-logs': { load: () => import('./admin-client-logs.js'), init: 'initClientLogs' },
-    status: { load: () => import('./admin-status.js'), init: 'initStatus' }
+    status: { load: () => import('./admin-status.js'), init: 'initStatus' },
+    seasons: { load: () => import('./admin-seasons.js'), init: 'initSeasons' }
 };
 
 // tab → 需要的模块（banks 里的题目编辑依赖 editor）
@@ -41,7 +42,8 @@ const TAB_MODULES = {
     ai: ['ai'],
     logs: ['logs'],
     'client-logs': ['client-logs'],
-    status: ['status']
+    status: ['status'],
+    seasons: ['seasons']
 };
 
 const Admin = {
@@ -331,7 +333,8 @@ const Admin = {
             ai: '#/ai',
             logs: '#/logs',
             'client-logs': '#/client-logs',
-            status: '#/status'
+            status: '#/status',
+            seasons: '#/seasons'
         };
         return map[t] || '#/overview';
     },
@@ -379,7 +382,8 @@ const Admin = {
             'ai',
             'logs',
             'client-logs',
-            'status'
+            'status',
+            'seasons'
         ];
         const saved = localStorage.getItem('admin_tab');
         const fallback = valid.includes(saved) ? saved : 'overview';
@@ -418,7 +422,8 @@ const Admin = {
             ai: 'renderAI',
             logs: 'renderLogs',
             'client-logs': 'renderClientLogs',
-            status: 'renderStatus'
+            status: 'renderStatus',
+            seasons: 'renderSeasons'
         };
         // 切到哪个 tab 就先把它依赖的模块加载好，再渲染
         await this._ensureTabModules(this.tab);

@@ -733,9 +733,11 @@ const API = {
 
     // ==================== 排行榜 ====================
 
-    async getLeaderboard(sort = 'answered', limit = 50, stats = false) {
+    async getLeaderboard(sort = 'answered', limit = 50, stats = false, season = null) {
+        // season 只传用户显式选择的那个；不传 = 服务端当前赛季（服务端是唯一真相）
+        const seasonParam = season ? `&season=${encodeURIComponent(season)}` : '';
         return await this.request(
-            `/api/leaderboard?sort=${sort}&limit=${limit}&deviceId=${this.getDeviceId()}${stats ? '&stats=1' : ''}`
+            `/api/leaderboard?sort=${sort}&limit=${limit}&deviceId=${this.getDeviceId()}${stats ? '&stats=1' : ''}${seasonParam}`
         );
     },
 

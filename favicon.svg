@@ -1,9 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="城科卷王">
-  <rect width="64" height="64" rx="14" fill="#155e9c"/>
-  <rect x="15" y="12" width="34" height="40" rx="4" fill="#f9f6ec"/>
-  <rect x="21" y="20" width="22" height="3" rx="1.5" fill="#155e9c" opacity="0.85"/>
-  <rect x="21" y="27" width="22" height="3" rx="1.5" fill="#155e9c" opacity="0.55"/>
-  <rect x="21" y="34" width="14" height="3" rx="1.5" fill="#155e9c" opacity="0.55"/>
-  <circle cx="43" cy="45" r="8" fill="#b45309"/>
-  <path d="M39.6 45.2l2.4 2.4 4.6-4.8" fill="none" stroke="#f9f6ec" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 品牌标记：深蓝圆角块 + 白色「卷」+ 一个橙点，只保留两个形状，16px 下仍可辨认 -->
+  <rect width="64" height="64" rx="14" fill="#155e9c" />
+  <text
+    x="32"
+    y="34"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC',system-ui,sans-serif"
+    font-size="40"
+    font-weight="900"
+    fill="#ffffff"
+  >卷</text>
+  <circle cx="50" cy="14" r="6.5" fill="#b45309" />
 </svg>

@@ -4,7 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <meta name="theme-color" id="meta-theme-color" content="#f9f6ec" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
         <script>
             // 立即恢复主题，防止视觉闪亮屏
             try {
@@ -99,6 +99,27 @@
         <header class="home-header">
             <div class="container">
                 <div class="home-logo">
+                    <svg
+                        class="brand-mark brand-mark-lg"
+                        viewBox="0 0 64 64"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <rect width="64" height="64" rx="16" fill="var(--primary)" />
+                        <text
+                            x="32"
+                            y="35"
+                            text-anchor="middle"
+                            dominant-baseline="central"
+                            font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',system-ui,sans-serif"
+                            font-size="38"
+                            font-weight="900"
+                            fill="var(--on-primary, #fff)"
+                        >
+                            卷
+                        </text>
+                        <circle cx="50" cy="14" r="7" fill="#b45309" />
+                    </svg>
                     <div class="home-logo-text">
                         <h1>城科卷王</h1>
                         <p>多题库 · 间隔重复 · 代码高亮 · 数学公式</p>
@@ -235,7 +256,7 @@
                                 <div class="home-insights-header">
                                     <div>
                                         <h2>学习数据</h2>
-                                        <p>学习进度概览</p>
+                                        <p>学习进度概览 · 本地累计，不按赛季</p>
                                     </div>
                                 </div>
 
@@ -296,6 +317,8 @@
                     <h1>排行榜</h1>
                     <p id="lb-desc">全站学习数据排行</p>
                 </div>
+                <!-- 赛季信息条（名称 / 本赛季或历史赛季只读 / 切换） -->
+                <div id="lb-season"></div>
                 <!-- 当前用户 -->
                 <div id="lb-me" style="display: none"></div>
                 <!-- Tab 切换 -->

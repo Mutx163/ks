@@ -13,6 +13,19 @@ import state from './quiz-state.js';
 
 let Quiz = null;
 
+// 题型白名单（模块级：_normalizeTypes 与 init 都要用）
+const VALID_TYPES = [
+    'all',
+    'single',
+    'multiple',
+    'judge',
+    'fill',
+    'essay',
+    'code',
+    '简答题',
+    'multi'
+];
+
 function redirectAfter(msg, type = 'info', delay = 1000) {
     Utils.showToast(msg, type);
     setTimeout(() => (window.location.href = 'index.html'), delay);
@@ -23,6 +36,23 @@ const Core = {
 
     setQuiz(q) {
         Quiz = q;
+    },
+
+    /**
+     * 题型参数归一：支持 `single,judge`（多选）与 `single`（旧的单值），
+     * 未知值/空值/`all` 一律丢弃；空数组语义 = 全部题型。
+     */
+    _normalizeTypes(input) {
+        if (input === null || input === undefined) return [];
+        const list = Array.isArray(input) ? input : String(input).split(',');
+        const out = [];
+        for (const raw of list) {
+            const t = String(raw || '').trim();
+            if (!t || t === 'all') continue;
+            if (!VALID_TYPES.includes(t)) continue;
+            if (!out.includes(t)) out.push(t);
+        }
+        return out;
     },
 
     async init() {
@@ -41,23 +71,25 @@ const Core = {
             'bookmark',
             'exam'
         ];
-        const VALID_TYPES = [
-            'all',
-            'single',
-            'multiple',
-            'judge',
-            'fill',
-            'essay',
-            'code',
-            '简答题',
-            'multi'
-        ];
 
         state.bankId = params.get('bank');
         const rawMode = params.get('mode') || 'all';
         state.mode = VALID_MODES.includes(rawMode) ? rawMode : 'all';
-        const rawType = params.get('type') || 'all';
-        state.filterType = VALID_TYPES.includes(rawType) ? rawType : 'all';
+
+        // 题型筛选支持多选：`type=single,judge`；旧的单值 `type=single` 照常工作。
+        // 空数组 = 全部题型。
+        const rawTypeParam = params.get('type');
+        state.filterTypes = this._normalizeTypes(rawTypeParam);
+        // URL 没写 type 时，从上次会话恢复（老会话可能存的是单值 filterType）
+        if (!rawTypeParam && state.bankId) {
+            const prevSession = Storage.getSession(state.bankId, state.mode);
+            if (prevSession) {
+                const restored = this._normalizeTypes(
+                    prevSession.filterTypes ?? prevSession.filterType
+                );
+                if (restored.length) state.filterTypes = restored;
+            }
+        }
 
         const nonNegInt = (v, fallback = 0) => {
             const n = parseInt(v, 10);
@@ -281,7 +313,8 @@ const Core = {
 
         Storage.saveSession(state.bankId, state.mode, {
             currentIndex: state.currentIndex,
-            filterType: state.filterType || 'all',
+            // 存数组（老版本存的是字符串，读取端用 _normalizeTypes 兼容）
+            filterTypes: state.filterTypes || [],
             answerMode: state.answerMode,
             answers: state.answers,
             submitted: state.submitted,
@@ -387,8 +420,10 @@ const Core = {
         }
         let questions = [...(state.bank.questions || [])];
 
-        if (state.filterType && state.filterType !== 'all') {
-            questions = questions.filter((q) => q.type === state.filterType);
+        // 题型多选：空数组 = 全部题型；否则按选中题型的并集过滤
+        if (Array.isArray(state.filterTypes) && state.filterTypes.length > 0) {
+            const picked = state.filterTypes;
+            questions = questions.filter((q) => picked.includes(q.type));
         }
 
         switch (state.mode) {

@@ -1010,8 +1010,19 @@
 }
 
 /* ---- 题型筛选行 ---- */
-.bank-card-types {
+.bank-card-types-wrap {
     padding: var(--space-3) var(--space-4) 0;
+}
+
+.bank-card-types-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+    letter-spacing: 0.2px;
+}
+
+.bank-card-types {
+    padding: 0;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;

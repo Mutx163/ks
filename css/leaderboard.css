@@ -375,3 +375,72 @@
         padding: 8px 10px;
     }
 }
+
+/* ===== 赛季信息条 ===== */
+.lb-season {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-3);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.lb-season-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.lb-season-name {
+    font-size: var(--font-size-base);
+    color: var(--text);
+}
+
+.lb-season-pill {
+    font-size: var(--font-size-xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+}
+
+.lb-season-pill.active {
+    color: var(--primary);
+    background: var(--primary-light);
+    border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.lb-season-pill.history {
+    color: var(--warning-dark, var(--warning));
+    background: var(--warning-light);
+    border-color: color-mix(in srgb, var(--warning) 35%, transparent);
+}
+
+.lb-season-select {
+    margin-left: auto;
+    padding: 4px 10px;
+    font-size: var(--font-size-xs);
+    color: var(--text);
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.lb-season-note {
+    margin: 0 0 var(--space-3);
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+@media (max-width: 768px) {
+    .lb-season {
+        padding: var(--space-2) var(--space-3);
+    }
+    .lb-season-select {
+        margin-left: 0;
+        width: 100%;
+    }
+}

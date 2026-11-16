@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
         <title>管理后台 - 城科卷王</title>
 
         <!-- DNS 预解析 -->
@@ -31,7 +31,24 @@
         <!-- 登录页 -->
         <div class="login-page" id="login-page">
             <div class="login-card">
-                <div class="logo-icon">KS</div>
+                <div class="logo-icon">
+                    <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                        <rect width="64" height="64" rx="16" fill="#155e9c" />
+                        <text
+                            x="32"
+                            y="35"
+                            text-anchor="middle"
+                            dominant-baseline="central"
+                            font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',system-ui,sans-serif"
+                            font-size="38"
+                            font-weight="900"
+                            fill="#ffffff"
+                        >
+                            卷
+                        </text>
+                        <circle cx="50" cy="14" r="7" fill="#b45309" />
+                    </svg>
+                </div>
                 <div class="login-kicker">Production Admin</div>
                 <h2>城科卷王管理台</h2>
                 <p>题库、用户与运营数据管理中心</p>
@@ -204,6 +221,16 @@
                     onclick="Admin.switchTab('status')"
                 >
                     系统状态
+                </div>                <div
+                    class="tab"
+                    id="tab-seasons"
+                    role="tab"
+                    aria-selected="false"
+                    tabindex="-1"
+                    data-tab="seasons"
+                    onclick="Admin.switchTab('seasons')"
+                >
+                    赛季管理
                 </div>
             </div>
 
@@ -251,6 +278,11 @@
                     id="sec-status"
                     role="tabpanel"
                     aria-labelledby="tab-status"
+                ></div>                <div
+                    class="section"
+                    id="sec-seasons"
+                    role="tabpanel"
+                    aria-labelledby="tab-seasons"
                 ></div>
             </div>
         </div>

@@ -81,6 +81,7 @@ const Insights = {
     },
 
     renderTrendPage() {
+        this.renderSeasonNote('trend');
         this.renderTrendSummary();
         this.renderDailyTrend();
         this.renderBankTrend();
@@ -88,10 +89,30 @@ const Insights = {
     },
 
     renderAnalysisPage() {
+        this.renderSeasonNote('analysis');
         this.renderAnalysisSummary();
         this.renderWeakCategories();
         this.renderTypeAnalysis();
         this.renderBankAnalysis();
+    },
+
+    /**
+     * 一句话说明：本页统计来自本地进度，不按赛季分（赛季数据在排行榜）
+     * 用固定 id 复用同一个节点：每次渲染只更新文本，不会重复插入（否则切几次 tab 满屏都是这句）
+     */
+    renderSeasonNote(which) {
+        const anchorId = which === 'analysis' ? 'analysis-summary' : 'trend-summary';
+        const anchor = document.getElementById(anchorId);
+        if (!anchor) return;
+        const noteId = `season-note-${which}`;
+        let note = document.getElementById(noteId);
+        if (!note) {
+            note = document.createElement('p');
+            note.id = noteId;
+            note.className = 'insight-subtle';
+            anchor.insertAdjacentElement('beforebegin', note);
+        }
+        note.textContent = '本地累计数据，不按赛季区分；赛季排行见「排行榜」。';
     },
 
     renderTrendSummary() {

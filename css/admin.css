@@ -147,6 +147,12 @@ textarea:focus-visible {
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
+.logo-icon .brand-mark {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+}
+
 .logo-icon {
     width: 58px;
     height: 58px;
@@ -154,10 +160,9 @@ textarea:focus-visible {
     margin: 0 auto 14px;
     display: grid;
     place-items: center;
-    background: #0f172a;
+    /* 标识由内嵌 SVG 自带底色（与 favicon 同造型），容器不再另上底色 */
+    background: none;
     color: #fff;
-    font-size: 18px;
-    font-weight: 800;
     letter-spacing: -0.03em;
     box-shadow: 0 16px 36px rgba(15, 23, 42, 0.26);
 }

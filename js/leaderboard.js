@@ -12,6 +12,50 @@ import Perf from './perf.js';
 
 const LB = {
     currentSort: 'answered',
+    // 用户显式选择的赛季 id；null = 跟随服务端当前赛季（绝不自己算赛季）
+    season: null,
+    // 服务端返回的赛季信息 {id,name}
+    seasonInfo: null,
+    // 当前激活赛季 id（用于判断"这是历史赛季"）
+    activeSeasonId: null,
+    // 可切换的赛季列表（来自公开接口；接口缺失时只有当前一个）
+    seasons: null,
+
+    /**
+     * 读取用户显式选择的赛季：
+     * - 优先 URL 上的 ?season=xxx（便于分享/深链）
+     * - 其次 sessionStorage，保证切 tab/刷新不丢选择
+     * - 都用 sessionStorage 而不是 localStorage，且与刷题进度完全无关（不影响正在做的题）
+     */
+    _readSeasonChoice() {
+        try {
+            const fromUrl = new URLSearchParams(location.search).get('season');
+            if (fromUrl) return fromUrl;
+            return sessionStorage.getItem('ks_lb_season') || null;
+        } catch {
+            return null;
+        }
+    },
+
+    _rememberSeasonChoice(id) {
+        this.season = id || null;
+        try {
+            if (id) sessionStorage.setItem('ks_lb_season', id);
+            else sessionStorage.removeItem('ks_lb_season');
+        } catch {
+            /* ignore */
+        }
+    },
+
+    /**
+     * 查当前激活赛季 id（用一次 limit=1 的默认请求，服务端返回的 season 字段为准）
+     */
+    async _ensureActiveSeason() {
+        if (this.activeSeasonId) return this.activeSeasonId;
+        const d = await API.getLeaderboard('answered', 1);
+        this.activeSeasonId = d?.season?.id || null;
+        return this.activeSeasonId;
+    },
 
     async init() {
         Perf.init('排行榜');
@@ -32,6 +76,8 @@ const LB = {
             return;
         }
 
+        this.season = this._readSeasonChoice();
+        await this._loadSeasonList();
         Perf.mark('加载排行榜');
         await this.loadLeaderboard();
         Perf.mark('排行榜加载完成');
@@ -62,18 +108,28 @@ const LB = {
             </div>
         `;
 
-        const data = await API.getLeaderboard(this.currentSort, 50);
+        const data = await API.getLeaderboard(this.currentSort, 50, false, this.season);
         if (!data || !data.ok) {
+            const isHistoryGone = data === null && this.season;
             listEl.innerHTML = `
                 <div class="lb-empty">
                     <div class="lb-empty-icon">${Utils.icon('wifi-off', 'icon-xl')}</div>
-                    <div class="lb-empty-title">加载失败</div>
-                    <p style="color:var(--text-secondary);">请检查网络后重试</p>
-                    <button class="btn btn-secondary" style="margin-top:var(--space-3);" onclick="LB.loadLeaderboard()">重新加载</button>
+                    <div class="lb-empty-title">${isHistoryGone ? '该赛季不可用' : '加载失败'}</div>
+                    <p style="color:var(--text-secondary);">${isHistoryGone ? '赛季不存在或已下线，可切回当前赛季' : '请检查网络后重试'}</p>
+                    ${
+                        isHistoryGone
+                            ? `<button class="btn btn-secondary" style="margin-top:var(--space-3);" onclick="LB.switchSeason('')">回到当前赛季</button>`
+                            : `<button class="btn btn-secondary" style="margin-top:var(--space-3);" onclick="LB.loadLeaderboard()">重新加载</button>`
+                    }
                 </div>
             `;
             return;
         }
+
+        // 赛季信息一律以服务端返回为准
+        this.seasonInfo = data.season || null;
+        await this._ensureActiveSeason();
+        this.renderSeasonBar();
 
         // 渲染当前用户
         this.renderCurrentUser(data.currentUser);
@@ -100,6 +156,66 @@ const LB = {
 
         // 服务端只下发 isMe 标记，不再公开 syncCode
         this.renderList(leaderboard);
+    },
+
+    /**
+     * 尝试拉取公开赛季列表（后端尚未提供该接口时静默跳过，选择器自动隐藏）
+     */
+    async _loadSeasonList() {
+        try {
+            const d = await API.request('/api/seasons');
+            if (d?.ok && Array.isArray(d.seasons)) this.seasons = d.seasons;
+        } catch {
+            /* 没有这个接口就只显示当前赛季 */
+        }
+    },
+
+    /**
+     * 赛季信息条：名称 + 本赛季/历史赛季徽标 + 切换器
+     * 历史赛季 = 只读：本页不渲染任何写入口（注册/开始刷题都不出现在这里）
+     */
+    renderSeasonBar() {
+        const el = document.getElementById('lb-season');
+        if (!el) return;
+        const info = this.seasonInfo;
+        if (!info || !info.id) {
+            el.innerHTML = '';
+            return;
+        }
+        const isHistory = !!this.activeSeasonId && info.id !== this.activeSeasonId;
+        const list = Array.isArray(this.seasons) && this.seasons.length > 1 ? this.seasons : [];
+        const options = list
+            .map(
+                (s) =>
+                    `<option value="${Utils.escapeHtml(s.id)}" ${s.id === info.id ? 'selected' : ''}>${Utils.escapeHtml(s.name || s.id)}${s.is_active ? '（当前）' : ''}</option>`
+            )
+            .join('');
+
+        el.innerHTML = `
+            <div class="lb-season ${isHistory ? 'is-history' : ''}">
+                <span class="lb-season-label">赛季</span>
+                <strong class="lb-season-name">${Utils.escapeHtml(info.name || info.id)}</strong>
+                <span class="lb-season-pill ${isHistory ? 'history' : 'active'}">
+                    ${isHistory ? '历史赛季 · 只读' : '本赛季'}
+                </span>
+                ${
+                    options
+                        ? `<select class="lb-season-select" aria-label="切换赛季" onchange="LB.switchSeason(this.value)">${options}</select>`
+                        : ''
+                }
+            </div>
+            ${isHistory ? '<p class="lb-season-note">历史赛季数据已冻结，仅可查看，不能参与或修改。</p>' : ''}
+        `;
+        if (window.Utils && Utils.initIcons) Utils.initIcons();
+    },
+
+    /**
+     * 切换赛季。选择存在 sessionStorage，与刷题进度完全无关，
+     * 不会影响用户正在做的题（也不写 quiz_* 任何 key）。
+     */
+    async switchSeason(id) {
+        this._rememberSeasonChoice(id || null);
+        await this.loadLeaderboard();
     },
 
     renderCurrentUser(user) {

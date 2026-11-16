@@ -27,7 +27,7 @@ const state = {
     examTimeRemaining: 0,
     examTimer: null,
     answerMode: 'normal',
-    filterType: 'all',
+    filterTypes: [],
     isReviewMode: false,
     _reviewDurationSaved: 0,
     isNavigating: false,

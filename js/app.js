@@ -822,21 +822,28 @@ const App = {
                         ${stats.answered === 0 ? '<div class="bank-card-stat">未开始</div>' : ''}
                     </div>
 
-                    <!-- 题型筛选行（选择题型后，刷题按钮自动使用所选题型） -->
+                    <!-- 题型筛选行（可多选；不选任何题型 = 全部。选中的题型会随刷题按钮带进 quiz 页） -->
                     ${
                         bankTypes.filter((t) => t !== 'all').length > 0
-                            ? `<div class="bank-card-types">
+                            ? `<div class="bank-card-types-wrap">
+                        <div class="bank-card-types-label">题型筛选（可多选）</div>
+                        <div class="bank-card-types">
                         ${bankTypes
                             .map((type) => {
+                                const selected = this.state.selectedTypes[bank.id] || [];
+                                // 「全部」= 一个都没选；具体题型 = 在选中数组里
                                 const isActive =
-                                    (this.state.selectedTypes[bank.id] || 'all') === type;
+                                    type === 'all'
+                                        ? selected.length === 0
+                                        : selected.includes(type);
                                 const safeBankIdType = Utils.jsSafe(bank.id);
                                 const safeType = Utils.jsSafe(type);
-                                return `<button class="bank-type-btn ${isActive ? 'active' : ''}" onclick="App.selectType('${safeBankIdType}', '${safeType}')">
+                                return `<button class="bank-type-btn ${isActive ? 'active' : ''}" aria-pressed="${isActive}" onclick="App.selectType('${safeBankIdType}', '${safeType}')">
                                 ${type === 'all' ? Utils.icon('layers') + ' 全部' : Utils.escapeHtml(this.getTypeLabel(type))}
                             </button>`;
                             })
                             .join('')}
+                        </div>
                     </div>`
                             : ''
                     }
@@ -931,12 +938,23 @@ const App = {
     },
 
     /**
-     * 开始刷题
-     * @param {string} bankId - 题库 ID
+     * 切换某个题库的题型筛选（多选）
+     * - 点「全部」= 清空选择，回到全部题型
+     * - 点具体题型 = 加入/移出选择；全部取消后自动回到「全部」
+     * 选择只存在内存里，随 startQuiz 拼进 URL（逗号分隔）。
      */
     selectType(bankId, type) {
-        this.state.selectedTypes[bankId] = type;
-        Tracker.selectType(bankId, type);
+        const current = this.state.selectedTypes[bankId] || [];
+        let next;
+        if (type === 'all') {
+            next = [];
+        } else if (current.includes(type)) {
+            next = current.filter((t) => t !== type);
+        } else {
+            next = [...current, type];
+        }
+        this.state.selectedTypes[bankId] = next;
+        Tracker.selectType(bankId, next.length ? next.join(',') : 'all');
         this.renderBankGrid();
     },
 
@@ -948,8 +966,11 @@ const App = {
     startQuiz(bankId, mode) {
         // 记录题库使用
         Storage.recordBankUsage(bankId);
-        const selectedType = this.state.selectedTypes[bankId] || 'all';
-        const typeParam = selectedType !== 'all' ? `&type=${encodeURIComponent(selectedType)}` : '';
+        // 多选：逗号分隔；空数组 = 全部（不传 type 参数，保持旧链接语义一致）
+        const selectedTypes = this.state.selectedTypes[bankId] || [];
+        const typeParam = selectedTypes.length
+            ? `&type=${encodeURIComponent(selectedTypes.join(','))}`
+            : '';
         // bank/id 来自题库数据，必须编码：含 & 或 # 会截断查询串
         window.location.href = `quiz.html?bank=${encodeURIComponent(bankId)}&mode=${encodeURIComponent(mode)}${typeParam}`;
     },

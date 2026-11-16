@@ -422,8 +422,10 @@
 
     .insight-main {
         margin-top: 0;
-        /* 移动端顶栏是隐藏的（base.css），60px 只会变成纯空白 */
-        padding: var(--space-4) 0;
+        /* 移动端顶栏不是隐藏的：SPA 里是 index.html 的 .home-header（fixed，约 60px），
+           独立页是 .insight-header（也是 fixed）。原来写 --space-4 会让标题被压在顶栏下面，
+           这里与 .home-main 的移动端 60px 对齐。 */
+        padding: 60px 0 var(--space-5);
     }
 
     .insight-summary {

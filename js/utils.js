@@ -868,9 +868,15 @@ const Utils = {
         const isAdmin = hasAdminPwd || localStorage.getItem('ks_is_admin') === '1';
 
         // 1. 桌面端顶部水平导航栏 DOM
+        // 品牌标记与 favicon 同一造型（深蓝块 + 「卷」+ 橙点），用 CSS 变量适配三套主题
+        const brandMark = `<svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                    <rect width="64" height="64" rx="16" fill="var(--primary)"/>
+                    <text x="32" y="35" text-anchor="middle" dominant-baseline="central" font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',system-ui,sans-serif" font-size="38" font-weight="900" fill="var(--on-primary, #fff)">卷</text>
+                    <circle cx="50" cy="14" r="7" fill="#b45309"/>
+                </svg>`;
         const headerHTML = `
             <header class="global-header">
-                <div class="header-brand title-gradient">城科卷王</div>
+                <div class="header-brand title-gradient">${brandMark}城科卷王</div>
                 <nav class="desktop-nav">
                     <a href="#/home" class="${hash.includes('home') ? 'active' : ''}">首页</a>
                     <a href="#/leaderboard" class="${hash.includes('leaderboard') ? 'active' : ''}">排行榜</a>
