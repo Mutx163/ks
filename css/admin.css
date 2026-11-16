@@ -147,25 +147,8 @@ textarea:focus-visible {
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
-.logo-icon .brand-mark {
-    width: 58px;
-    height: 58px;
-    border-radius: 16px;
-}
-
-.logo-icon {
-    width: 58px;
-    height: 58px;
-    border-radius: 16px;
-    margin: 0 auto 14px;
-    display: grid;
-    place-items: center;
-    /* 标识由内嵌 SVG 自带底色（与 favicon 同造型），容器不再另上底色 */
-    background: none;
-    color: #fff;
-    letter-spacing: -0.03em;
-    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.26);
-}
+/* 登录卡片不再有图形标识（用户要求页面内不显示 logo，只保留 favicon），
+   kicker 顶部自带 34px 内边距，不需要额外留白。 */
 .login-card h2 {
     margin: 0;
     color: var(--admin-text);
@@ -2159,10 +2142,6 @@ td b {
     .login-card {
         background: rgba(28, 28, 31, 0.96);
         border-color: rgba(63, 63, 70, 0.5);
-    }
-    .logo-icon {
-        background: #fafafa;
-        color: #0a0a0b;
     }
 
     /* 输入框 */

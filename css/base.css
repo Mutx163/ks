@@ -1780,24 +1780,6 @@ body.layout-fullscreen {
 .global-header .header-brand {
     justify-self: start;
     white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* 品牌标记：与 favicon 同一造型，颜色走主题变量 */
-.brand-mark {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 auto;
-    display: block;
-    border-radius: 6px;
-}
-
-.brand-mark-lg {
-    width: 40px;
-    height: 40px;
-    border-radius: 11px;
 }
 
 .global-header .desktop-nav {
