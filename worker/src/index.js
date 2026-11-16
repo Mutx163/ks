@@ -276,6 +276,20 @@ export default {
 
             // ========== 管理员接口 ==========
 
+            // ===== 赛季管理 =====
+            // GET /api/admin/seasons
+            if (method === 'GET' && path === '/api/admin/seasons') {
+                return await handleAdminSeasons(url, env, origin);
+            }
+            // POST /api/admin/seasons
+            if (method === 'POST' && path === '/api/admin/seasons') {
+                return await handleAdminCreateSeason(request, env, origin);
+            }
+            // POST /api/admin/seasons/activate
+            if (method === 'POST' && path === '/api/admin/seasons/activate') {
+                return await handleAdminActivateSeason(request, env, origin);
+            }
+
             // GET /api/admin/users?syncCode=xxx
             if (method === 'GET' && path === '/api/admin/users') {
                 return await handleAdminUsers(url, env, origin);
@@ -432,6 +446,11 @@ export default {
             if (method === 'DELETE' && path.match(/\/api\/admin\/bank\/[^/]+$/)) {
                 const bankId = path.split('/api/admin/bank/')[1];
                 return await handleAdminDeleteBank(bankId, request, env, origin);
+            }
+
+            // GET /api/seasons（公开只读：排行榜页的赛季切换需要，学生不需要管理员口令）
+            if (method === 'GET' && path === '/api/seasons') {
+                return await handleGetSeasons(env, origin);
             }
 
             // GET /api/banks（前端获取题库列表）
@@ -836,6 +855,7 @@ async function handleBind(request, env, origin) {
 
     // 合并本地答题数据到云端（仅首次绑定且数据合法时）
     if (!existing && Array.isArray(localStats)) {
+        const mergeSeason = await resolveActiveSeason(env);
         const stats = localStats.slice(0, 50);
         const batch = [];
         for (const stat of stats) {
@@ -847,9 +867,9 @@ async function handleBind(request, env, origin) {
             batch.push(
                 env.DB.prepare(
                     `
-                    INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(user_id, bank_id) DO UPDATE SET
+                    INSERT INTO stats (user_id, bank_id, season_id, bank_name, answered, correct, duration, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(user_id, bank_id, season_id) DO UPDATE SET
                         answered = stats.answered + excluded.answered,
                         correct = stats.correct + excluded.correct,
                         duration = stats.duration + excluded.duration,
@@ -858,6 +878,7 @@ async function handleBind(request, env, origin) {
                 ).bind(
                     code,
                     stat.bankId,
+                    mergeSeason.id,
                     String(stat.bankName || '').slice(0, 100),
                     num(stat.answered, 100000),
                     num(stat.correct, 100000),
@@ -936,11 +957,13 @@ async function handleSync(request, env, origin) {
     if (isBanned) return error('账号已被封禁，无法同步数据', 403, origin);
 
     const now = new Date().toISOString();
+    // 赛季只由服务端解析，客户端传什么都会被忽略（防改本地时间往旧赛季刷分）
+    const season = await resolveActiveSeason(env);
     await env.DB.prepare(
         `
-        INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id, bank_id) DO UPDATE SET
+        INSERT INTO stats (user_id, bank_id, season_id, bank_name, answered, correct, duration, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, bank_id, season_id) DO UPDATE SET
             answered = stats.answered + excluded.answered,
             correct = stats.correct + excluded.correct,
             duration = stats.duration + excluded.duration,
@@ -951,6 +974,7 @@ async function handleSync(request, env, origin) {
         .bind(
             userId,
             bankId,
+            season.id,
             String(bankName || '').slice(0, 100),
             answeredDelta,
             correctDelta,
@@ -1081,6 +1105,88 @@ async function handleGetCloudData(did, env, origin) {
     );
 }
 
+// ========== 赛季 ==========
+// 赛季 id 只由服务端解析，绝不接受客户端传入（否则可以往任意赛季刷分）。
+const SEASON_ID_RE = /^[a-z0-9][a-z0-9-]{1,31}$/;
+const SEASON_FALLBACK_ID = 'legacy';
+
+// 按名字猜一个建议 id（管理员可以改）
+function suggestSeasonId(name) {
+    const text = String(name || '');
+    const year = (text.match(/(\d{4})/) || [])[1] || String(new Date().getFullYear());
+    const map = [
+        ['春', 'spring'],
+        ['夏', 'summer'],
+        ['秋', 'fall'],
+        ['冬', 'winter']
+    ];
+    for (const [cn, en] of map) {
+        if (text.includes(cn)) return `${year}-${en}`;
+    }
+    return `season-${Date.now().toString(36)}`;
+}
+
+// 当前赛季：没有 active 时兜底到最近创建的赛季并记 error，绝不让所有人同步失败
+async function resolveActiveSeason(env) {
+    try {
+        const active = await env.DB.prepare(
+            'SELECT id, name FROM seasons WHERE is_active = 1 LIMIT 1'
+        ).first();
+        if (active) return active;
+        const latest = await env.DB.prepare(
+            'SELECT id, name FROM seasons ORDER BY created_at DESC LIMIT 1'
+        ).first();
+        if (latest) {
+            console.error('[Season] 没有 active 赛季，兜底使用最近赛季:', latest.id);
+            return latest;
+        }
+        return { id: SEASON_FALLBACK_ID, name: '历史数据（赛季制度上线前）' };
+    } catch (e) {
+        // 0006 未执行时 seasons 表不存在：按 legacy 继续，保证老客户端仍能同步
+        console.error('[Season] 读取赛季失败，按 legacy 处理:', e.message);
+        return { id: SEASON_FALLBACK_ID, name: '历史数据（赛季制度上线前）' };
+    }
+}
+
+// 排行榜用：解析 season 参数（不传 = active）
+async function resolveSeasonParam(env, raw) {
+    const value = (raw || '').trim();
+    if (!value || value === 'active') return { season: await resolveActiveSeason(env) };
+    if (!SEASON_ID_RE.test(value)) return { error: '赛季参数不合法' };
+    try {
+        const row = await env.DB.prepare('SELECT id, name FROM seasons WHERE id = ?')
+            .bind(value)
+            .first();
+        if (!row) return { error: '赛季不存在' };
+        return { season: row };
+    } catch (e) {
+        console.error('[Season] 查询赛季失败:', e.message);
+        return { error: '赛季不可用' };
+    }
+}
+
+// 公开只读：排行榜页用它渲染「当前赛季 + 历史赛季」切换。
+// 只给 id/name/is_active 三个字段——累计答题数那类属于后台口径，公开接口不下发。
+// 缓存 30 秒：激活赛季后最多半分钟生效，够用又不会把请求压到 D1。
+async function handleGetSeasons(env, origin) {
+    try {
+        const { results } = await env.DB.prepare(
+            'SELECT id, name, is_active FROM seasons ORDER BY is_active DESC, id DESC'
+        ).all();
+        const seasons = (results || []).map((row) => ({
+            id: row.id,
+            name: row.name,
+            is_active: !!row.is_active
+        }));
+        return json({ ok: true, seasons }, 200, origin, 30);
+    } catch (e) {
+        // 0006 尚未执行（seasons 表不存在）时不能让排行榜页 500：
+        // 返回空列表，前端会自动降级成「只显示当前赛季、不渲染切换器」
+        console.error('[Season] 公开赛季列表读取失败:', e.message);
+        return json({ ok: true, seasons: [] }, 200, origin, 30);
+    }
+}
+
 // ========== 排行榜 ==========
 async function handleLeaderboard(url, env, origin) {
     const sort = url.searchParams.get('sort') || 'answered';
@@ -1089,6 +1195,10 @@ async function handleLeaderboard(url, env, origin) {
     const rawLimit = parseInt(url.searchParams.get('limit') || '50', 10);
     const limit = Math.max(1, Math.min(Number.isFinite(rawLimit) ? rawLimit : 50, 100));
     const deviceId = url.searchParams.get('deviceId') || '';
+
+    const seasonResult = await resolveSeasonParam(env, url.searchParams.get('season'));
+    if (seasonResult.error) return error(seasonResult.error, 404, origin);
+    const season = seasonResult.season;
 
     const sortMap = {
         answered: 'total_answered DESC',
@@ -1108,14 +1218,14 @@ async function handleLeaderboard(url, env, origin) {
             SUM(s.duration) as total_duration,
             MAX(s.updated_at) as last_active
         FROM users u
-        INNER JOIN stats s ON u.id = s.user_id
+        INNER JOIN stats s ON u.id = s.user_id AND s.season_id = ?
         WHERE u.banned = 0 OR u.banned IS NULL
         GROUP BY u.id
         ORDER BY ${orderBy}
         LIMIT ?
     `
     )
-        .bind(limit)
+        .bind(season.id, limit)
         .all();
 
     // 不再下发 syncCode：它是账号绑定凭证，公开排行榜等于公开全部账号。
@@ -1146,22 +1256,23 @@ async function handleLeaderboard(url, env, origin) {
                 const userStats = await env.DB.prepare(
                     `
                     SELECT SUM(answered) as ta, SUM(correct) as tc, SUM(duration) as td
-                    FROM stats WHERE user_id = ?
+                    FROM stats WHERE user_id = ? AND season_id = ?
                 `
                 )
-                    .bind(userId)
+                    .bind(userId, season.id)
                     .first();
 
                 if (userStats && userStats.ta > 0) {
                     const rankResult = await env.DB.prepare(
                         `
                         SELECT COUNT(*) + 1 as rank FROM (
-                            SELECT SUM(answered) as total FROM stats GROUP BY user_id
+                            SELECT SUM(answered) as total FROM stats
+                            WHERE season_id = ? GROUP BY user_id
                             HAVING total > ?
                         )
                     `
                     )
-                        .bind(userStats.ta)
+                        .bind(season.id, userStats.ta)
                         .first();
 
                     const user = await env.DB.prepare('SELECT initials FROM users WHERE id = ?')
@@ -1190,32 +1301,36 @@ async function handleLeaderboard(url, env, origin) {
             SELECT COUNT(DISTINCT s.user_id) as cnt
             FROM stats s
             INNER JOIN users u ON s.user_id = u.id
-            WHERE u.banned = 0 OR u.banned IS NULL
+            WHERE s.season_id = ? AND (u.banned = 0 OR u.banned IS NULL)
         `
-        ).first();
+        )
+            .bind(season.id)
+            .first();
 
         const todayActiveResult = await env.DB.prepare(
             `
             SELECT COUNT(DISTINCT s.user_id) as cnt
             FROM stats s
             INNER JOIN users u ON s.user_id = u.id
-            WHERE (u.banned = 0 OR u.banned IS NULL) AND date(s.updated_at, '+8 hours') = ?
+            WHERE s.season_id = ? AND (u.banned = 0 OR u.banned IS NULL) AND date(s.updated_at, '+8 hours') = ?
         `
         )
-            .bind(todayChina)
+            .bind(season.id, todayChina)
             .first();
 
         const { results: recentResults } = await env.DB.prepare(
             `
             SELECT u.initials, MAX(s.updated_at) as last_active
             FROM users u
-            INNER JOIN stats s ON u.id = s.user_id
+            INNER JOIN stats s ON u.id = s.user_id AND s.season_id = ?
             WHERE u.banned = 0 OR u.banned IS NULL
             GROUP BY u.id
             ORDER BY last_active DESC
             LIMIT 5
         `
-        ).all();
+        )
+            .bind(season.id)
+            .all();
 
         statsData = {
             totalActiveCount: totalActiveResult?.cnt || 0,
@@ -1227,7 +1342,18 @@ async function handleLeaderboard(url, env, origin) {
         };
     }
 
-    return json({ ok: true, leaderboard, currentUser, statsData }, 200, origin);
+    // season 字段让前端能显示「当前在看哪个赛季」；老前端忽略即可
+    return json(
+        {
+            ok: true,
+            season: { id: season.id, name: season.name },
+            leaderboard,
+            currentUser,
+            statsData
+        },
+        200,
+        origin
+    );
 }
 
 // ========== 工具函数：设备ID → 用户ID ==========
@@ -1327,6 +1453,109 @@ async function requireAdmin(deviceId, password, env) {
     return user?.is_admin ? user : null;
 }
 
+// ========== 管理员：赛季管理 ==========
+async function handleAdminSeasons(url, env, origin) {
+    const deviceId = url.searchParams.get('deviceId') || '';
+    const password = url.searchParams.get('password') || '';
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    try {
+        const { results } = await env.DB.prepare(
+            `SELECT s.id, s.name, s.start_date, s.end_date, s.is_active, s.created_at,
+                    (SELECT COUNT(*) FROM stats st WHERE st.season_id = s.id) AS stat_rows,
+                    (SELECT COALESCE(SUM(st.answered), 0) FROM stats st WHERE st.season_id = s.id) AS total_answered
+             FROM seasons s
+             ORDER BY s.is_active DESC, s.created_at DESC`
+        ).all();
+        return json(
+            {
+                ok: true,
+                activeSeason: await resolveActiveSeason(env),
+                seasons: results || []
+            },
+            200,
+            origin
+        );
+    } catch (e) {
+        return error('读取赛季失败: ' + e.message, 500, origin);
+    }
+}
+
+async function handleAdminCreateSeason(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, name, startDate, endDate } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+
+    if (typeof name !== 'string' || !name.trim() || name.length > 40) {
+        return error('赛季名称必填且不超过 40 字', 400, origin);
+    }
+    const trimmed = name.trim();
+    const id = String(body.id || suggestSeasonId(trimmed))
+        .trim()
+        .toLowerCase();
+    if (!SEASON_ID_RE.test(id)) {
+        return error('赛季 id 只能是小写字母、数字、连字符，2-32 位', 400, origin);
+    }
+
+    try {
+        const exists = await env.DB.prepare('SELECT id FROM seasons WHERE id = ?').bind(id).first();
+        if (exists) return error('该赛季 id 已存在', 409, origin);
+
+        const now = new Date().toISOString();
+        await env.DB.prepare(
+            'INSERT INTO seasons (id, name, start_date, end_date, is_active, created_at) VALUES (?, ?, ?, ?, 0, ?)'
+        )
+            .bind(id, trimmed, startDate || null, endDate || null, now)
+            .run();
+
+        await writeAdminOperationLog(env, {
+            action: '创建赛季',
+            targetType: 'season',
+            targetId: id,
+            detail: trimmed,
+            operator: admin.id || admin.initials || ''
+        });
+        return json({ ok: true, id, name: trimmed, isActive: false }, 201, origin);
+    } catch (e) {
+        return error('创建赛季失败: ' + e.message, 500, origin);
+    }
+}
+
+async function handleAdminActivateSeason(request, env, origin) {
+    const body = await request.json();
+    const { deviceId, password, seasonId } = body;
+    const admin = await requireAdmin(deviceId, password, env);
+    if (!admin) return error('无权限', 403, origin);
+    if (!seasonId) return error('缺少 seasonId', 400, origin);
+
+    try {
+        const target = await env.DB.prepare('SELECT id, name FROM seasons WHERE id = ?')
+            .bind(seasonId)
+            .first();
+        if (!target) return error('赛季不存在', 404, origin);
+
+        // 两步放同一个 batch（D1 内是事务），避免出现「零个 active」或「两个 active」
+        await env.DB.batch([
+            env.DB.prepare('UPDATE seasons SET is_active = 0 WHERE is_active = 1'),
+            env.DB.prepare('UPDATE seasons SET is_active = 1 WHERE id = ?').bind(seasonId)
+        ]);
+
+        const active = await resolveActiveSeason(env);
+        await writeAdminOperationLog(env, {
+            action: '切换赛季',
+            targetType: 'season',
+            targetId: seasonId,
+            detail: target.name,
+            operator: admin.id || admin.initials || ''
+        });
+        return json({ ok: true, activeSeason: { id: active.id, name: active.name } }, 200, origin);
+    } catch (e) {
+        return error('切换赛季失败: ' + e.message, 500, origin);
+    }
+}
+
 // ========== 管理员：查看所有用户 ==========
 async function handleAdminUsers(url, env, origin) {
     const deviceId = url.searchParams.get('deviceId') || '';
@@ -1334,6 +1563,8 @@ async function handleAdminUsers(url, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
+    // 后台列表展示「当前赛季」累计；历史赛季数据不混进来
+    const season = await resolveActiveSeason(env);
     const { results } = await env.DB.prepare(
         `
         SELECT 
@@ -1343,11 +1574,13 @@ async function handleAdminUsers(url, env, origin) {
             COALESCE(SUM(s.correct), 0) as total_correct,
             COALESCE(SUM(s.duration), 0) as total_duration
         FROM users u
-        LEFT JOIN stats s ON u.id = s.user_id
+        LEFT JOIN stats s ON u.id = s.user_id AND s.season_id = ?
         GROUP BY u.id
         ORDER BY u.created_at DESC
     `
-    ).all();
+    )
+        .bind(season.id)
+        .all();
 
     return json({ ok: true, users: results }, 200, origin);
 }
@@ -1369,7 +1602,7 @@ async function handleAdminUserDetail(userId, env, origin) {
         .all();
 
     const stats = await env.DB.prepare(
-        'SELECT bank_id, bank_name, answered, correct, duration, updated_at FROM stats WHERE user_id = ?'
+        'SELECT season_id, bank_id, bank_name, answered, correct, duration, updated_at FROM stats WHERE user_id = ? ORDER BY season_id'
     )
         .bind(userId)
         .all();
@@ -1524,6 +1757,7 @@ async function handleAdminBanks(url, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
+    const season = await resolveActiveSeason(env);
     const { results } = await env.DB.prepare(
         `
         SELECT 
@@ -1534,10 +1768,13 @@ async function handleAdminBanks(url, env, origin) {
             SUM(correct) as total_correct,
             SUM(duration) as total_duration
         FROM stats
+        WHERE season_id = ?
         GROUP BY bank_id
         ORDER BY total_answered DESC
     `
-    ).all();
+    )
+        .bind(season.id)
+        .all();
 
     return json({ ok: true, banks: results }, 200, origin);
 }
@@ -1549,6 +1786,8 @@ async function handleAdminActivity(url, env, origin) {
     const admin = await requireAdmin(deviceId, password, env);
     if (!admin) return error('无权限', 403, origin);
 
+    const season = await resolveActiveSeason(env);
+
     const { results } = await env.DB.prepare(
         `
         SELECT 
@@ -1558,11 +1797,13 @@ async function handleAdminActivity(url, env, origin) {
             s.updated_at
         FROM stats s
         JOIN users u ON s.user_id = u.id
-        WHERE s.updated_at IS NOT NULL AND s.updated_at != ''
+        WHERE s.season_id = ? AND s.updated_at IS NOT NULL AND s.updated_at != ''
         ORDER BY s.updated_at DESC
         LIMIT 50
     `
-    ).all();
+    )
+        .bind(season.id)
+        .all();
 
     return json({ ok: true, activity: results }, 200, origin);
 }
@@ -1583,16 +1824,19 @@ async function handleAdminOverview(url, env, origin) {
         .first();
 
     // 今日活跃（有更新记录的，北京时间）
+    const season = await resolveActiveSeason(env);
     const todayActive = await env.DB.prepare(
-        "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE date(updated_at, '+8 hours') = ?"
+        "SELECT COUNT(DISTINCT user_id) as cnt FROM stats WHERE season_id = ? AND date(updated_at, '+8 hours') = ?"
     )
-        .bind(todayChina)
+        .bind(season.id, todayChina)
         .first();
 
     // 总题库数
     const bankCount = await env.DB.prepare(
-        'SELECT COUNT(DISTINCT bank_id) as cnt FROM stats'
-    ).first();
+        'SELECT COUNT(DISTINCT bank_id) as cnt FROM stats WHERE season_id = ?'
+    )
+        .bind(season.id)
+        .first();
 
     // 封禁用户数
     const bannedCount = await env.DB.prepare(
@@ -1725,19 +1969,35 @@ async function handleAdminAdjustStats(request, env, origin) {
     if (duration !== undefined && typeof duration !== 'number')
         return error('duration 必须为数字', 400, origin);
 
+    // 历史赛季只读：显式指定非当前赛季的写入一律拒绝
+    const activeSeason = await resolveActiveSeason(env);
+    const targetSeason = body.season ? String(body.season) : activeSeason.id;
+    if (targetSeason !== activeSeason.id) {
+        return error('历史赛季只读，不能写入', 400, origin);
+    }
+
     const now = new Date().toISOString();
     await env.DB.prepare(
         `
-        INSERT INTO stats (user_id, bank_id, bank_name, answered, correct, duration, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id, bank_id) DO UPDATE SET
+        INSERT INTO stats (user_id, bank_id, season_id, bank_name, answered, correct, duration, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, bank_id, season_id) DO UPDATE SET
             answered = stats.answered + excluded.answered,
             correct = stats.correct + excluded.correct,
             duration = stats.duration + excluded.duration,
             updated_at = excluded.updated_at
     `
     )
-        .bind(targetUserId, bankId, bankName || '', answered || 0, correct || 0, duration || 0, now)
+        .bind(
+            targetUserId,
+            bankId,
+            targetSeason,
+            bankName || '',
+            answered || 0,
+            correct || 0,
+            duration || 0,
+            now
+        )
         .run();
 
     await writeAdminOperationLog(env, {

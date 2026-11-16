@@ -51,6 +51,18 @@ foreach ($f in $files) {
         }
     }
 
+    # 0007 是 stats 重建，重放会丢数据：先查 season_id 是否已存在
+    if ($f.Name -match 'stats_season') {
+        $json = Invoke-D1Local -ArgList @('--json', '--command', 'PRAGMA table_info(stats)')
+        $parsed = ($json | Out-String) | ConvertFrom-Json
+        $cols = @($parsed.results | ForEach-Object { $_.name })
+        if ($cols -contains 'season_id') {
+            Write-Host "[skip] $($f.Name)  （stats.season_id 已存在，避免重复重建丢数据）"
+            continue
+        }
+        Write-Host '[warn] 即将重建 stats 表（DROP 旧表）。生产执行前必须已 d1 export 快照。'
+    }
+
     Invoke-D1Local -ArgList @('--file', $f.FullName) | Out-Null
     Write-Host "[ok]   $($f.Name)"
 }
