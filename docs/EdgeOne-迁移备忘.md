@@ -54,3 +54,10 @@ Only projects with Provider 'Upload' are supported.
 ## 6. 与 CORS 的关系
 
 最终要切的域名是 `ks.mutx.ccwu.cc`，它**本来就在 Worker `ALLOWED_ORIGINS` 白名单里**，所以切过去不需要改 Worker、不需要再部署 Worker。只有换用其他域名（如 `cn.mutx.ccwu.cc` 直接当主站访问、或 Makers 预览域）才需要扩白名单。
+
+## 7. 线上校验基线与截图口径（2026-11-17 更新）
+
+- 首页响应体基线：撤除页头图形标识后为 **19,851 字符**（此前约 20,882）。判据统一为「>15000 且六个页面 title 正确」，不要再拿 20,800 当阈值——那会把正常页面误判成被截断
+- 校验必须带 cache-buster（`?cb=`），并且先校验响应体大小再比对指纹
+- **截图必须是真机式模拟**：`chrome --headless --screenshot --window-size=390,844` 属于桌面模式，不会应用 `width=device-width` 的移动布局，量出来的卡片会看起来超出视口；正确做法是用 CDP `Emulation.setDeviceMetricsOverride({width:390,height:844,deviceScaleFactor:2,mobile:true})`，再用 `Page.captureScreenshot`
+- 复核横向溢出以 DOM 为准：`document.documentElement.scrollWidth` 应等于 `window.innerWidth`（本次 390=390，卡片 rect 为 l=24/r=366，无溢出）
