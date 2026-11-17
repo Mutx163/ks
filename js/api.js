@@ -286,6 +286,96 @@ const API = {
         return null;
     },
 
+    /**
+     * 带响应头元信息的请求（HTTP 条件请求用）。
+     *
+     * request() 只返回响应体，304 没有响应体，会被当成「失败」返回 null，
+     * 拿不到 ETag。题库详情要在 no-store 下自己发 If-None-Match，所以这里
+     * 额外暴露 status 与 etag；304 时 data 为 null 是正常结果，不是错误。
+     *
+     * @returns {Promise<{ok: boolean, status: number, etag: string|null, data: object|null}>}
+     */
+    async requestWithMeta(path, options = {}) {
+        const startTime = Date.now();
+        const { cacheBust, ...fetchOptions } = options;
+        const method = fetchOptions.method || 'GET';
+        const headers = { ...(fetchOptions.headers || {}) };
+        if (method !== 'GET' && method !== 'HEAD' && !headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        try {
+            const urlObj = new URL(path, this.BASE_URL);
+            if (method === 'GET' && cacheBust !== false) {
+                urlObj.searchParams.set('_ts', Date.now().toString());
+            }
+
+            const res = await fetch(urlObj.toString(), {
+                cache: 'no-store',
+                ...fetchOptions,
+                headers
+            });
+
+            // 304 不读 body（也没有 body）
+            let data = null;
+            if (res.status !== 304) {
+                const text = await res.text();
+                if (text) {
+                    try {
+                        data = JSON.parse(text);
+                    } catch {
+                        console.warn(`[API] 非 JSON 响应 (${path}): ${text.slice(0, 120)}`);
+                    }
+                }
+            }
+
+            const elapsed = Date.now() - startTime;
+            if (!res.ok && res.status !== 304) {
+                console.warn(`[API] ${method} ${path} 失败 (${res.status}, ${elapsed}ms)`);
+            }
+
+            return {
+                ok: res.ok,
+                status: res.status,
+                etag: res.headers.get('ETag'),
+                data
+            };
+        } catch (e) {
+            const elapsed = Date.now() - startTime;
+            console.error(`[API] ${method} ${path} 异常 (${elapsed}ms):`, e.message);
+            return { ok: false, status: 0, etag: null, data: null, error: e.message };
+        }
+    },
+
+    /**
+     * requestWithMeta + 重试：仅网络错误与 5xx 重试。
+     * 304、404、403 等是确定结果，重试没有意义。
+     */
+    async requestWithMetaRetry(path, options = {}, maxRetries = 2, baseDelay = 1000) {
+        let res = null;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            res = await this.requestWithMeta(path, options);
+
+            const deterministic =
+                res.ok || res.status === 304 || (res.status >= 400 && res.status < 500);
+            if (deterministic) return res;
+
+            if (attempt === maxRetries) break;
+
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                console.warn('[API] 离线状态，跳过重试');
+                break;
+            }
+
+            const delay = baseDelay * Math.pow(2, attempt);
+            console.log(`[API] 第 ${attempt + 1} 次重试，等待 ${delay}ms...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        console.error(`[API] ${path} 重试 ${maxRetries} 次后仍然失败`);
+        return res || { ok: false, status: 0, etag: null, data: null };
+    },
+
     // ==================== 注册 / 绑定 ====================
 
     /**
@@ -929,7 +1019,7 @@ const API = {
 
                     <div id="bind-form" style="display: none" role="tabpanel">
                         <p class="reg-desc">在其他设备已有账号？输入同步码继续</p>
-                        <input type="text" id="reg-sync-code" class="reg-input"
+                        <input type="text" id="reg-sync-code" class="reg-input" data-clarity-mask="true"
                             placeholder="同步码"
                             maxlength="6"
                             autocomplete="off"
@@ -1073,14 +1163,14 @@ const API = {
             <div style="border-top: 1px solid var(--border); padding-top: 12px;">
                 <label>修改姓名首字母</label>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="change-initials" value="${Utils.escapeHtml(initials)}" maxlength="4" style="text-transform: uppercase; flex: 1;">
+                    <input type="text" id="change-initials" data-clarity-mask="true" value="${Utils.escapeHtml(initials)}" maxlength="4" style="text-transform: uppercase; flex: 1;">
                     <button class="btn btn-secondary btn-sm" onclick="API.changeInitials()">保存</button>
                 </div>
             </div>
             <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;">
                 <label>绑定其他同步码（切换账号）</label>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="rebind-code" placeholder="输入新的6位同步码" maxlength="6" style="text-transform: uppercase; flex: 1;">
+                    <input type="text" id="rebind-code" data-clarity-mask="true" placeholder="输入新的6位同步码" maxlength="6" style="text-transform: uppercase; flex: 1;">
                     <button class="btn btn-secondary btn-sm" onclick="API.rebindDevice()">绑定</button>
                 </div>
                 <p style="font-size: var(--font-size-xs); color: var(--text-tertiary); margin-top: 4px;">绑定后本设备数据将关联到新同步码</p>

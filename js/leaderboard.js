@@ -9,6 +9,7 @@
 import API from './api.js';
 import Utils from './utils.js';
 import Perf from './perf.js';
+import Bootstrap from './bootstrap.js';
 
 const LB = {
     currentSort: 'answered',
@@ -160,8 +161,17 @@ const LB = {
 
     /**
      * 尝试拉取公开赛季列表（后端尚未提供该接口时静默跳过，选择器自动隐藏）
+     *
+     * 首屏已通过 /api/bootstrap 一并拿回赛季列表：从首页切到排行榜（SPA 路由）
+     * 时直接复用内存里的那份，不再多发一次 /api/seasons。
+     * 直接打开排行榜页时聚合数据还没到，退回老接口，行为与之前一致。
      */
     async _loadSeasonList() {
+        const cached = Bootstrap.peekSeasons();
+        if (Array.isArray(cached)) {
+            this.seasons = cached;
+            return;
+        }
         try {
             const d = await API.request('/api/seasons');
             if (d?.ok && Array.isArray(d.seasons)) this.seasons = d.seasons;

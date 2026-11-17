@@ -33,12 +33,18 @@ function corsHeaders(origin) {
         // 响应随 Origin 变化，共享缓存必须按 Origin 分键
         Vary: 'Origin',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password, X-Admin-Device-Id',
+        // If-None-Match 不是 CORS 安全请求头：不放行的话，带条件头的题库请求
+        // 会先被预检拦掉，fetch 直接抛错，304 收益等于零。
+        'Access-Control-Allow-Headers':
+            'Content-Type, X-Admin-Password, X-Admin-Device-Id, If-None-Match',
+        // 跨域下 JS 默认读不到 ETag 响应头，必须显式暴露，
+        // 否则前端拿不到指纹，下次就没法发 If-None-Match。
+        'Access-Control-Expose-Headers': 'ETag',
         'Access-Control-Max-Age': '86400'
     };
 }
 
-function json(data, status = 200, origin = '*', cacheMaxAge = 0) {
+function json(data, status = 200, origin = '*', cacheMaxAge = 0, extraHeaders = null) {
     const headers = { 'Content-Type': 'application/json', ...corsHeaders(origin) };
     if (cacheMaxAge > 0) {
         headers['Cache-Control'] = `public, max-age=${cacheMaxAge}`;
@@ -47,7 +53,28 @@ function json(data, status = 200, origin = '*', cacheMaxAge = 0) {
         headers['Pragma'] = 'no-cache';
         headers['Expires'] = '0';
     }
+    // 可选附加头（如 ETag / Server-Timing）。默认 null，既有调用点行为完全不变。
+    if (extraHeaders) Object.assign(headers, extraHeaders);
     return new Response(JSON.stringify(data), { status, headers });
+}
+
+// 题库内容指纹：对「实际会下发的字段」做 SHA-256，内容一改指纹立刻变。
+// 只取前 32 个 hex（128 位）足够区分版本，头部也更短。
+async function contentEtag(source) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    return `"${hex.slice(0, 32)}"`;
+}
+
+// If-None-Match 按 RFC 9110 用弱比较：忽略 W/ 前缀，支持逗号多值与 *
+function etagMatches(ifNoneMatch, etag) {
+    if (!ifNoneMatch) return false;
+    const strip = (v) => v.trim().replace(/^W\//, '');
+    const target = strip(etag);
+    return ifNoneMatch
+        .split(',')
+        .map(strip)
+        .some((candidate) => candidate === '*' || candidate === target);
 }
 
 function error(msg, status = 400, origin = '*') {
@@ -453,6 +480,12 @@ export default {
                 return await handleGetSeasons(env, origin);
             }
 
+            // GET /api/bootstrap（首屏聚合：题库元数据 + 赛季列表，一次请求拿全）
+            // 老客户端继续用 /api/banks、/api/seasons，两个接口行为不变
+            if (method === 'GET' && path === '/api/bootstrap') {
+                return await handleBootstrap(env, origin);
+            }
+
             // GET /api/banks（前端获取题库列表）
             if (method === 'GET' && path === '/api/banks') {
                 return await handleGetBanks(env, origin);
@@ -461,7 +494,7 @@ export default {
             // GET /api/bank/:id（前端获取题库数据）
             if (method === 'GET' && path.startsWith('/api/bank/')) {
                 const bankId = path.split('/api/bank/')[1];
-                return await handleGetBank(bankId, env, origin);
+                return await handleGetBank(bankId, request, env, origin);
             }
 
             // POST /api/admin/adjust-stats
@@ -2143,6 +2176,57 @@ async function handleAdminUserCloudData(userId, url, env, origin) {
     );
 }
 
+// ==================== 首屏聚合 API ====================
+
+// 与 handleGetBanks / handleGetSeasons 使用同一条 SQL（改字段时两处都要动）。
+// 注意：故意不缓存，题目与题库随时会改；聚合只为省掉一次建连，不是缓存层。
+const BANKS_LIST_SQL =
+    'SELECT id, name, description, category, version, question_count, allowed_modes, enabled, updated_at FROM banks ORDER BY name';
+const SEASONS_LIST_SQL = 'SELECT id, name, is_active FROM seasons ORDER BY is_active DESC, id DESC';
+
+// 首屏一次拿到「题库元数据 + 赛季列表」，把两次 DNS/TLS/TTFB 合成一次。
+// 响应字段与 /api/banks、/api/seasons 完全一致；两个老接口保持独立、不做任何改动。
+async function handleBootstrap(env, origin) {
+    const startedAt = Date.now();
+    let bankRows = [];
+    let seasonRows = [];
+
+    try {
+        // batch：一次往返把两条查询都发下去，比串行两次少一个 D1 round trip
+        const [banksRes, seasonsRes] = await env.DB.batch([
+            env.DB.prepare(BANKS_LIST_SQL),
+            env.DB.prepare(SEASONS_LIST_SQL)
+        ]);
+        bankRows = banksRes.results || [];
+        seasonRows = seasonsRes.results || [];
+    } catch (e) {
+        // 0006 之前的环境没有 seasons 表：batch 会整批失败，降级为只查题库，
+        // 首屏不能因为赛季表缺失就整页挂掉（与 /api/seasons 返回空列表的兜底一致）
+        console.error('[Bootstrap] 聚合查询失败，降级为只查题库:', e.message);
+        try {
+            const banksRes = await env.DB.prepare(BANKS_LIST_SQL).all();
+            bankRows = banksRes.results || [];
+        } catch (e2) {
+            console.error('[Bootstrap] 题库列表也读取失败:', e2.message);
+        }
+    }
+
+    const banks = bankRows.map((b) => ({
+        ...b,
+        enabled: b.enabled !== 0,
+        allowed_modes: safeParseJson(b.allowed_modes, null)
+    }));
+    const seasons = seasonRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        is_active: !!row.is_active
+    }));
+
+    return json({ ok: true, banks, seasons }, 200, origin, 0, {
+        'Server-Timing': `db;dur=${Date.now() - startedAt}`
+    });
+}
+
 // ==================== 题库管理 API ====================
 
 // 前端：获取题库列表（不含题目详情）
@@ -2161,15 +2245,47 @@ async function handleGetBanks(env, origin) {
 }
 
 // 前端：获取题库完整数据（含题目）
-async function handleGetBank(bankId, env, origin) {
+// 题库内容一律不缓存（改题必须立刻生效），但带 ETag：
+// 内容没变时客户端/网关带 If-None-Match 来，只回 304（0 字节），不再下发整包。
+async function handleGetBank(bankId, request, env, origin) {
+    const queryStart = Date.now();
     const bank = await env.DB.prepare('SELECT * FROM banks WHERE id = ?').bind(bankId).first();
+    const dbMs = Date.now() - queryStart;
     if (!bank) return error('题库不存在', 404, origin);
     // 检查题库是否启用
     if (bank.enabled === 0) return error('题库已禁用', 403, origin);
 
     const questions = safeParseJson(bank.questions_json, []) || [];
 
-    // 缓存 5 分钟（减少重复请求，更新延迟最多 5 分钟）
+    const etag = await contentEtag(
+        [
+            bank.version,
+            bank.updated_at,
+            bank.enabled,
+            bank.name,
+            bank.description,
+            bank.category,
+            bank.allowed_modes,
+            bank.questions_json
+        ].join('\u0000')
+    );
+    const serverTiming = `db;dur=${dbMs}`;
+
+    if (etagMatches(request.headers.get('If-None-Match'), etag)) {
+        // 304 不带 body / Content-Type，只回校验信息；缓存策略与 200 一致（不缓存）
+        return new Response(null, {
+            status: 304,
+            headers: {
+                ...corsHeaders(origin),
+                ETag: etag,
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                Pragma: 'no-cache',
+                Expires: '0',
+                'Server-Timing': serverTiming
+            }
+        });
+    }
+
     return json(
         {
             ok: true,
@@ -2185,7 +2301,8 @@ async function handleGetBank(bankId, env, origin) {
         },
         200,
         origin,
-        300
+        0,
+        { ETag: etag, 'Server-Timing': serverTiming }
     );
 }
 
