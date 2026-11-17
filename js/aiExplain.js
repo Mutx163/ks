@@ -190,11 +190,11 @@ const AIExplain = {
                             ${this._providerOptions(local.provider)}
                         </select>
                         <label>Base URL</label>
-                        <input type="text" id="ai-explain-base-url" placeholder="${Utils.escapeHtml(provider.baseUrlPlaceholder)}" value="${Utils.escapeHtml(local.baseUrl)}">
+                        <input type="text" id="ai-explain-base-url" data-clarity-mask="true" placeholder="${Utils.escapeHtml(provider.baseUrlPlaceholder)}" value="${Utils.escapeHtml(local.baseUrl)}">
                         <label>模型</label>
                         <input type="text" id="ai-explain-model" placeholder="${Utils.escapeHtml(provider.modelPlaceholder)}" value="${Utils.escapeHtml(local.model)}">
                         <label>API 密钥</label>
-                        <input type="password" id="ai-explain-api-key" placeholder="只保存在当前浏览器本地" value="${Utils.escapeHtml(local.apiKey)}">
+                        <input type="password" id="ai-explain-api-key" data-clarity-mask="true" placeholder="只保存在当前浏览器本地" value="${Utils.escapeHtml(local.apiKey)}">
                         <p class="ai-explain-warning">注意：用户自己的 API 密钥会保存在本机浏览器 localStorage，不会同步到云端；但同一浏览器环境中的前端脚本可读取它。</p>
                     </div>
                 `

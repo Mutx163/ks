@@ -3,6 +3,7 @@
  */
 
 import { ensureKatex, ensurePrism, ensureMarked } from './lazyAssets.js';
+import { scheduleClarity } from './analytics.js';
 
 const Utils = {
     /**
@@ -1037,11 +1038,14 @@ if (document.readyState === 'loading') {
         Utils.initNavigation();
         Router.init();
         setTimeout(() => Utils.updateBrowserThemeColor(), 100);
+        // Clarity：首次交互或 8s 兜底后注入，非生产域不加载（见 js/analytics.js）
+        scheduleClarity();
     });
 } else {
     Utils.initNavigation();
     Router.init();
     setTimeout(() => Utils.updateBrowserThemeColor(), 100);
+    scheduleClarity();
 }
 
 // 监听系统主题变化，自动刷新浏览器地址栏/底栏颜色

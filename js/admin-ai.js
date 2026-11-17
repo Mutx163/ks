@@ -73,7 +73,7 @@ export function initAI(Admin) {
                             </label>
                             <label>
                                 <span>Base URL</span>
-                                <input class="admin-input" id="ai-base-url" value="${Utils.escapeHtml(c.baseUrl || '')}" placeholder="OpenAI: https://api.openai.com/v1 / Gemini: https://generativelanguage.googleapis.com/v1beta">
+                                <input class="admin-input" id="ai-base-url" data-clarity-mask="true" value="${Utils.escapeHtml(c.baseUrl || '')}" placeholder="OpenAI: https://api.openai.com/v1 / Gemini: https://generativelanguage.googleapis.com/v1beta">
                             </label>
                             <label>
                                 <span>模型</span>
@@ -81,7 +81,7 @@ export function initAI(Admin) {
                             </label>
                             <label>
                                 <span>API 密钥</span>
-                                <input class="admin-input" id="ai-api-key" type="password" value="" placeholder="留空保留当前密钥">
+                                <input class="admin-input" id="ai-api-key" type="password" data-clarity-mask="true" value="" placeholder="留空保留当前密钥">
                             </label>
                             <label class="ai-admin-clear-key">
                                 <span>清除当前密钥</span>
